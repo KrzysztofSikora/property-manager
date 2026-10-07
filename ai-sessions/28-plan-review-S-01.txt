@@ -1,0 +1,440 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan-review create-property-with-weather                                     
+  ⎿  Running in the background as @plan-review
+
+● Agent "/plan-review create-property-with-weather" finished · 3m 6s
+
+● The plan review for create-property-with-weather is done. The verdict is ready
+  with notes: nothing blocks it, but three major issues should be fixed before
+  /implement. plan.md hasn't been changed.
+
+  Major
+  1. The API package doesn't depend on the shared package. The plan imports from
+     @property-manager/shared starting in Phase 1, but apps/api/package.json
+     doesn't list it, so Phase 1's typecheck would fail. Fix: add
+     "@property-manager/shared": "workspace:*" in Phase 1.
+  2. The error-masking rule would hide validation errors. In graphql 17, an
+     error thrown by a resolver arrives wrapped around the original. As written,
+     the rule ("pass through only if there's no inner error") would turn every
+     BAD_USER_INPUT into INTERNAL_SERVER_ERROR. The plan should look through the
+     wrapping the way Yoga's own check does, and add unit tests that build
+     errors with locatedError.
+  3. The weather mapper would drop out of mutation testing. The plan moves it to
+     domain/weather.ts, but test-plan.md:113 only covers
+     adapters/weatherstack/. Fix: add the new file to the mutation list and
+     update that line of the test plan.
+
+  Minor
+  4. With z.preprocess, the AddressInput fields come out typed as unknown, and
+  refine doesn't narrow state to StateCode. Chaining trim/overwrite/toUpperCase
+  instead keeps them typed as strings.
+  5. FR-05 AC6 ("the database rejects the save") is only tested with a fake
+  repository that throws. A real check is cheap: a fake weather response with
+  lat: "999" breaks the properties_lat_range constraint.
+  6. The domain-error mapping keeps path but drops nodes/positions, so those
+  errors lose locations.
+  7. Regenerating the web client output will type the JSON/DateTime scalars as
+  any. Lint ignores that folder, so S-04 could pick up any without anyone
+  noticing.
+
+  The review also confirmed the file and line references in the plan,
+  graphql-scalars@2.0.0 working with graphql 17, a test for every in-scope
+  acceptance criterion, phases in dependency order, and the Stryker concurrency
+  rule from lessons.md.
+
+  Full review: context/changes/create-property-with-weather/plan-review.md. Do
+  you want me to update plan.md with these fixes?
+
+✻ Baked for 7s · done 8:51 PM
+
+❯ update plan for these fixes                                                   
+
+  Read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+● Update(context/changes/create-property-with-weather/plan.md)
+  ⎿  Error editing file
+
+● Update(context/changes/create-property-with-weather/plan.md)
+  ⎿  Added 1 line, removed 1 line
+      124  | Nullability of `createProperty` / `property` | `createProper
+           ty(...): Property` and `property(id: ID!): Property`, both nul
+           lable | The PRD convention says an error code means the *field
+           * is `null`. A non-null return type would null the whole `data
+           ` instead. | research (PRD) |
+      125  | Where ports and domain types live | `apps/api/src/domain/` (
+           types, ports, errors, key-field schema). Every layer may impor
+           t it, and it imports nothing from the layers. An ESLint block 
+           enforces this. | Adapters and repositories may not import `ser
+           vices/**`, so the ports cannot live there. This is the ports-a
+           nd-adapters pattern: the service depends on interfaces, and th
+           e composition root wires real or fake implementations (NFR-07)
+           . | research |
+      126  | Where `current` is mapped to the typed fields | The domain f
+           unction `toCurrentWeather(raw)` zod-parses the key fields (sna
+           ke_case) and returns the camelCase fields plus `raw`. The adap
+           ter uses it to validate the response. The repository uses it w
+           hen mapping a row to a domain `Property`. | One schema for "wh
+           at a valid `current` is". Resolvers then return domain objects
+            as they are, so no codegen mappers are needed. | research |
+      127 -| Error model | Domain errors in `domain/errors.ts` (`WeatherU
+          -navailableError` now, more in S-02). Each one carries an `Erro
+          -rCode` from `@property-manager/shared` and a safe message. The
+          - resolver throws `BAD_USER_INPUT` as a `GraphQLError`. `graphq
+          -l/errors.ts` provides `maskError`: a domain error (as `origina
+          -lError`) becomes a `GraphQLError` with its code. A plain `Grap
+          -hQLError` without `originalError` passes through. Everything e
+          -lse becomes `INTERNAL_SERVER_ERROR` / "Unexpected error.", and
+          - the original is logged at `error` level. | A single place map
+          -s codes (TR-12, a mutation target). It also covers errors that
+          - Yoga wraps. | research |                                     
+      127 +| Error model | Domain errors in `domain/errors.ts` (`WeatherU
+          +navailableError` now, more in S-02). Each one carries an `Erro
+          +rCode` from `@property-manager/shared` and a safe message. The
+          + resolver throws `BAD_USER_INPUT` as a `GraphQLError`. `graphq
+          +l/errors.ts` provides `maskError`, which walks the `originalEr
+          +ror` chain to the first non-`GraphQLError`: a `DomainError` be
+          +comes a `GraphQLError` with its code. A chain that ends in a `
+          +GraphQLError` (such as a wrapped `BAD_USER_INPUT`) passes thro
+          +ugh. Everything else becomes `INTERNAL_SERVER_ERROR` / "Unexpe
+          +cted error.", and the original is logged at `error` level. | A
+          + single place maps codes (TR-12, a mutation target). It also c
+          +overs errors that Yoga wraps. | research |                    
+      128  | Validation location | The resolver parses the arguments with
+            the shared `addressSchema` (trim, collapse, upper-case state,
+            then the rules) and passes the normalized `Address` to the se
+           rvice. | CLAUDE.md and NFR-05: validate at the boundary. FR-07
+            says before any weather call. | research (CLAUDE.md) |
+      129  | `lat`/`lon` parsing | `z.string().regex(/^-?\d+(\.\d+)?$/)` 
+           then `Number`. No range check in zod; the DB CHECK is the back
+           stop. | `z.coerce` accepts `""` as `0`. FR-06 AC5 asks only fo
+           r "numeric". | research |
+      130  | Composition | `createApp({ config, logger, repository, weath
+           er })` takes ports. `main.ts` builds the pool, the Drizzle rep
+           ository and the `WeatherstackClient`. `createTestApp({ weather
+           ?, repository? })` does the same with a fake (default), `'msw'
+           ` (real client), or a repository override. | `createApp` stays
+            testable without a DB. FR-05 AC6 and TR-12 need a repository 
+           whose `insert` throws. | research (test-plan Cookbook) |
+
+● Update(context/changes/create-property-with-weather/plan.md)
+  ⎿  Added 9 lines, removed 4 lines
+      135  
+      136  - `normalizeAddressText(s: string): string` trims the string a
+           nd collapses runs of whitespace
+      137    to one space.
+      138 -- `addressSchema`: a zod object with four fields. Each field i
+          -s preprocessed by the                                         
+      139 -  normalization, then validated with our own messages (no echo
+          - of the input):                                               
+      140 -  - `street` is 1–200 characters after normalization, and `cit
+          -y` 1–100.                                                     
+      141 -  - `state` is upper-cased, then must satisfy `isStateCode`. O
+          -utput type: `StateCode`.                                      
+      138 +- `addressSchema`: a zod object with four `z.string()` fields,
+          + normalized with string methods                               
+      139 +  (not `z.preprocess`, whose input type is `unknown` and would
+          + make `AddressInput` untyped),                                
+      140 +  then validated with our own messages (no echo of the input):
+      141 +  - `street` and `city`: `z.string().trim().overwrite(normaliz
+          +eAddressText)`, then 1–200 and                                
+      142 +    1–100 characters.                                         
+      143 +  - `state`: `z.string().trim().toUpperCase().pipe(z.enum(stat
+          +eCodes, msg))`, so the output                                 
+      144 +    type is `StateCode` (a `refine(isStateCode)` would not nar
+          +row it). If `states.ts` does not                              
+      145 +    export the code tuple, export it.                         
+      146    - `zipCode` must match `^[0-9]{5}$` and stays a string.
+      147 +  - `AddressInput` therefore has `string` for every field.    
+      148  - `type AddressInput = z.input<typeof addressSchema>`, `type A
+           ddress = z.output<typeof
+      149    addressSchema>`.
+      150  - `normalizeAddress(input: AddressInput): Address` throws on i
+           nvalid input. It is a thin
+
+● Update(context/changes/create-property-with-weather/plan.md)
+  ⎿  Added 3 lines, removed 1 line
+      242  
+      243    `health` stays, because the web `ApiStatus` component uses i
+           t.
+      244  - `codegen.ts`: `scalars: { JSON: 'unknown', DateTime: { input
+           : 'Date', output: 'Date |
+      245 -  string' } }` for the server output. Run `pnpm codegen` and c
+          -ommit the output.                                             
+      245 +  string' } }` for the server output, and `scalars: { JSON: 'u
+          +nknown', DateTime: 'string' }`                                
+      246 +  for the web client output (otherwise both become `any` in `a
+          +pps/web/src/graphql/`, a path                                 
+      247 +  ESLint ignores). Run `pnpm codegen` and commit the output.  
+      248  - `graphql/context.ts`: adds `services: { property: PropertySe
+           rvice }`.
+      249  - `graphql/resolvers.ts`:
+      250    - `createProperty` runs `addressSchema.safeParse(args)`. On 
+           failure it throws
+
+● Update(context/changes/create-property-with-weather/plan.md)
+  ⎿  Added 9 lines, removed 4 lines
+      256    - `badUserInput(issues): GraphQLError` builds the message "I
+           nvalid input: zipCode (must be 5
+      257      digits), state (…)" and `extensions: { code: 'BAD_USER_INP
+           UT', fields: [{ field, message
+      258      }] }`, with one entry per field (the first issue per field
+           ).
+      259 -  - `createMaskError(logger): MaskError`:                     
+      260 -    - A `DomainError`, or a `GraphQLError` whose `originalErro
+          -r` is a `DomainError`, becomes                                
+      261 -      `new GraphQLError(err.message, { extensions: { code }, p
+          -ath })`.                                                      
+      262 -    - An original `GraphQLError` is returned as it is.        
+      259 +  - `createMaskError(logger): MaskError` walks `originalError`
+          + from the received error until                                
+      260 +    the first error that is not a `GraphQLError` (or the end o
+          +f the chain):                                                 
+      261 +    - If that error is a `DomainError`, it becomes `new GraphQ
+          +LError(domainErr.message,                                     
+      262 +      { extensions: { code }, nodes, source, positions, path }
+          +)`, with `nodes`, `source`,                                   
+      263 +      `positions` and `path` taken from the outer `GraphQLErro
+          +r` (as Yoga's `mask-error.js`                                 
+      264 +      does), so `locations` are kept.                         
+      265 +    - If the chain ends in a `GraphQLError` (a resolver-thrown
+          + `BAD_USER_INPUT` arrives wrapped                             
+      266 +      by `locatedError`), the received error is returned as it
+          + is. The wrapper already carries                              
+      267 +      the inner `extensions`.                                 
+      268      - Anything else is logged (`logger.error({ err }, 'unexpec
+           ted error')`) and becomes
+      269        `"Unexpected error."` with `{ code: 'INTERNAL_SERVER_ERR
+           OR' }`. `originalError` is never
+      270        included, whatever `isDev` is.
+
+● Update(context/changes/create-property-with-weather/plan.md)
+  ⎿  Added 3 lines
+      291      `state` output is `StateCode`, and `zipCode` stays a strin
+           g.
+      292    - `packages/shared/src/address.test.ts`: `it.each` tables.
+      293    - `packages/shared/src/index.ts`: re-exports.
+      294 +  - `apps/api/package.json` and `pnpm-lock.yaml`: adds `"@prop
+          +erty-manager/shared":                                         
+      295 +    "workspace:*"` (then `pnpm install`). The API imports shar
+          +ed from this phase on, and pnpm's                             
+      296 +    strict `node_modules` would fail typecheck without it.    
+      297    - `apps/api/test/fixtures/property.ts`: `PropertyInput` beco
+           mes `AddressInput` from shared.
+      298  - Proves (unit, `shared`):
+      299    - FR-07 AC1: `8526`, `852680`, `85268-1234` and `8526A` fail
+            on `zipCode`.
+
+● Update(context/changes/create-property-with-weather/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      380    - `apps/api/schema.graphql`: the SDL in *Design*. Contract: 
+           `createProperty(...): Property`,
+      381      `property(id: ID!): Property`, and the `CurrentWeather` ke
+           y fields plus `raw: JSON!`.
+      382    - `codegen.ts` and `apps/api/src/graphql/generated/resolvers
+           -types.ts`: the scalar mapping,
+      383 -    regenerated. The web client output is regenerated too, if 
+          -it changes.                                                   
+      383 +    regenerated. The web client output gets its own `scalars` 
+          +(`JSON: 'unknown'`,                                           
+      384 +    `DateTime: 'string'`) and is regenerated, so no `any` reac
+          +hes S-04.                                                     
+      385    - `apps/api/src/graphql/errors.ts` and `errors.test.ts`: `ba
+           dUserInput` and
+      386      `createMaskError`. Contract: the codes and `fields: [{ fie
+           ld, message }]`.
+      387    - `apps/api/src/graphql/resolvers.ts`: `createProperty`, `pr
+           operty` and the scalars.
+
+● Update(context/changes/create-property-with-weather/plan.md)
+  ⎿  Added 4 lines, removed 1 line
+      398    - `apps/api/test/integration/smoke.int.test.ts`: adapted to 
+           the new `createTestApp` (the
+      399      health case keeps working).
+      400    - `context/test-plan.md`: the Cookbook *(S-01)* markers are 
+           removed and the paths are set
+      401 -    (`test/fakes/weather.ts`, `test/msw/weatherstack.ts`, `tes
+          -t/helpers/graphql.ts`).                                       
+      401 +    (`test/fakes/weather.ts`, `test/msw/weatherstack.ts`, `tes
+          +t/helpers/graphql.ts`). The                                   
+      402 +    mutation-target row at line 113 (Weatherstack response sch
+          +ema and mapper) also names                                    
+      403 +    `apps/api/src/domain/weather.ts`, where the key-field sche
+          +ma and `toCurrentWeather` now                                 
+      404 +    live.                                                     
+      405  - Proves (integration, `api-int`, Yoga in process on Testconta
+           iners):
+      406    - FR-05 AC1: the create response, compared with the sample, 
+           and `property(id)` returns the
+      407      same data.
+
+● Update(context/changes/create-property-with-weather/plan.md)
+  ⎿  Added 4 lines
+      410    - FR-05 AC6: with a repository whose `insert` throws an `Err
+           or` containing SQL text and a
+      411      file path, the result is `INTERNAL_SERVER_ERROR`, the coun
+           t is 0, and the response contains
+      412      neither the SQL nor the path.
+      413 +  - FR-05 AC6 (real DB rejection): a `FakeWeatherClient` whose
+          + body has `location.lat: "999"`                               
+      414 +    passes zod (no range check) and hits the `properties_lat_r
+          +ange` CHECK. The result is                                    
+      415 +    `INTERNAL_SERVER_ERROR`, the count is 0, and the response 
+          +contains neither                                              
+      416 +    `properties_lat_range` nor `insert into`.                 
+      417    - FR-07 AC1–AC5 through the API: one `BAD_USER_INPUT` error,
+            the expected `fields`, and 0
+      418      weather calls. AC2 returns `"02108"`.
+      419    - FR-10 AC2: the masked message and no `originalError`, also
+            with `NODE_ENV=development`
+
+● Update(context/changes/create-property-with-weather/plan.md)
+  ⎿  Added 6 lines, removed 2 lines
+      421    - `property(id: "not-a-uuid")` gives `null`.
+      422    - With `weather: 'msw'`: one happy create through the real c
+           lient, and one 500 →
+      423      `WEATHER_UNAVAILABLE`, count unchanged, `expectNoSecret`.
+      424 -- Proves (unit, `api-unit`): the `errors.ts` table. A `DomainE
+          -rror` keeps its code, a plain                                 
+      425 -  `GraphQLError` passes through, and an unknown `Error` is mas
+          -ked and logged.                                               
+      424 +- Proves (unit, `api-unit`): the `errors.ts` table, with the c
+          +ases built by `locatedError(...)`                             
+      425 +  as graphql 17 delivers them:                                
+      426 +  - a wrapped `GraphQLError` with `BAD_USER_INPUT` passes thro
+          +ugh with its `extensions.fields`;                             
+      427 +  - a wrapped `DomainError` keeps its code, message, `path` an
+          +d `locations`;                                                
+      428 +  - a wrapped plain `Error` is masked to "Unexpected error." /
+          + `INTERNAL_SERVER_ERROR`, has no                              
+      429 +    `originalError`, and is logged.                           
+      430  - Agent checks: `pnpm codegen` (then `git status` shows only t
+           he committed outputs),
+      431    `pnpm typecheck`, `pnpm lint`, `pnpm test` (Docker), `pnpm f
+           ormat:check`
+      432  - Human checks:
+
+● Update(context/changes/create-property-with-weather/plan.md)
+  ⎿  Added 3 lines, removed 2 lines
+      451  - The S-03 scope shrinks by the minimal `property(id)`. The ro
+           admap S-01 and S-03 entries are
+      452    updated to say so.
+      453  - Mutation targets touched (for `/mutation`): `packages/shared
+           /src/address.ts`,
+      454 -  `adapters/weatherstack/{response,redact}.ts`, `services/prop
+          -erty.service.ts` and                                          
+      455 -  `graphql/errors.ts`. Run at `--concurrency 4` (lessons).    
+      454 +  `adapters/weatherstack/{response,redact}.ts`, `domain/weathe
+          +r.ts` (the mapper, TR-16),                                    
+      455 +  `services/property.service.ts` and `graphql/errors.ts`. Run 
+          +at `--concurrency 4` (lessons).                               
+      456 +- Plan review (`plan-review.md`, READY WITH NOTES): findings 1
+          +–7 are applied in this plan.                                  
+      457  
+      458  ## Progress
+      459  <!-- One line per phase. /implement ticks it and appends the c
+           ommit hash. -->
+
+● Ten of the eleven edits went in. I'm fixing the one that missed: the Findings
+  line about Yoga masking. Its line breaks differ from what I searched for.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/create-property-with-weather/plan.md'…)
+  ⎿   context/roadmap.md | 6 ++++--
+      1 file changed, 4 insertions(+), 2 deletions(-)
+      M context/roadmap.md
+     ?? context/changes/create-property-with-weather/
+  ⎿  Updated context/changes/create-property-with-weather/plan.md (+8 -5)
+       95  Library facts:
+       96  
+       97  - **Yoga masking** (`graphql-yoga@5.24.2`, `cjs/utils/mask-err
+           or.js`, and the context7 docs on
+       98 -  `maskedErrors.maskError`): a `GraphQLError` without `origina
+          -lError` passes through unchanged.                             
+       99 -  Anything else becomes `"Unexpected error."` with `extensions
+          -: { code: 'INTERNAL_SERVER_ERROR',                            
+       98 +  `maskedErrors.maskError`): a `GraphQLError` passes through u
+          +nchanged if its `originalError`                               
+       99 +  chain contains only `GraphQLError`s (`isOriginalGraphQLError
+          +` recurses, `cjs/error.js:20-28`).                            
+      100 +  This matters because graphql 17's `locatedError` wraps a res
+          +olver-thrown `GraphQLError` in a                              
+      101 +  new `GraphQLError` whose `originalError` is the thrown one. 
+          +Anything else becomes `"Unexpected error."` with `extensions: 
+          +{ code: 'INTERNAL_SERVER_ERROR',                              
+      102    unexpected: true }`. **When `NODE_ENV === 'development'`, th
+           e default `maskError` adds
+      103    `extensions.originalError` with `message` and `stack`**, whi
+           ch would break FR-10 AC2 in dev.
+      104    So S-01 passes a custom `maskedErrors.maskError` that never 
+           forwards `isDev`.
+     ...
+      142    then validated with our own messages (no echo of the input):
+      143    - `street` and `city`: `z.string().trim().overwrite(normaliz
+           eAddressText)`, then 1–200 and
+      144      1–100 characters.
+      143 -  - `state`: `z.string().trim().toUpperCase().pipe(z.enum(stat
+          -eCodes, msg))`, so the output                                 
+      144 -    type is `StateCode` (a `refine(isStateCode)` would not nar
+          -row it). If `states.ts` does not                              
+      145 -    export the code tuple, export it.                         
+      145 +  - `state`: `z.string().trim().toUpperCase().transform((s, ct
+          +x) => …)`, which returns `s`                                  
+      146 +    when the `isStateCode` type guard passes and otherwise add
+          +s an issue and returns                                        
+      147 +    `z.NEVER`. The output type is then `StateCode` with no cas
+          +t (a `refine(isStateCode)` would                              
+      148 +    not narrow it).                                           
+      149    - `zipCode` must match `^[0-9]{5}$` and stays a string.
+      150    - `AddressInput` therefore has `string` for every field.
+      151  - `type AddressInput = z.input<typeof addressSchema>`, `type A
+           ddress = z.output<typeof
+
+● I've updated context/changes/create-property-with-weather/plan.md to fix all
+  seven review findings. These are plan edits only; I haven't run any code or
+  tests, and nothing is committed (the change folder is still untracked).
+
+  Major
+  1. Missing shared dependency: Phase 1 now adds "@property-manager/shared": 
+     "workspace:*" to apps/api/package.json, runs pnpm install and updates the
+     lockfile.
+  2. Error masking:
+     - The Yoga finding, the error-model decision and the createMaskError design
+       now account for graphql 17 wrapping resolver-thrown errors.
+     - createMaskError follows the chain of inner errors to the first one that
+       isn't a GraphQLError. A domain error becomes its own error code, a chain
+       that ends in a GraphQLError (such as a validation error) passes through
+       unchanged, and anything else is masked.
+     - The Phase 4 unit tests build their errors with locatedError(...): a
+       wrapped validation error, a wrapped domain error and a wrapped plain
+       Error.
+  3. Weather mapper: domain/weather.ts is now in the mutation-target list, and
+     the Phase 4 edit to test-plan.md updates the row at line 113 to name it.
+
+  Minor
+  4. Address schema: street and city use
+  z.string().trim().overwrite(normalizeAddressText), so every AddressInput field
+  stays typed as string. For state I didn't use either of the review's
+  suggestions. It uses a .transform built on the existing isStateCode type
+  guard, which narrows the output to StateCode without a cast or a new export
+  from states.ts.
+  5. Real database rejection: Phase 4 adds an integration test where a fake
+  weather response with lat: "999" breaks the properties_lat_range check. It
+  expects INTERNAL_SERVER_ERROR, no stored row, and no constraint name or SQL in
+  the response.
+  6. Error locations: domain errors now keep nodes, source, positions and path
+  from the outer error, so they keep locations.
+  7. Web scalars: the web client output in codegen.ts gets JSON: 'unknown' and
+  DateTime: 'string', so no any reaches S-04.
+
+  I also added a line under Risks and unknowns saying the review's findings are
+  applied. The next step is /implement when you're ready.
+
+✻ Brewed for 1m 10s · done 8:52 PM

@@ -1,0 +1,820 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /review create-property-with-weather                                          
+  ⎿  Running in the background as @review
+
+● Agent "/review create-property-with-weather" finished · 3m 21s
+
+● The /review create-property-with-weather run is done. Verdict: approve with 
+  follow-ups. It found three major issues, one minor issue and no blockers.
+
+  Checks: typecheck, lint and the format check pass. All 317 tests pass with
+  pnpm test, Docker included. Re-running codegen changes nothing. Every way the
+  code differs from the plan is already listed in the plan's Deviations section.
+
+  Findings (written to context/changes/create-property-with-weather/review.md):
+
+  #: R1
+  Severity: major
+  Finding: When a database error is unexpected, graphql/errors.ts:58 logs the
+  raw
+  error. That includes the full SQL and its parameters: the street address and
+  about 6.5 KB of weather JSON. This breaks the "variables are never logged"
+  rule in app.ts:45. The Weatherstack key is not leaked.
+  My recommendation: Fix, and make it a rule: unexpected errors are logged by
+  name, message and code only, never their parameters.
+  ────────────────────────────────────────
+  #: R2
+  Severity: major
+  Finding: The error tables in response.test.ts (lines 29, 45, 74) and
+  client.test.ts:121 (TR-01) only check that a WeatherUnavailableError was
+  thrown. They don't check its cause, which breaks the new rule in lessons.md.
+  My recommendation: Fix. Only the tests change.
+  ────────────────────────────────────────
+  #: R3
+  Severity: major
+  Finding: Log lines for unexpected errors and Weatherstack warnings have no
+  requestId, because main.ts gives those components the root logger.
+  tech-stack.md says every log line carries it.
+  My recommendation: Fix: pass in the per-request logger. If that's too much
+  work
+  for this change, defer it.
+  ────────────────────────────────────────
+  #: R4
+  Severity: minor
+  Finding: Phase 4 was committed as dd0abe1, but it isn't ticked in the plan's
+  Progress section.
+  My recommendation: Fix. It's a one-line change.
+
+  The reviewer also set S-01 to review in context/roadmap.md.
+
+  For each finding, choose fix, defer, reject (with a reason) or make it a rule.
+  I'll update the Decision: lines to match. Should I go with my
+  recommendations?
+
+✻ Baked for 7s · done 9:33 PM
+
+❯ fix all                                                                       
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Now the relevant code.
+
+  Searched for 2 patterns, read 1 file, ran 2 shell commands (ctrl+o to expand)
+  ⎿  You've hit your session limit · resets 10:40pm (Europe/Warsaw)
+     /upgrade or /usage-credits to finish what you’re working on.
+
+● Usage limit reached · continuing automatically at 10:40pm · esc to 
+  cancel
+
+✻ Worked for 1m 6s · done 9:35 PM
+
+● Usage limit reset · continuing automatically
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='src/graphql/errors.ts'…)
+  ⎿  Updated apps/api/src/graphql/errors.ts (+71 -17)
+      34    return current;
+      35  }
+      36  
+      37 +type Classified =                                              
+      38 +  | { kind: 'graphql' }                                        
+      39 +  | { kind: 'domain'; cause: DomainError }                     
+      40 +  | { kind: 'unexpected'; cause: unknown };                    
+      41 +                                                               
+      42 +function classify(error: unknown): Classified {                
+      43 +  const cause = rootCause(error);                              
+      44 +  // Parse and validation errors, and a resolver-thrown BAD_USE
+         +R_INPUT, whose wrapper already                                 
+      45 +  // carries the inner `extensions`.                           
+      46 +  if (error instanceof GraphQLError && cause instanceof GraphQL
+         +Error) return { kind: 'graphql' };                             
+      47 +  if (cause instanceof DomainError) return { kind: 'domain', ca
+         +use };                                                         
+      48 +  return { kind: 'unexpected', cause };                        
+      49 +}                                                              
+      50 +                                                               
+      51  // Keeps `locations` and `path` from the wrapper, as Yoga's own
+           maskError does.
+      52  function located(error: unknown): GraphQLErrorOptions {
+      53    if (!(error instanceof GraphQLError)) return {};
+     ...
+       56  }
+       57  
+       58  // The single place that maps errors to `extensions.code` (FR-
+           10, TR-12). It never forwards
+       45 -// `isDev`: Yoga's default adds the original message and stack
+          - in development.                                              
+       46 -export function createMaskError(logger: Logger): MaskError {  
+       47 -  return (error, message) => {                                
+       48 -    const cause = rootCause(error);                           
+       49 -    // Parse and validation errors, and a resolver-thrown BAD_
+          -USER_INPUT, whose wrapper already                             
+       50 -    // carries the inner `extensions`.                        
+       51 -    if (error instanceof GraphQLError && cause instanceof Grap
+          -hQLError) return error;                                       
+       52 -    if (cause instanceof DomainError) {                       
+       53 -      return new GraphQLError(cause.message, {                
+       54 -        ...located(error),                                    
+       55 -        extensions: { code: cause.code },                     
+       56 -      });                                                     
+       57 -    }                                                         
+       58 -    logger.error({ err: cause }, 'unexpected error');         
+       59 -    return new GraphQLError(message, {                        
+       59 +// `isDev`: Yoga's default adds the original message and stack
+          + in development. It does not log:                             
+       60 +// it has no request context, so `logUnexpectedErrors` logs fr
+          +om the operation plugin instead.                              
+     … 60 more lines (ctrl+o to expand)
+
+● Now the composition root: per-request weather client and logging from the
+  plugin.
+
+● Bash(python3 - <<'EOF'
+      p='src/app.ts'…)
+  ⎿  3:import { createWeatherstackClient } from '../../src/adapters/weather
+     stack/client.ts';
+     10:import { FakeWeatherClient } from '../fakes/weather.ts';
+     … +19 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/app.ts (+18 -8)
+       8  import type { Config } from './config/env.ts';
+       9  import type { PropertyRepository, WeatherClient } from './domai
+          n/ports.ts';
+      10  import type { GraphQLContext } from './graphql/context.ts';
+      11 -import { createMaskError } from './graphql/errors.ts';         
+      11 +import { logUnexpectedErrors, maskError } from './graphql/error
+         +s.ts';                                                         
+      12  import { resolvers } from './graphql/resolvers.ts';
+      13  import { createPropertyService } from './services/property.serv
+          ice.ts';
+      14  
+      15  const typeDefs = readFileSync(new URL('../schema.graphql', impo
+          rt.meta.url), 'utf8');
+      16  
+      17  // Ports, not concrete adapters: `main.ts` passes the Drizzle r
+          epository and the Weatherstack
+      18 -// client, tests pass fakes.                                   
+      18 +// client, tests pass fakes. `weather` is built per request fro
+         +m the request's logger, so the                                 
+      19 +// adapter's log lines carry the `requestId`.                  
+      20  export type AppDeps = {
+      21    config: Config;
+      22    logger: Logger;
+      23    repository: PropertyRepository;
+      23 -  weather: WeatherClient;                                      
+      24 +  weather: (logger: Logger) => WeatherClient;                  
+      25  };
+      26  
+      27  export type App = {
+     ...
+      35    );
+      36  }
+      37  
+      38 +function errorsOf(result: unknown): readonly unknown[] {       
+      39 +  if (typeof result !== 'object' || result === null || !('error
+         +s' in result)) return [];                                      
+      40 +  return Array.isArray(result.errors) ? result.errors : [];    
+      41 +}                                                              
+      42 +                                                               
+      43  function operationNameOf(document: unknown, requested: unknown)
+          : string | null {
+      44    if (!isDocumentNode(document)) return null;
+      45    const operation = getOperationAST(document, typeof requested 
+          === 'string' ? requested : null);
+     ...
+      71      onExecute({ args }) {
+      72        const start = performance.now();
+      73        return {
+      68 -        onExecuteDone() {                                      
+      74 +        // Runs before Yoga's masking plugin, so `result.errors
+         +` still hold their causes.                                     
+      75 +        onExecuteDone({ result }) {                            
+     … 27 more lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/main.ts (+6 -5)
+      27    config,
+      28    logger,
+      29    repository: createPropertyRepository(db),
+      30 -  weather: createWeatherstackClient({                          
+      31 -    baseUrl: config.weatherstackBaseUrl,                       
+      32 -    accessKey: config.weatherstackKey,                         
+      33 -    logger,                                                    
+      34 -  }),                                                          
+      30 +  weather: (requestLogger) =>                                  
+      31 +    createWeatherstackClient({                                 
+      32 +      baseUrl: config.weatherstackBaseUrl,                     
+      33 +      accessKey: config.weatherstackKey,                       
+      34 +      logger: requestLogger,                                   
+      35 +    }),                                                        
+      36  });
+      37  const server = createServer((request, response) => {
+      38    // Yoga handles its own errors, so the returned promise is no
+          t awaited.
+  ⎿  Updated apps/api/test/helpers/app.ts (+13 -10)
+      1 +import type { Logger } from 'pino';                             
+      2  import { inject } from 'vitest';
+      3  import { createWeatherstackClient } from '../../src/adapters/wea
+         therstack/client.ts';
+      4  import { createApp } from '../../src/app.ts';
+     ...
+      51    });
+      52    const { logger, lines } = captureLogs();
+      53    const { db, close } = createDb(config.databaseUrl);
+      53 -  const weather =                                              
+      54 -    weatherOption === 'msw'                                    
+      55 -      ? createWeatherstackClient({                             
+      56 -          baseUrl: config.weatherstackBaseUrl,                 
+      57 -          accessKey: config.weatherstackKey,                   
+      58 -          logger,                                              
+      59 -        })                                                     
+      60 -      : (weatherOption ?? new FakeWeatherClient());            
+      54 +  // The real client is built per request, as in `main.ts`; a f
+         +ake is one shared instance, so                                 
+      55 +  // tests can read its `calls`.                               
+      56 +  const fake = weatherOption === 'msw' ? undefined : (weatherOp
+         +tion ?? new FakeWeatherClient());                              
+      57 +  const weatherFor = (requestLogger: Logger): WeatherClient => 
+      58 +    fake ??                                                    
+      59 +    createWeatherstackClient({                                 
+      60 +      baseUrl: config.weatherstackBaseUrl,                     
+      61 +      accessKey: config.weatherstackKey,                       
+      62 +      logger: requestLogger,                                   
+      63 +    });                                                        
+      64    const { yoga } = createApp({
+      65      config,
+      66      logger,
+      67      repository: repository ?? createPropertyRepository(db),
+      65 -    weather,                                                   
+      68 +    weather: weatherFor,                                       
+      69    });
+      70  
+      71    async function execute(
+     ...
+      82      return body;
+      83    }
+      84  
+      82 -  return { db, weather, execute, logs: lines, close };         
+      85 +  return { db, weather: fake ?? weatherFor(logger), execute, lo
+         +gs: lines, close };                                            
+      86  }
+  ⎿  Updated apps/api/src/app.test.ts (+1 -1)
+      19      config,
+      20      logger,
+      21      repository: new InMemoryPropertyRepository(),
+      22 -    weather: new FakeWeatherClient(),                          
+      22 +    weather: () => new FakeWeatherClient(),                    
+      23    });
+      24    const operationLines = () =>
+      25      lines.filter(
+
+● Now the unit tests for errors.ts.
+
+● Bash(python3 - <<'EOF'
+      p='src/graphql/errors.test.ts'…)
+  ⎿  185:    const { logger, lines } = captureLogs();
+     189:    expect(lines()).toHaveLength(1);
+     190:    expect(lines()[0]).toMatchObject({
+     … +4 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/graphql/errors.test.ts (+86 -23)
+      3  import { describe, expect, it } from 'vitest';
+      4  import { captureLogs } from '../../test/helpers/logs.ts';
+      5  import { WeatherUnavailableError } from '../domain/errors.ts';
+      6 -import { badUserInput, createMaskError } from './errors.ts';    
+      6 +import { badUserInput, logUnexpectedErrors, maskError, summarize
+        +Error } from './errors.ts';                                     
+      7  
+      8  const MASKED = 'Unexpected error.';
+      9  const PATH = ['createProperty'];
+     ...
+      21    return locatedError(error, fieldNode(), PATH);
+      22  }
+      23  
+      24 -function setup() {                                             
+      25 -  const { logger, lines } = captureLogs();                     
+      26 -  return { maskError: createMaskError(logger), lines };        
+      27 -}                                                              
+      28 -                                                               
+      24  function asGraphQLError(error: Error): GraphQLError {
+      25    if (!(error instanceof GraphQLError)) throw new Error('expect
+          ed a GraphQLError');
+      26    return error;
+     ...
+      55    });
+      56  });
+      57  
+      63 -describe('createMaskError', () => {                            
+      58 +describe('maskError', () => {                                  
+      59    it('TR-12: passes a resolver-thrown BAD_USER_INPUT through wi
+          th its fields', () => {
+      65 -    const { maskError, lines } = setup();                      
+      60      const error = thrownByResolver(
+      61        badUserInput([{ path: ['zipCode'], message: 'must be 5 di
+          gits' }]),
+      62      );
+     ...
+      68        code: 'BAD_USER_INPUT',
+      69        fields: [{ field: 'zipCode', message: 'must be 5 digits' 
+          }],
+      70      });
+      77 -    expect(lines()).toEqual([]);                               
+      71    });
+      72  
+      73    it('passes a GraphQLError without a cause (parse, validation)
+           through', () => {
+      81 -    const { maskError } = setup();                             
+      74      const error = new GraphQLError('Syntax Error: Expected Name
+          , found <EOF>.');
+      75  
+      76      expect(maskError(error, MASKED)).toBe(error);
+     … 136 more lines (ctrl+o to expand)
+
+● Now the integration assertions (R1 street not logged, R3 requestId on both
+  lines).
+
+● Bash(python3 - <<'EOF'
+      p='test/integration/create-property.int.test.ts'…)
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+16 -1)
+      208      expect(repository.rows).toEqual([]);
+      209      expect(await countProperties(app.db)).toBe(0);
+      210      expect(app.weather.calls).toEqual([QUERY]);
+      211 +    const operation = app.logs().find((line) => line.msg === '
+          +graphql operation');                                          
+      212 +    expect(operation?.requestId).toMatch(UUID);               
+      213      expect(app.logs()).toContainEqual(
+      212 -      expect.objectContaining({ level: 50, msg: 'unexpected er
+          -ror' }),                                                      
+      214 +      expect.objectContaining({                               
+      215 +        level: 50,                                            
+      216 +        msg: 'unexpected error',                              
+      217 +        requestId: operation?.requestId,                      
+      218 +      }),                                                     
+      219      );
+      220 +    expect(JSON.stringify(app.logs())).not.toContain('insert i
+          +nto');                                                        
+      221    });
+      222  
+      223    it('FR-05 AC6: a save the database rejects (lat out of range
+           ) returns INTERNAL_SERVER_ERROR and stores nothing', async () 
+           => {
+     ...
+      232      expect(text).not.toContain('properties_lat_range');
+      233      expect(text).not.toContain('insert into');
+      234      expect(await countProperties(app.db)).toBe(0);
+      235 +    // R1: the log names the constraint, but not the insert, t
+          +he address or the weather.                                    
+      236 +    const logged = app.logs().filter((line) => line.msg === 'u
+          +nexpected error');                                            
+      237 +    expect(logged).toHaveLength(1);                           
+      238 +    expect(JSON.stringify(logged[0])).toContain('properties_la
+          +t_range');                                                    
+      239 +    expect(JSON.stringify(app.logs())).not.toMatch(/Golden Eag
+          +le|insert into|weather_icons/);                               
+      240    });
+      241  
+      242    it('FR-10 AC2: adds no originalError or stack when NODE_ENV 
+           is development', async () => {
+     ...
+      321      const warnings = app.logs().filter((line) => line.level ==
+           = 40);
+      322      expect(warnings).toHaveLength(1);
+      323      expect(String(warnings[0]?.url)).toContain('access_key=[RE
+           DACTED]');
+      324 +    const operation = app.logs().find((line) => line.msg === '
+          +graphql operation');                                          
+      325 +    expect(operation?.requestId).toMatch(UUID);               
+      326 +    expect(warnings[0]?.requestId).toBe(operation?.requestId);
+      327    });
+      328  });
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Bash(sed -i 's#/Golden Eagle|insert into|weather_icons/#/Golden Eagle|insert
+      into|worldweatheronline/#'
+      apps/api/test/integration/create-property.int.test.ts && sour…)
+  ⎿  $ tsc -p . && pnpm -r typecheck
+     apps/web typecheck$ tsc -p tsconfig.app.json && tsc -p tsconfig.node.j
+     son
+     … +24 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+1 -1)
+      236      const logged = app.logs().filter((line) => line.msg === 'u
+           nexpected error');
+      237      expect(logged).toHaveLength(1);
+      238      expect(JSON.stringify(logged[0])).toContain('properties_la
+           t_range');
+      239 -    expect(JSON.stringify(app.logs())).not.toMatch(/Golden Eag
+          -le|insert into|weather_icons/);                               
+      239 +    expect(JSON.stringify(app.logs())).not.toMatch(/Golden Eag
+          +le|insert into|worldweatheronline/);                          
+      240    });
+      241  
+      242    it('FR-10 AC2: adds no originalError or stack when NODE_ENV 
+           is development', async () => {
+  ⎿  (timeout 5m)
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/graphql/errors.ts'…)
+  ⎿  packages/shared typecheck: Done
+     apps/web typecheck: Done
+     apps/api typecheck: Done
+     … +12 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/graphql/errors.ts (+4 -3)
+      35  }
+      36  
+      37  type Classified =
+      38 -  | { kind: 'graphql' }                                        
+      38 +  | { kind: 'graphql'; error: GraphQLError }                   
+      39    | { kind: 'domain'; cause: DomainError }
+      40    | { kind: 'unexpected'; cause: unknown };
+      41  
+     ...
+      43    const cause = rootCause(error);
+      44    // Parse and validation errors, and a resolver-thrown BAD_USE
+          R_INPUT, whose wrapper already
+      45    // carries the inner `extensions`.
+      46 -  if (error instanceof GraphQLError && cause instanceof GraphQL
+         -Error) return { kind: 'graphql' };                             
+      46 +  if (error instanceof GraphQLError && cause instanceof GraphQL
+         +Error)                                                         
+      47 +    return { kind: 'graphql', error };                         
+      48    if (cause instanceof DomainError) return { kind: 'domain', ca
+          use };
+      49    return { kind: 'unexpected', cause };
+      50  }
+     ...
+      61  // it has no request context, so `logUnexpectedErrors` logs fro
+          m the operation plugin instead.
+      62  export const maskError: MaskError = (error, message) => {
+      63    const classified = classify(error);
+      63 -  if (classified.kind === 'graphql') return error;             
+      64 +  if (classified.kind === 'graphql') return classified.error;  
+      65    if (classified.kind === 'domain') {
+      66      return new GraphQLError(classified.cause.message, {
+      67        ...located(error),
+  ⎿  Updated apps/api/src/graphql/errors.test.ts (+11 -10)
+      89    });
+      90  
+      91    it('TR-12: maps a bare DomainError (no GraphQL wrapper) to it
+          s code', () => {
+      92 -                                                               
+      92      const masked = asGraphQLError(maskError(new WeatherUnavaila
+          bleError(), MASKED));
+      93  
+      94      expect(masked.extensions).toEqual({ code: 'WEATHER_UNAVAILA
+          BLE' });
+     ...
+      108    });
+      109  
+      110    it('FR-10 AC2: never adds originalError, even when told it r
+           uns in development', () => {
+      112 -                                                              
+      111      const masked = asGraphQLError(maskError(thrownByResolver(n
+           ew Error('boom')), MASKED, true));
+      112  
+      113      expect(masked.extensions).not.toHaveProperty('originalErro
+           r');
+     ...
+      118      ['a string', 'boom'],
+      119      ['null', null],
+      120    ])('masks a thrown non-Error value: %s', (_case, value) => {
+      123 -                                                              
+      121      const masked = asGraphQLError(maskError(value, MASKED));
+      122  
+      123      expect(masked.message).toBe(MASKED);
+     ...
+      127  
+      128  // The shape of a Drizzle query error over a pg rejection: bot
+           h quote the insert.
+      129  function databaseError(): Error {
+      133 -  const pgError = Object.assign(new Error('new row violates ch
+          -eck constraint "properties_lat_range"'), {                    
+      134 -    name: 'DatabaseError',                                    
+      135 -    code: '23514',                                            
+      136 -    constraint: 'properties_lat_range',                       
+      137 -    detail: 'Failing row contains (15528 E Golden Eagle Blvd, 
+          -...).',                                                       
+      138 -  });                                                         
+      130 +  const pgError = Object.assign(                              
+      131 +    new Error('new row violates check constraint "properties_l
+          +at_range"'),                                                  
+      132 +    {                                                         
+      133 +      name: 'DatabaseError',                                  
+      134 +      code: '23514',                                          
+      135 +      constraint: 'properties_lat_range',                     
+      136 +      detail: 'Failing row contains (15528 E Golden Eagle Blvd
+          +, ...).',                                                     
+      137 +    },                                                        
+      138 +  );                                                          
+      139    return Object.assign(
+     … 11 more lines (ctrl+o to expand)
+  ⎿  (timeout 5m)
+
+● Bash(sed -i 's/new Error(`level ${level}`, { cause: error })/new Error(`level
+      ${String(level)}`, { cause: error })/' apps/api/src/graphql/errors.test.ts
+      && source ~/…)
+  ⎿  $ eslint .
+     $ prettier --write .
+      M apps/api/src/app.test.ts
+     … +15 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/graphql/errors.test.ts (+1 -1)
+      164    it('stops after five causes', () => {
+      165      let error = new Error('innermost');
+      166      for (let level = 0; level < 10; level += 1)
+      167 -      error = new Error(`level ${level}`, { cause: error });  
+      167 +      error = new Error(`level ${String(level)}`, { cause: err
+          +or });                                                        
+      168  
+      169      let depth = 0;
+      170      for (let summary = summarizeError(error).cause; summary; s
+           ummary = summary.cause) depth += 1;
+  ⎿  (timeout 5m)
+
+● R1 and R3 code changes are in; typecheck and lint pass. Running the full suite
+  (Docker) now, then R2 tests and R4.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All 324 pass. Now R2 — the adapter tests.
+
+  Ran 1 shell command (ctrl+o to expand)
+● Bash(python3 - <<'EOF'
+      p='src/adapters/weatherstack/response.test.ts'…)
+  ⎿       1     import { http, HttpResponse } from 'msw/http';
+          2     import { describe, expect, it } from 'vitest';
+          3     import { weatherstackError, weatherstackResponse } from
+     '../../.
+     … +178 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/adapters/weatherstack/response.test.ts (+21 -16)
+      26      (field) => {
+      27        const body = weatherstackResponse({ current: { [field]: u
+          ndefined } });
+      28  
+      29 -      expect(() => parseWeatherstackResponse(body)).toThrow(Wea
+         -therUnavailableError);                                         
+      29 +      const error = catchError(() => parseWeatherstackResponse(
+         +body));                                                        
+      30 +                                                               
+      31 +      expect(error.cause).toEqual({ issues: [`current.${field}`
+         +] });                                                          
+      32      },
+      33    );
+      34  
+      35    it.each([
+      34 -    ['lat not numeric', { location: { lat: 'north' } }],       
+      35 -    ['lat empty', { location: { lat: '' } }],                  
+      36 -    ['lat a number', { location: { lat: 33.609 } }],           
+      37 -    ['lat with a leading letter', { location: { lat: 'N33.6' } 
+         -}],                                                            
+      38 -    ['lat with a trailing letter', { location: { lat: '33.6N' }
+         - }],                                                           
+      39 -    ['lon missing', { location: { lon: undefined } }],         
+      40 -    ['region empty', { location: { region: '' } }],            
+      41 -    ['region missing', { location: { region: undefined } }],   
+      42 -    ['location missing', { location: undefined }],             
+      43 -    ['current missing', { current: undefined }],               
+      44 -  ])('TR-03: %s is unavailable', (_case, overrides) => {       
+      45 -    expect(() => parseWeatherstackResponse(weatherstackResponse
+         -(overrides))).toThrow(                                         
+      46 -      WeatherUnavailableError,                                 
+      47 -    );                                                         
+      36 +    ['lat not numeric', { location: { lat: 'north' } }, 'locati
+         +on.lat'],                                                      
+      37 +    ['lat empty', { location: { lat: '' } }, 'location.lat'],  
+      38 +    ['lat a number', { location: { lat: 33.609 } }, 'location.l
+         +at'],                                                          
+      39 +    ['lat with a leading letter', { location: { lat: 'N33.6' } 
+         +}, 'location.lat'],                                            
+      40 +    ['lat with a trailing letter', { location: { lat: '33.6N' }
+         + }, 'location.lat'],                                           
+      41 +    ['lon missing', { location: { lon: undefined } }, 'location
+         +.lon'],                                                        
+      42 +    ['region empty', { location: { region: '' } }, 'location.re
+         +gion'],                                                        
+      43 +    ['region missing', { location: { region: undefined } }, 'lo
+         +cation.region'],                                               
+      44 +    ['location missing', { location: undefined }, 'location'], 
+      45 +    ['current missing', { current: undefined }, 'current'],    
+      46 +  ])('TR-03: %s is unavailable, naming the path', (_case, overr
+         +ides, path) => {                                               
+      47 +    const error = catchError(() => parseWeatherstackResponse(we
+         +atherstackResponse(overrides)));                               
+      48 +                                                               
+      49 +    expect(error.cause).toEqual({ issues: [path] });           
+      50    });
+     … 14 more lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='src/adapters/weatherstack/client.test.ts'…)
+  ⎿        Tests  154 passed (154)
+     $ eslint .
+     $ prettier --write .
+     All matched files use Prettier code style!
+  ⎿  Updated apps/api/src/adapters/weatherstack/client.test.ts (+29 -11)
+      100      expect(signals[0]).toBeInstanceOf(AbortSignal);
+      101    });
+      102  
+      103 +  // `cause` is what the error carries; `logged` is what the w
+          +arning line adds next to the URL.                             
+      104    it.each([
+      104 -    ['HTTP 500', () => weatherstackHandlers.status(500, { mess
+          -age: 'boom' })],                                              
+      105 -    ['HTTP 404', () => weatherstackHandlers.status(404)],     
+      106 -    ['a network error', () => weatherstackHandlers.networkErro
+          -r()],                                                         
+      107 -    ['success: false', () => weatherstackHandlers.ok(weatherst
+          -ackError(615, 'request_failed'))],                            
+      105      [
+      106 +      'HTTP 500',                                             
+      107 +      () => weatherstackHandlers.status(500, { message: 'boom'
+          + }),                                                          
+      108 +      { status: 500 },                                        
+      109 +      { status: 500 },                                        
+      110 +    ],                                                        
+      111 +    ['HTTP 404', () => weatherstackHandlers.status(404), { sta
+          +tus: 404 }, { status: 404 }],                                 
+      112 +    [                                                         
+      113 +      'a network error',                                      
+      114 +      () => weatherstackHandlers.networkError(),              
+      115 +      { error: { name: 'TypeError' } },                       
+      116 +      { error: { name: 'TypeError' } },                       
+      117 +    ],                                                        
+      118 +    [                                                         
+      119 +      'success: false',                                       
+      120 +      () => weatherstackHandlers.ok(weatherstackError(615, 're
+          +quest_failed')),                                              
+      121 +      { weatherstackError: { code: 615, type: 'request_failed'
+          + } },                                                         
+      122 +      { cause: { weatherstackError: { code: 615, type: 'reques
+          +t_failed' } } },                                              
+      123 +    ],                                                        
+      124 +    [                                                         
+      125        'a missing key field',
+      126        () => weatherstackHandlers.ok(weatherstackResponse({ cur
+           rent: { temperature: undefined } })),
+      127 +      { issues: ['current.temperature'] },                    
+      128 +      { cause: { issues: ['current.temperature'] } },         
+      129      ],
+      130    ])(
+      113 -    'TR-01: %s gives WeatherUnavailableError after one request
+          -, with no key leaked',                                        
+      114 -    async (_case, make) => {                                  
+      131 +    'TR-01: %s gives WeatherUnavailableError after one request
+          +, with its cause and no key leaked',                          
+      132 +    async (_case, make, cause, logged) => {                   
+      133        const { handler, requests } = make();
+     … 18 more lines (ctrl+o to expand)
+  ⎿  (timeout 5m)
+
+● Tests and lint pass. Now R4 and the review report.
+
+  Searched for 1 pattern, ran 2 shell commands (ctrl+o to expand)
+
+● Now R4, the plan deviations, and the review decisions.
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/create-property-with-weather/plan.md'…)
+  ⎿  81:- Decision: fix. `graphql/errors.ts` logs a `summarizeError` summar
+     y (name, pg `code` / `constraint`, stack frames, down the `cause` chai
+     n), never message, `query`, `params` or `detail`. Unit tests over a Dr
+     … +12 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/create-property-with-weather/plan.md (+9 -1)
+      463  - [x] Phase 1: Shared address schema (3f63dd6)
+      464  - [x] Phase 2: Domain and Weatherstack adapter (a964edb)
+      465  - [x] Phase 3: Repository and service (44ff45b)
+      466 -- [ ] Phase 4: GraphQL wiring and end-to-end create           
+      466 +- [x] Phase 4: GraphQL wiring and end-to-end create (dd0abe1) 
+      467  
+      468  ## Deviations
+      469  
+     ...
+      492    new `scalars` config types `createdAt` as `string` and `raw`
+            as `unknown` for S-04.
+      493  - Phase 4: `test/integration/smoke.int.test.ts` is unchanged: 
+           `createTestApp()` without options
+      494    keeps working. The Cookbook also documents the `repository` 
+           option and the handler names.
+      495 +- Review fixes (R1, R3): `createMaskError(logger)` became a pl
+          +ain `maskError` that only maps                                
+      496 +  codes. Unexpected errors are logged by `logUnexpectedErrors`
+          + from the operation plugin's                                  
+      497 +  `onExecuteDone` (it runs before Yoga's masking plugin), with
+          + the request's child logger and as                            
+      498 +  a `summarizeError` summary: name, pg `code` / `constraint` a
+          +nd stack frames down the `cause`                              
+      499 +  chain, never the message, `query`, `params` or `detail`. `Ap
+          +pDeps.weather` is now                                         
+      500 +  `(logger) => WeatherClient`, and the context factory builds 
+          +the service per request, so the                               
+      501 +  Weatherstack warnings carry the `requestId` too. Errors rais
+          +ed outside execution (none today)                             
+      502 +  are still masked but no longer logged.                      
+  ⎿  Updated context/changes/create-property-with-weather/review.md (+4 -4)
+      78    `logger.ts` that drops `params`, which also covers other call
+           sites. Add an assertion to the
+      79    FR-05 AC6 integration test that the log line does not contain
+           the street.
+      80  - Effort: small
+      81 -- Decision: open                                               
+      81 +- Decision: fix. `graphql/errors.ts` logs a `summarizeError` su
+         +mmary (name, pg `code` / `constraint`, stack frames, down the `
+         +cause` chain), never message, `query`, `params` or `detail`. Un
+         +it tests over a Drizzle-shaped error; FR-05 AC6 integration tes
+         +ts assert the constraint is logged and the street, the insert a
+         +nd the weather are not.                                        
+      82  
+      83  ### R2: Adapter tests still assert only the error class (lesson
+           breach)
+      84  - Severity: major
+     ...
+       99    (`{ status: 500 }`, `{ error: { name: 'TypeError' } }`, `{ w
+           eatherstackError: {...} }`,
+      100    `{ issues: ['current.temperature'] }`).
+      101  - Effort: small
+      102 -- Decision: open                                              
+      102 +- Decision: fix. `response.test.ts` asserts `cause: { issues: 
+          +[<path>] }` per row (path column added); the `client.test.ts` 
+          +TR-01 table has `cause` and `logged` columns and asserts both.
+      103  
+      104  ### R3: Error and Weatherstack log lines carry no request id
+      105  - Severity: major
+     ...
+      117    (`current(query, { logger })`) or via `AsyncLocalStorage`. O
+           ption B: accept that these lines
+      118    have no request id and amend `tech-stack.md`. A is what the 
+           decision says; B is cheaper.
+      119  - Effort: medium
+      120 -- Decision: open                                              
+      120 +- Decision: fix (option A). Unexpected errors are logged from 
+          +the operation plugin's `onExecuteDone` with the context logger
+          +; `AppDeps.weather` is `(logger) => WeatherClient`, built per 
+          +request. Integration tests assert the `unexpected error` line 
+          +and the Weatherstack warning share the operation's `requestId`
+          +. Logged in the plan's Deviations.                            
+      121  
+      122  ### R4: Plan Progress does not tick Phase 4
+      123  - Severity: minor
+     ...
+      126    line is still `- [ ] Phase 4: GraphQL wiring and end-to-end 
+           create` with no hash.
+      127  - Fix: tick it and append `(dd0abe1)`.
+      128  - Effort: small
+      129 -- Decision: open                                              
+      129 +- Decision: fix. Phase 4 ticked with `(dd0abe1)`.             
+
+● Final full gate run:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I fixed all four findings. Typecheck, lint and the format check pass, and pnpm
+  test (with Docker) passes all 324 tests in 28 files. I haven't committed
+  anything.
+
+  R1 – the error log no longer contains user data.
+  - graphql/errors.ts now logs only a summary of an unexpected error: its name,
+    the database error code and constraint name, and the stack trace without the
+    message. It does this for each error in the cause chain, and never logs the
+    message, the SQL, its parameters or the database's detail field.
+  - The "lat out of range" integration test now checks two things: the log names
+    properties_lat_range, and it doesn't contain the street, the SQL or any
+    weather data.
+
+  R3 – these log lines now carry the request id.
+  - maskError now only turns errors into codes; it no longer logs. Unexpected
+    errors are logged from the existing per-operation logging plugin, using that
+    request's logger. That plugin runs before Yoga hides the error, so it still
+    sees the original cause.
+  - The Weatherstack client and the property service are now built per request,
+    so the client's warnings also carry the requestId. To do this,
+    AppDeps.weather became (logger) => WeatherClient, which changed main.ts and
+    the test helper as well.
+  - Integration tests check that the unexpected error line and the Weatherstack
+    warning have the same requestId as the graphql operation line.
+  - One trade-off: an error raised outside query execution would still be hidden
+    from the client but would no longer be logged. Nothing raises one today. I
+    recorded this in the plan's Deviations.
+
+  R2 – tests now check the error's cause.
+  - In response.test.ts, each row now checks the exact failing field in the
+    error's cause.
+  - The TR-01 table in client.test.ts now checks both the error's cause and what
+    the warning line logs.
+
+  R4: Phase 4 is ticked in the plan with (dd0abe1).
+
+  Each finding's Decision: line in review.md now records what was done. S-01
+  stays at review in the roadmap, and I didn't touch the untracked *-S-01.txt
+  files.
+
+  Two follow-ups:
+  - graphql/errors.ts changed a lot. If it's on the mutation-target list in
+    context/test-plan.md, re-run /mutation on it before closing S-01.
+  - Should I commit this as one Conventional Commit, for example
+    fix(create-property-with-weather): apply review findings with Refs #3? Or do
+    you want Closes #3 on it, since it would be S-01's last commit?
+
+✻ Brewed for 3m 20s · done 10:44 PM
