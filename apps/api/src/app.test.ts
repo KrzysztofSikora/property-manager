@@ -55,4 +55,22 @@ describe('createApp', () => {
     expect(second?.requestId).toMatch(UUID);
     expect(first?.requestId).not.toBe(second?.requestId);
   });
+
+  it.each([
+    ['a parse error', '{ health ', 'parse_error'],
+    ['a validation error', '{ nope }', 'validation_error'],
+  ])('logs one operation line for %s', async (_name, query, outcome) => {
+    const { yoga, operationLines } = setup();
+
+    const response = await yoga.fetch('http://localhost/graphql', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(operationLines()).toHaveLength(1);
+    expect(operationLines()[0]).toMatchObject({ operationName: null, outcome });
+    expect(operationLines()[0]?.requestId).toMatch(UUID);
+  });
 });

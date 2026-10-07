@@ -608,3 +608,17 @@ Library facts:
   the codegen document type. A missing or non-object `data` also throws `GraphQLRequestError`.
 - Phase 4: React hooks lint is `eslint-plugin-react-hooks` `configs.flat['recommended-latest']`
   on `apps/web/src/**`. `ApiStatus` renders with `role="status"`.
+- Phases 1–5: the F-01 Claude Code session exports are committed under `ai-sessions/`
+  (`10-plan-F-01.txt` … `16-implement-F-01-5.txt`), with no secrets (scanned in review R5).
+- Review fixes (`review.md` R1–R4):
+  - R1: the codegen `afterAllFileWrite: prettier --write` hook is removed. Both output paths
+    are in `.prettierignore`, so it never formatted anything. The output is deterministic,
+    so the drift check doesn't need it.
+  - R2: the secret scan reads `+++ ` as a file header only between `diff --git` and the first
+    `@@`, so an added line whose content starts with `++ ` is scanned.
+  - R3: pre-commit refuses a commit when a staged file also has unstaged changes, because
+    Prettier and ESLint read the working tree.
+  - R4: parse and validation failures also log one `graphql operation` line
+    (`operationName: null`, `outcome: parse_error | validation_error`) through the root
+    logger with a fresh `requestId`, since Yoga builds the context only after validation.
+    Every line now carries `outcome` (`executed` for run operations).

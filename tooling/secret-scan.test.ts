@@ -56,6 +56,15 @@ describe('findSecretLeaks', () => {
     expect(findSecretLeaks(diff(file, '+clean'), undefined)).toEqual([]);
   });
 
+  it('scans an added line whose content starts with "++ " (shown as "+++ " in the hunk)', () => {
+    const leaks = findSecretLeaks(
+      diff('a.md', '+ok', `+++ ${ACCESS}${'f'.repeat(32)}`, '+after'),
+      undefined,
+    );
+
+    expect(leaks).toEqual([{ file: 'a.md', line: 2, kind: 'access_key' }]);
+  });
+
   it.each([
     ['a 16-char value', `${ACCESS}${'e'.repeat(16)}`, true],
     ['a 32-char hex value', `${ACCESS}${KEY}`, true],

@@ -33,9 +33,28 @@ function operationNameOf(document: unknown, requested: unknown): string | null {
   return operation?.name?.value ?? null;
 }
 
-// One line per operation. Variables are never logged: create inputs are user data.
-function operationLogging(): Plugin<GraphQLContext> {
+type Outcome = 'executed' | 'parse_error' | 'validation_error';
+
+// One line per request. Variables are never logged: create inputs are user data.
+// Yoga builds the context (requestId, child logger) only after a document parses and
+// validates, so a rejected request is logged through the root logger with a fresh requestId.
+function operationLogging(logger: Logger): Plugin<GraphQLContext> {
+  const logRejected = (outcome: Outcome) => {
+    logger
+      .child({ requestId: randomUUID() })
+      .info({ operationName: null, outcome }, 'graphql operation');
+  };
   return {
+    onParse() {
+      return ({ result }) => {
+        if (result instanceof Error) logRejected('parse_error');
+      };
+    },
+    onValidate() {
+      return ({ valid }) => {
+        if (!valid) logRejected('validation_error');
+      };
+    },
     onExecute({ args }) {
       const start = performance.now();
       return {
@@ -43,6 +62,7 @@ function operationLogging(): Plugin<GraphQLContext> {
           args.contextValue.logger.info(
             {
               operationName: operationNameOf(args.document, args.operationName),
+              outcome: 'executed' satisfies Outcome,
               durationMs: Math.round(performance.now() - start),
             },
             'graphql operation',
@@ -61,7 +81,7 @@ export function createApp({ logger }: AppDeps): App {
       const requestId = randomUUID();
       return { requestId, logger: logger.child({ requestId }) };
     },
-    plugins: [operationLogging()],
+    plugins: [operationLogging(logger)],
     logging: false,
   });
   return { yoga };

@@ -14,6 +14,14 @@ staged() {
 }
 
 if [ -n "$(staged | tr -d '\0')" ]; then
+  # Prettier and ESLint read the working tree, so a partially staged file would be checked
+  # in its unstaged form. Refuse instead of checking the wrong content.
+  partial=$(staged | xargs -0 git diff --name-only --)
+  if [ -n "$partial" ]; then
+    echo "pre-commit: these staged files also have unstaged changes; stage or stash them first:" >&2
+    echo "$partial" >&2
+    exit 1
+  fi
   staged | xargs -0 pnpm exec prettier --check --ignore-unknown
   staged | xargs -0 pnpm exec eslint --no-warn-ignored
 fi

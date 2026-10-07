@@ -12,17 +12,26 @@ export function findSecretLeaks(diff: string, key: string | undefined): Leak[] {
   const leaks: Leak[] = [];
   let file = '';
   let line = 0;
+  // `+++ ` is a file header only between `diff --git` and the first `@@`. Inside a hunk it is
+  // an added line whose content starts with `++ `, and must be scanned.
+  let inFileHeader = false;
 
   for (const text of diff.split('\n')) {
-    if (text.startsWith('+++ ')) {
+    if (text.startsWith('diff --git ')) {
+      inFileHeader = true;
+      continue;
+    }
+    if (inFileHeader && text.startsWith('+++ ')) {
       file = text.replace(/^\+\+\+ (b\/)?/, '');
       continue;
     }
     const hunk = HUNK_HEADER.exec(text);
     if (hunk) {
+      inFileHeader = false;
       line = Number(hunk[1]);
       continue;
     }
+    if (inFileHeader) continue;
     if (text.startsWith('+')) {
       const added = text.slice(1);
       if (literalKey !== undefined && added.includes(literalKey)) {
