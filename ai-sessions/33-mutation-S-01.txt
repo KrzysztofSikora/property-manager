@@ -1,0 +1,393 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /mutation create-property-with-weather                                        
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Stryker's already configured in both packages, so I'll run mutation testing
+  targeted at the diff/test-plan intersection—address normalization,
+  weatherstack response/client/redact logic, weather mapping, property
+  create-flow, and GraphQL error masking—while skipping resolvers, wiring,
+  generated types, DB schema, the repository, and test fakes.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Baseline coverage check complete: address.ts at 71.4%, API module at 77.6%
+  overall, with client.ts (51.1%) and response.ts (67.7%) as the weak spots. Now
+  I'll go through the code and tests to classify the 43 survivors into
+  strengthen, equivalent, or accept.
+
+  Searched for 1 pattern, ran 4 shell commands (ctrl+o to expand)
+
+● Triage complete — found real gaps in client.ts and response.ts, including
+  unasserted error cause/log details and an untested base URL without a trailing
+  slash. Now writing tests to cover them.
+
+● Bash(python3 - <<'EOF'
+      import re…)
+  ⎿   apps/api/src/adapters/weatherstack/client.test.ts  | 72 +++++++++++++
+     +++++----
+      .../api/src/adapters/weatherstack/response.test.ts | 13 ++--
+     … +24 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/adapters/weatherstack/client.test.ts (+59 -13)
+      32    throw new Error('expected a rejection');
+      33  }
+      34  
+      35 +async function unavailable(promise: Promise<unknown>): Promise<
+         +WeatherUnavailableError> {                                     
+      36 +  const error = await rejection(promise);                      
+      37 +  if (error instanceof WeatherUnavailableError) return error;  
+      38 +  throw new Error('expected a WeatherUnavailableError', { cause
+         +: error });                                                    
+      39 +}                                                              
+      40 +                                                               
+      41 +function warnings(lines: Record<string, unknown>[]): Record<str
+         +ing, unknown>[] {                                              
+      42 +  return lines.filter((line) => line.level === 40);            
+      43 +}                                                              
+      44 +                                                               
+      45  describe('createWeatherstackClient', () => {
+      46    it('TR-17 / FR-05 AC2: sends one GET /current with the query,
+           units=f and the key', async () => {
+      47      const { handler, requests } = weatherstackHandlers.ok();
+     ...
+      60      expect(url?.searchParams.get('access_key') === TEST_WEATHER
+          STACK_KEY).toBe(true);
+      61    });
+      62  
+      53 -  it('TR-17: keeps a path in the base URL', async () => {      
+      54 -    const { handler, requests } = weatherstackHandlers.ok();   
+      55 -    server.use(handler);                                       
+      56 -    const { client } = setup({ baseUrl: 'https://proxy.test/wea
+         -therstack/' });                                                
+      63 +  it.each(['https://proxy.test/weatherstack/', 'https://proxy.t
+         +est/weatherstack'])(                                           
+      64 +    'TR-17: keeps a path in the base URL %s',                  
+      65 +    async (baseUrl) => {                                       
+      66 +      const { handler, requests } = weatherstackHandlers.ok(); 
+      67 +      server.use(handler);                                     
+      68 +      const { client } = setup({ baseUrl });                   
+      69  
+      58 -    await client.current(QUERY);                               
+      70 +      await client.current(QUERY);                             
+      71  
+      60 -    expect(requests[0]?.href).toMatch(/^https:\/\/proxy\.test\/
+         -weatherstack\/current\?/);                                     
+      61 -  });                                                          
+      72 +      expect(requests[0]?.href).toMatch(/^https:\/\/proxy\.test
+         +\/weatherstack\/current\?/);                                   
+      73 +    },                                                         
+      74 +  );                                                           
+      75  
+      76    it('returns the parsed report', async () => {
+     … 64 more lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/adapters/weatherstack/response.test.ts (+13 -4)
+      34      ['lat not numeric', { location: { lat: 'north' } }],
+      35      ['lat empty', { location: { lat: '' } }],
+      36      ['lat a number', { location: { lat: 33.609 } }],
+      37 +    ['lat with a leading letter', { location: { lat: 'N33.6' } 
+         +}],                                                            
+      38 +    ['lat with a trailing letter', { location: { lat: '33.6N' }
+         + }],                                                           
+      39      ['lon missing', { location: { lon: undefined } }],
+      40      ['region empty', { location: { region: '' } }],
+      41      ['region missing', { location: { region: undefined } }],
+     ...
+      57      );
+      58    });
+      59  
+      58 -  it('a success: false body is unavailable', () => {           
+      59 -    expect(() => parseWeatherstackResponse(weatherstackError(61
+         -5, 'request_failed'))).toThrow(                                
+      60 -      WeatherUnavailableError,                                 
+      61 -    );                                                         
+      60 +  it.each([                                                    
+      61 +    [                                                          
+      62 +      'with an error',                                         
+      63 +      weatherstackError(615, 'request_failed'),                
+      64 +      { code: 615, type: 'request_failed' },                   
+      65 +    ],                                                         
+      66 +    ['without an error', { success: false }, {}],              
+      67 +  ])('a success: false body %s is unavailable, with the code as
+         + cause', (_case, body, expected) => {                          
+      68 +    const error = catchError(() => parseWeatherstackResponse(bo
+         +dy));                                                          
+      69 +                                                               
+      70 +    expect(error.cause).toEqual({ weatherstackError: expected }
+         +);                                                             
+      71    });
+      72  
+      73    it.each([null, 'ok', []])('a body of %j is unavailable', (bod
+          y) => {
+  ⎿  Updated apps/api/src/graphql/errors.test.ts (+8 -0)
+      50        ],
+      51      });
+      52    });
+      53 +                                                               
+      54 +  it('names a nested field by its dotted path', () => {        
+      55 +    const error = badUserInput([{ path: ['filter', 'state'], me
+         +ssage: 'must be 2 letters' }]);                                
+      56 +                                                               
+      57 +    expect(error.extensions['fields']).toEqual([               
+      58 +      { field: 'filter.state', message: 'must be 2 letters' }, 
+      59 +    ]);                                                        
+      60 +  });                                                          
+      61  });
+      62  
+      63  describe('createMaskError', () => {
+  ⎿  Updated apps/api/test/fakes/property-repository.ts (+4 -1)
+      18      const stored: Property = {
+      19        ...structuredClone(property),
+      20        id: crypto.randomUUID(),
+      21 -      weatherData: { units: 'IMPERIAL', current: toCurrentWeath
+         -er(property.weatherData.current) },                            
+      21 +      weatherData: {                                           
+      22 +        units: property.weatherData.units,                     
+      23 +        current: toCurrentWeather(property.weatherData.current)
+         +,                                                              
+      24 +      },                                                       
+      25        createdAt: new Date(),
+      26      };
+      27      this.rows.push(stored);
+  ⎿  (timeout 5m)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='src/adapters/weatherstack/client.test.ts'…)
+  ⎿  $ prettier --write .
+           Tests  147 passed (147)
+        Start at  21:24:51
+     … +5 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/adapters/weatherstack/client.test.ts (+10 -14)
+      133  
+      134      const error = await unavailable(client.current(QUERY));
+      135  
+      136 -    const cause = { error: expect.objectContaining({ name: 'Sy
+          -ntaxError' }) };                                              
+      137 -    expect(error.cause).toEqual(cause);                       
+      138 -    expect(warnings(logs())).toEqual([expect.objectContaining(
+          -cause)]);                                                     
+      136 +    expect(error.cause).toMatchObject({ error: { name: 'Syntax
+          +Error' } });                                                  
+      137 +    expect(warnings(logs())).toMatchObject([{ error: { name: '
+          +SyntaxError' } }]);                                           
+      138      expectNoSecret(error, logs());
+      139    });
+      140  
+     ...
+      146      const error = await unavailable(client.current(QUERY));
+      147  
+      148      expect(error.cause).toEqual({ status: 503 });
+      150 -    expect(warnings(logs())).toEqual([expect.objectContaining(
+          -{ status: 503 })]);                                           
+      149 +    expect(warnings(logs())).toMatchObject([{ status: 503 }]);
+      150    });
+      151  
+      152    it('a thrown non-Error value gives WeatherUnavailableError',
+            async () => {
+     ...
+      157  
+      158      const error = await unavailable(client.current(QUERY));
+      159  
+      161 -    expect(error.cause).toEqual({ error: expect.objectContaini
+          -ng({ name: 'UnknownError' }) });                              
+      160 +    expect(error.cause).toMatchObject({ error: { name: 'Unknow
+          +nError' } });                                                 
+      161    });
+      162  
+      163    it('TR-01: a fetch error quoting the URL is redacted in the 
+           error and the logs', async () => {
+     ...
+      170  
+      171      const error = await unavailable(client.current(QUERY));
+      172  
+      174 -    // The redacted message is kept, so the log still says wha
+          -t failed.                                                     
+      175 -    const cause = {                                           
+      176 -      error: {                                                
+      177 -        name: 'TypeError',                                    
+      178 -        message: expect.stringMatching(/^fetch failed: .*acces
+          -s_key=\[REDACTED\]/),                                         
+      179 -      },                                                      
+      180 -    };                                                        
+      181 -    expect(error.cause).toEqual(cause);                       
+      182 -    expect(warnings(logs())).toEqual([expect.objectContaining(
+          -cause)]);                                                     
+      173 +    // The redacted message is kept, so the cause and the log 
+          +still say what failed.                                        
+     … 8 more lines (ctrl+o to expand)
+  ⎿  (timeout 5m)
+
+● Tests, lint and typecheck pass. Re-running Stryker on the api targets.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All remaining survivors are ones I had already marked accept or equivalent.
+  Writing mutation.md.
+
+● Write(context/changes/create-property-with-weather/mutation.md)
+  ⎿  Wrote 64 lines to
+     context/changes/create-property-with-weather/mutation.md
+       1 # Mutation check: create-property-with-weather
+       3 Targets: `packages/shared/src/address.ts`; `apps/api/src/adapter
+         s/weatherstack/{client,response,redact}.ts`,
+       4 `apps/api/src/domain/weather.ts`, `apps/api/src/services/propert
+       5 `apps/api/src/graphql/errors.ts` (whole files) · Tests: `package
+         s/shared/vitest.config.ts`,
+          4`)
+       7 Score (killed / survived / no coverage / timeout):
+       8 
+      10 |--------|--------|-------|
+     … +112 lines (ctrl+o to expand)
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/context/change
+      s/create-property-with-weather && python3 - <<'EOF'
+      p='mutation.md'…)
+  ⎿  Updated context/changes/create-property-with-weather/mutation.md (+2 
+     -2)
+      26  | File:line | Mutator | Change | Decision | Note / test added |
+      27  |-----------|---------|--------|----------|-------------------|
+      28  | `address.ts:14,15,19,20,34` | StringLiteral | field message →
+           `""` | accept | Message wording. The failure, field and code a
+          re asserted. |
+      29 -| `address.ts:27` | ObjectLiteral | `ctx.issues.push({})` | acc
+         -ept | The state still fails with its path. Only the issue's cod
+         -e and message change. |                                        
+      29 +| `address.ts:27` | ObjectLiteral | `ctx.issues.push({})` | acc
+         +ept | An invalid state is still rejected. Only the issue's code
+         + and message change. |                                         
+      30  | `address.ts:28,29` | StringLiteral | `code` / `message` → `""
+          ` | accept | Same as above: wording and the internal zod issue 
+          code. |
+      31  | `response.ts:9` (×2) | Regex | `^` or `$` anchor dropped | st
+          rengthen | `"N33.6"` / `"33.6N"` would become `NaN` lat/long. A
+          dded two rows to the "is unavailable" table. |
+      32  | `response.ts:23` | BooleanLiteral | `z.literal(true)` | stren
+          gthen | The error body fell through to the shape check and lost
+           its code. The test now asserts `cause = { weatherstackError: {
+           code: 615, type } }`. |
+     ...
+      44  | `client.ts:63, 64:21` | Block / ObjectLiteral | invalid-JSON 
+          catch emptied | strengthen | The non-JSON test now asserts a `S
+          yntaxError` cause and warning, not just the error type. |
+      45  | `client.ts:52:61, 57:50, 64:61, 71:63` | StringLiteral | log 
+          message → `""` | accept | Log wording. |
+      46  | `client.ts:70` | Conditional | `instanceof WeatherUnavailable
+          Error` → `true` | equivalent | `parseWeatherstackResponse` thro
+          ws only `WeatherUnavailableError`. |
+      47 -| `errors.ts:16` | StringLiteral | `join('.')` → `join('')` | s
+         -trengthen | No caller has nested paths yet, but `fields[].field
+         -` is the contract the web form keys on. Added "names a nested f
+         -ield by its dotted path". |                                    
+      47 +| `errors.ts:16` | StringLiteral | `join('.')` → `join('')` | s
+         +trengthen | No caller has nested paths yet, but `fields[].field
+         +` is part of the `BAD_USER_INPUT` contract (FR-07 AC5). Added "
+         +names a nested field by its dotted path". |                    
+      48  | `errors.ts:31` | BlockStatement | empty `while` body | (timeo
+          ut) | Infinite loop, counted as killed. |
+      49  | `property.service.ts:30` | StringLiteral | `units: ''` | stre
+          ngthen | `InMemoryPropertyRepository` hard-coded `'IMPERIAL'`, 
+          so the existing assertion could not fail. The fake now stores t
+          he given `units`, as the Drizzle repository does (`property.rep
+          ository.ts:17`). |
+      50  
+
+● I ran the mutation check for create-property-with-weather and wrote the
+  results to context/changes/create-property-with-weather/mutation.md. Unit
+  tests, lint and typecheck pass. Nothing is committed yet.
+
+  - Score: the api targets went from 77.6% to 96.1%. client.ts went from 51.1%
+    to 86.7%, response.ts from 67.7% to 100%, and property.service.ts and
+    graphql/errors.ts both reached 100%. redact.ts and weather.ts were already
+    at 100%. address.ts stays at 71.4% because all 8 of its survivors only
+    change message wording, so I accepted them. In the api targets, the 6
+    mutants still alive are 5 log-message strings (accepted) and 1 that can't
+    change behaviour.
+  - Tests: 7 new test cases, plus sharper assertions in 2 existing tests. I also
+    changed the in-memory repository fake used by the service tests: it always
+    stored 'IMPERIAL' whatever the service passed, so the existing units
+    assertion could never fail. It now stores the value it's given, like the
+    real repository.
+  - Bugs: none in the production code. Some of the mutants did point to real
+    failure cases with no test: a lat like "33.6N" would have been stored as
+    NaN, and a base URL without a trailing / dropped its path.
+
+  Decision needed: address.ts is at 71.4% against a 90% target, entirely because
+  of accepted wording mutants. Its local break threshold stays null until you
+  pick a value; I'd suggest 70%.
+
+  Suggested rule for context/lessons.md: "Assert an error's cause or code, not 
+  just its type." Most client.ts and response.ts survivors came from tests that
+  only checked toBeInstanceOf(WeatherUnavailableError). One test passed only
+  because the logged URL already contained [REDACTED], so the error message it
+  was meant to check was never looked at.
+
+✻ Cogitated for 7m 53s · done 9:28 PM
+
+❯ add                                                                           
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager && cat >>
+      context/lessons.md <<'EOF'…)
+  ⎿  - Scope: every `/mutation` run (`stryker.config.json` in `apps/api`, `
+     apps/web`,
+       `packages/shared`, `tooling`)
+     … +16 lines (ctrl+o to expand)
+  ⎿  Updated context/lessons.md (+10 -0)
+       8  - Seen in: property-schema, mutation check
+       9  - Scope: every `/mutation` run (`stryker.config.json` in `apps/
+          api`, `apps/web`,
+      10    `packages/shared`, `tooling`)
+      11 +                                                               
+      12 +## Assert an error's cause or code, not only its type          
+      13 +- Why: a test that checks only `toBeInstanceOf(WeatherUnavailab
+         +leError)` passes when the cause                                
+      14 +  is empty, wrong, or comes from a different failure path. In S
+         +-01, 25 of the 32 adapter                                      
+      15 +  survivors (`client.ts`, `response.ts`) came from such tests. 
+         +One TR-01 test passed only                                     
+      16 +  because the logged URL already contained `[REDACTED]`, so it 
+         +never checked the redacted                                     
+      17 +  error message it was written for.                            
+      18 +- Seen in: create-property-with-weather, mutation check        
+      19 +- Scope: tests of adapters and error mapping (`apps/api/src/ada
+         +pters/`, `graphql/errors.ts`).                                 
+      20 +  Assert `cause` / `extensions.code` and the logged details, no
+         +t just the class.                                              
+
+● Bash(sed -i 's/In S-01, 25 of the 32 adapter/In S-01, 23 of the 32 adapter/'
+      context/lessons.md && grep -n "23 of the 32" context/lessons.md)
+  ⎿  14:  is empty, wrong, or comes from a different failure path. In S-01,
+      23 of the 32 adapter
+  ⎿  Updated context/lessons.md (+1 -1)
+      11  
+      12  ## Assert an error's cause or code, not only its type
+      13  - Why: a test that checks only `toBeInstanceOf(WeatherUnavailab
+          leError)` passes when the cause
+      14 -  is empty, wrong, or comes from a different failure path. In S
+         --01, 25 of the 32 adapter                                      
+      14 +  is empty, wrong, or comes from a different failure path. In S
+         +-01, 23 of the 32 adapter                                      
+      15    survivors (`client.ts`, `response.ts`) came from such tests. 
+          One TR-01 test passed only
+      16    because the logged URL already contained `[REDACTED]`, so it 
+          never checked the redacted
+      17    error message it was written for.
+
+● I added the rule to context/lessons.md as "Assert an error's cause or code, 
+  not only its type", in the same format as the existing lesson. It applies to
+  adapter and error-mapping tests and gives the S-01 evidence: 23 of the 32
+  survivors in client.ts and response.ts came from tests that only checked the
+  error class, plus the TR-01 test that passed because of the redacted URL. I
+  counted the survivors again before saving and corrected an earlier figure of
+  25 to 23.
+
+  It's not committed yet, same as the test changes and mutation.md. The
+  address.ts break threshold is still null until you pick a value.
+
+✻ Cooked for 11s · done 9:28 PM

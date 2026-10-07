@@ -1,0 +1,1262 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement create-property-with-weather                                       
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Phase 4 it is. Let me read the plan fully and the review/lessons.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Phase 4 is about wiring up GraphQL end-to-end for createProperty/property(id),
+  covering SDL, scalars, codegen, resolvers, masking, and the composition root,
+  with checks for codegen, typecheck, lint, tests, and formatting plus manual
+  GraphiQL verification. I'll proceed with implementation, leaving the
+  pre-existing untracked plan files as-is and only updating plan.md's Phase 3
+  hash.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Now the test-plan Cookbook and the web codegen output.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Install graphql-scalars and check the actual library types (Yoga MaskError,
+  scalars resolvers).
+
+● Bash(source ~/.nvm/nvm.sh && nvm use >/dev/null && pnpm --filter
+      @property-manager/api add graphql-scalars@^2.0.0 2>&1 | tail -5 && cd
+      apps/api && Y=$(dirname $(node…)
+  ⎿  Packages: +1
+     +
+     Progress: resolved 1, reused 0, downloaded 1, added 1, done
+     … +63 lines (ctrl+o to expand)
+  ⎿  Updated pnpm-lock.yaml (+14 -0)
+      223        graphql:
+      224          specifier: ^17.0.2
+      225          version: 17.0.2
+      226 +      graphql-scalars:                                        
+      227 +        specifier: ^2.0.0                                     
+      228 +        version: 2.0.0(graphql@17.0.2)                        
+      229        graphql-yoga:
+      230          specifier: ^5.24.2
+      231          version: 5.24.2(graphql@17.0.2)
+     ...
+      2994        cosmiconfig-toml-loader:
+      2995          optional: true
+      2996  
+      2997 +  graphql-scalars@2.0.0:                                     
+      2998 +    resolution: {integrity: sha512-tCd2ddcxlbz5rG7xsfDbjvIssR
+           +9c/5EauDYt272pxfxpUNBjFMpnDwukuA3rm1O/9michQDxFfPPAeoQjZtJVQ=
+           +=}                                                           
+      2999 +    engines: {node: '>=10'}                                  
+      3000 +    peerDependencies:                                        
+      3001 +      graphql: ^16.0.0 || ^17.0.0                            
+      3002 +                                                             
+      3003    graphql-tag@2.12.7:
+      3004      resolution: {integrity: sha512-xnE/NFzy+0eIesvAsREJZ284zT
+            l/wYuBAvpsFSDhRGRdRHdnE90M21Q3xAWyYInb0J756c6x0pIQ62+vtvOs1Q=
+            =}
+      3005      engines: {node: '>=10'}
+     ...
+      7136        - typescript
+      7137        - utf-8-validate
+      7138  
+      7139 +  graphql-scalars@2.0.0(graphql@17.0.2):                     
+      7140 +    dependencies:                                            
+      7141 +      graphql: 17.0.2                                        
+      7142 +      tslib: 2.8.1                                           
+      7143 +                                                             
+      7144    graphql-tag@2.12.7(graphql@17.0.2):
+      7145      dependencies:
+      7146        graphql: 17.0.2
+  ⎿  Updated apps/api/package.json (+1 -0)
+      17      "@property-manager/shared": "workspace:*",
+      18      "drizzle-orm": "^0.45.3",
+      19      "graphql": "^17.0.2",
+      20 +    "graphql-scalars": "^2.0.0",                               
+      21      "graphql-yoga": "^5.24.2",
+      22      "pg": "^8.23.1",
+      23      "pino": "^10.4.0",
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Pre-existing msw peer warning (unrelated). Writing the SDL and codegen config
+  first.
+
+● Write(apps/api/schema.graphql)
+  ⎿  Added 54 lines, removed 1 line
+       1 +"Any JSON value. Used for the Weatherstack `current` object as 
+         +it was received."                                              
+       2 +scalar JSON                                                    
+       3 +                                                               
+       4 +"An RFC 3339 date-time string in UTC."                         
+       5 +scalar DateTime                                                
+       6 +                                                               
+       7 +enum WeatherUnits {                                            
+       8 +  IMPERIAL                                                     
+       9 +}                                                              
+      10 +                                                               
+      11 +"Key fields of Weatherstack `current`. Every other field is in 
+         +`raw`."                                                        
+      12 +type CurrentWeather {                                          
+      13 +  temperature: Int!                                            
+      14 +  feelsLike: Int!                                              
+      15 +  weatherDescriptions: [String!]!                              
+      16 +  weatherIcons: [String!]!                                     
+      17 +  windSpeed: Int!                                              
+      18 +  windDir: String!                                             
+      19 +  humidity: Int!                                               
+      20 +  "The Weatherstack `current` object as it was received."      
+      21 +  raw: JSON!                                                   
+      22 +}                                                              
+      23 +                                                               
+      24 +"The weather snapshot taken when the property was created."    
+      25 +type WeatherData {                                             
+      26 +  units: WeatherUnits!                                         
+      27 +  current: CurrentWeather!                                     
+      28 +}                                                              
+      29 +                                                               
+      30 +type Property {                                                
+      31 +  id: ID!                                                      
+      32 +  street: String!                                              
+      33 +  city: String!                                                
+      34 +  "Two-letter US state code (50 states or DC)."                
+      35 +  state: String!                                               
+      36 +  "Five digits, kept as a string so leading zeros survive."    
+      37 +  zipCode: String!                                             
+      38 +  lat: Float!                                                  
+      39 +  long: Float!                                                 
+      40 +  weatherData: WeatherData!                                    
+      41 +  createdAt: DateTime!                                         
+      42 +}                                                              
+      43 +                                                               
+      44  type Query {
+       2 -  "Placeholder until S-01: returns ok when the API is up."     
+      45 +  "Returns ok when the API is up."                             
+      46    health: String!
+      47 +  "The property with this id, or null when there is none or the
+         + id is not a UUID."                                            
+      48 +  property(id: ID!): Property                                  
+      49  }
+      50 +                                                               
+      51 +type Mutation {                                                
+      52 +  """                                                          
+      53 +  Validates and normalizes the address, fetches the current wea
+         +ther once, and stores the                                      
+      54 +  property. Errors: BAD_USER_INPUT, WEATHER_UNAVAILABLE, INTERN
+         +AL_SERVER_ERROR.                                               
+      55 +  """                                                          
+      56 +  createProperty(street: String!, city: String!, state: String!
+         +, zipCode: String!): Property                                  
+      57 +}                                                              
+
+● Bash(python3 - <<'EOF'
+      p='codegen.ts'…)
+  ⎿  ✔ Load GraphQL documents
+     ❯ Generate
+     ✔ Generate
+     … +24 lines (ctrl+o to expand)
+  ⎿  Updated codegen.ts (+3 -0)
+      11          enumsAsTypes: true,
+      12          useTypeImports: true,
+      13          contextType: '../context.ts#GraphQLContext',
+      14 +        scalars: { JSON: 'unknown', DateTime: { input: 'Date', 
+         +output: 'Date | string' } },                                   
+      15        },
+      16      },
+      17      'apps/web/src/graphql/': {
+     ...
+      19        documents: ['apps/web/src/**/*.{ts,tsx}', '!apps/web/src/
+          graphql/**'],
+      20        config: {
+      21          documentMode: 'string',
+      22 +        // Without this the client preset types both scalars as
+         + `any`.                                                        
+      23 +        scalars: { JSON: 'unknown', DateTime: 'string' },      
+      24          enumsAsTypes: true,
+      25          useTypeImports: true,
+      26        },
+  ⎿  Updated apps/api/src/graphql/generated/resolvers-types.ts (+136 -2)
+      1 -import type { GraphQLResolveInfo } from 'graphql';              
+      1 +import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScal
+        +arTypeConfig } from 'graphql';                                  
+      2  import type { GraphQLContext } from '../context.ts';
+      3  export type Maybe<T> = T | null;
+      4  export type InputMaybe<T> = Maybe<T>;
+      5 +export type RequireFields<T, K extends keyof T> = Omit<T, K> & {
+        + [P in K]-?: NonNullable<T[P]> };                               
+      6  /** All built-in and custom scalars, mapped to their actual valu
+         es */
+      7  export type Scalars = {
+      8    ID: { input: string; output: string; }
+     ...
+      10    Boolean: { input: boolean; output: boolean; }
+      11    Int: { input: number; output: number; }
+      12    Float: { input: number; output: number; }
+      13 +  /** An RFC 3339 date-time string in UTC. */                  
+      14 +  DateTime: { input: Date; output: Date | string; }            
+      15 +  /** Any JSON value. Used for the Weatherstack `current` objec
+         +t as it was received. */                                       
+      16 +  JSON: { input: unknown; output: unknown; }                   
+      17  };
+      18  
+      19 +/** Key fields of Weatherstack `current`. Every other field is 
+         +in `raw`. */                                                   
+      20 +export type CurrentWeather = {                                 
+      21 +  __typename?: 'CurrentWeather';                               
+      22 +  feelsLike: Scalars['Int']['output'];                         
+      23 +  humidity: Scalars['Int']['output'];                          
+      24 +  /** The Weatherstack `current` object as it was received. */ 
+      25 +  raw: Scalars['JSON']['output'];                              
+      26 +  temperature: Scalars['Int']['output'];                       
+      27 +  weatherDescriptions: Array<Scalars['String']['output']>;     
+      28 +  weatherIcons: Array<Scalars['String']['output']>;            
+      29 +  windDir: Scalars['String']['output'];                        
+      30 +  windSpeed: Scalars['Int']['output'];                         
+      31 +};                                                             
+      32 +                                                               
+      33 +export type Mutation = {                                       
+      34 +  __typename?: 'Mutation';                                     
+      35 +  /**                                                          
+      36 +   * Validates and normalizes the address, fetches the current 
+         +weather once, and stores the                                   
+      37 +   * property. Errors: BAD_USER_INPUT, WEATHER_UNAVAILABLE, INT
+         +ERNAL_SERVER_ERROR.                                            
+      38 +   */                                                          
+      39 +  createProperty?: Maybe<Property>;                            
+      40 +};                                                             
+     … 141 more lines (ctrl+o to expand)
+
+● The web client output didn't change. Checking why:
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● The client preset only emits types its documents use, and the web app only
+  queries health, so there's nothing to regenerate yet. A quick throwaway check
+  that the config does reach S-04:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Web probe confirms createdAt: string and raw: unknown (probe reverted,
+  apps/web clean). Now TDD for graphql/errors.ts: the test first.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Confirmed: graphql 17 sets cause too (so I walk cause, not the deprecated
+  originalError), and the wrapper inherits the inner extensions. Writing the
+  unit test:
+
+● Write(apps/api/src/graphql/errors.test.ts)
+  ⎿  Wrote 140 lines to apps/api/src/graphql/errors.test.ts
+      1 import { GraphQLError, Kind, locatedError, parse } from 'graphql'
+        ;
+      2 import type { FieldNode } from 'graphql';
+      3 import { describe, expect, it } from 'vitest';
+      4 import { captureLogs } from '../../test/helpers/logs.ts';
+      5 import { WeatherUnavailableError } from '../domain/errors.ts';
+      6 import { badUserInput, createMaskError } from './errors.ts';
+      7 
+      8 const MASKED = 'Unexpected error.';
+      9 const PATH = ['createProperty'];
+     … +158 lines (ctrl+o to expand)
+  ⎿  PostToolUse:Write hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/src/graphql/errors.test.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/src/graphq
+     l/errors.test.ts
+        26:12  error  Unsafe assignment of an error typed value                 
+                       @typescript-eslint/no-unsafe-assignment
+        26:23  error  Unsafe call of a type that could not be resolved          
+                       @typescript-eslint/no-unsafe-call
+        36:11  error  Unsafe assignment of an error typed value                 
+                       @typescript-eslint/no-unsafe-assignment
+        36:19  error  Unsafe call of a type that could not be resolved          
+                       @typescript-eslint/no-unsafe-call
+        42:18  error  Unsafe member access .message on a type that cannot be 
+     resolved              @typescript-eslint/no-unsafe-member-access
+        45:18  error  Unsafe member access .extensions on a type that cannot be 
+     resolved           @typescript-eslint/no-unsafe-member-access
+        57:13  error  Unsafe object destructuring of a property with an error 
+     typed value          @typescript-eslint/no-unsafe-assignment
+        59:7   error  Unsafe call of a type that could not be resolved          
+                       @typescript-eslint/no-unsafe-call
+        62:35  error  Unsafe argument of type error typed assigned to a 
+     parameter of type `Error`  @typescript-eslint/no-unsafe-argument
+        62:35  error  Unsafe call of a type that could not be resolved          
+                       @typescript-eslint/no-unsafe-call
+        73:13  error  Unsafe object destructuring of a property with an error 
+     typed value          @typescript-eslint/no-unsafe-assignment
+        76:12  error  Unsafe call of a type that could not be resolved          
+                       @typescript-eslint/no-unsafe-call
+        80:13  error  Unsafe object destructuring of a property with an error 
+     typed value          @typescript-eslint/no-unsafe-assignment
+        83:35  error  Unsafe argument of type error typed assigned to a 
+     parameter of type `Error`  @typescript-eslint/no-unsafe-argument
+        83:35  error  Unsafe call of a type that could not be resolved          
+                       @typescript-eslint/no-unsafe-call
+        94:13  error  Unsafe object destructuring of a property with an error 
+     typed value          @typescript-eslint/no-unsafe-assignment
+        96:35  error  Unsafe argument of type error typed assigned to a 
+     parameter of type `Error`  @typescript-eslint/no-unsafe-argument
+        96:35  error  Unsafe call of a type that could not be resolved          
+                       @typescript-eslint/no-unsafe-call
+       102:13  error  Unsafe object destructuring of a property with an error 
+     typed value          @typescript-eslint/no-unsafe-assignment
+       105:35  error  Unsafe argument of type error typed assigned to a 
+     parameter of type `Error`  @typescript-eslint/no-unsafe-argument
+       105:35  error  Unsafe call of a type that could not be resolved          
+                       @typescript-eslint/no-unsafe-call
+       117:9   error  Unsafe assignment of an `any` value                       
+                       @typescript-eslint/no-unsafe-assignment
+       123:13  error  Unsafe object destructuring of a property with an error 
+     typed value          @typescript-eslint/no-unsafe-assignment
+       125:35  error  Unsafe argument of type error typed assigned to a 
+     parameter of type `Error`  @typescript-eslint/no-unsafe-argument
+       125:35  error  Unsafe call of a type that could not be resolved          
+                       @typescript-eslint/no-unsafe-call
+       135:13  error  Unsafe object destructuring of a property with an error 
+     typed value          @typescript-eslint/no-unsafe-assignment
+       137:35  error  Unsafe argument of type error typed assigned to a 
+     parameter of type `Error`  @typescript-eslint/no-unsafe-argument
+       137:35  error  Unsafe call of a type that could not be resolved          
+                       @typescript-eslint/no-unsafe-call
+
+     ✖ 28 problems (28 errors, 0 warnings)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Fails for the right reason: ./errors.ts doesn't exist yet. Now the module:
+
+● Write(apps/api/src/graphql/errors.ts)
+  ⎿  Wrote 62 lines to apps/api/src/graphql/errors.ts
+       1 import { GraphQLError } from 'graphql';
+       2 import type { GraphQLErrorOptions } from 'graphql';
+       3 import type { MaskError } from 'graphql-yoga';
+       5 import { DomainError } from '../domain/errors.ts';
+       6 
+       7 // The part of a zod issue this module reads, so callers pass `r
+         esult.error.issues` as they are.
+         ; readonly message: string };
+       9 
+      10 export type FieldError = { field: string; message: string };
+     … +64 lines (ctrl+o to expand)
+
+● Update(apps/api/src/graphql/errors.ts)
+  ⎿  Added 3 lines, removed 1 line
+      46  export function createMaskError(logger: Logger): MaskError {
+      47    return (error, message) => {
+      48      const cause = rootCause(error);
+      49 -    if (cause instanceof GraphQLError) return error instanceof 
+         -Error ? error : cause;                                         
+      49 +    // Parse and validation errors, and a resolver-thrown BAD_U
+         +SER_INPUT, whose wrapper already                               
+      50 +    // carries the inner `extensions`.                         
+      51 +    if (error instanceof GraphQLError && cause instanceof Graph
+         +QLError) return error;                                         
+      52      if (cause instanceof DomainError) {
+      53        return new GraphQLError(cause.message, {
+      54          ...located(error),
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● 9/9 pass. Fixing the one lint error (nested expect.objectContaining is typed
+  any):
+
+● Update(apps/api/src/graphql/errors.test.ts)  ⎿  Added 6 lines, removed 7 lines
+      110      expect(masked.locations).toEqual([{ line: 2, column: 3 }])
+           ;
+      111      expect(masked.cause).toBeUndefined();
+      112      expect(JSON.stringify(masked.toJSON())).not.toMatch(/inser
+           t into|\/srv\/app|stack/);
+      113 -    expect(lines()).toEqual([                                 
+      114 -      expect.objectContaining({                               
+      115 -        level: 50,                                            
+      116 -        msg: 'unexpected error',                              
+      117 -        err: expect.objectContaining({ message: error.message 
+          -}),                                                           
+      118 -      }),                                                     
+      119 -    ]);                                                       
+      113 +    expect(lines()).toHaveLength(1);                          
+      114 +    expect(lines()[0]).toMatchObject({                        
+      115 +      level: 50,                                              
+      116 +      msg: 'unexpected error',                                
+      117 +      err: { message: error.message },                        
+      118 +    });                                                       
+      119    });
+      120  
+      121    it('FR-10 AC2: never adds originalError, even when told it r
+           uns in development', () => {
+
+● Now context, resolvers, app and main.
+
+● Bash(cat > apps/api/src/graphql/context.ts <<'EOF'
+      import type { Logger } from 'pino';…)
+  ⎿  3:import { createApp } from './app.ts';
+     4-import { ConfigError, loadConfig } from './config/env.ts';
+     5-import type { Config } from './config/env.ts';
+     … +12 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/graphql/context.ts (+2 -0)
+      1  import type { Logger } from 'pino';
+      2 +import type { PropertyService } from '../services/property.servi
+        +ce.ts';                                                         
+      3  
+      4  export type GraphQLContext = {
+      5    requestId: string;
+      6    logger: Logger;
+      7 +  services: { property: PropertyService };                      
+      8  };
+  ⎿  Updated apps/api/src/graphql/resolvers.ts (+23 -0)
+       1 +import { addressSchema } from '@property-manager/shared';      
+       2 +import { DateTimeResolver, JSONResolver } from 'graphql-scalars
+         +';                                                             
+       3 +import { z } from 'zod';                                       
+       4 +import { badUserInput } from './errors.ts';                    
+       5  import type { Resolvers } from './generated/resolvers-types.ts'
+          ;
+       6  
+       7 +const propertyId = z.uuid();                                   
+       8 +                                                               
+       9 +// Resolvers validate and map; the service holds the flow. Doma
+         +in objects match the SDL shape,                                
+      10 +// so they are returned as they are.                           
+      11  export const resolvers: Resolvers = {
+      12 +  JSON: JSONResolver,                                          
+      13 +  DateTime: DateTimeResolver,                                  
+      14    Query: {
+      15      health: () => 'ok',
+      16 +    // A malformed id cannot match a row: null without a query.
+      17 +    property: (_parent, { id }, { services }) => {             
+      18 +      const parsed = propertyId.safeParse(id);                 
+      19 +      return parsed.success ? services.property.getById(parsed.
+         +data) : null;                                                  
+      20 +    },                                                         
+      21    },
+      22 +  Mutation: {                                                  
+      23 +    // Validated and normalized before any weather call (FR-07)
+         +.                                                              
+      24 +    createProperty: (_parent, args, { services }) => {         
+      25 +      const parsed = addressSchema.safeParse(args);            
+      26 +      if (!parsed.success) throw badUserInput(parsed.error.issu
+         +es);                                                           
+      27 +      return services.property.create(parsed.data);            
+      28 +    },                                                         
+      29 +  },                                                           
+      30  };
+  ⎿  Updated apps/api/src/app.ts (+12 -3)
+       6  import type { Plugin, YogaServerInstance } from 'graphql-yoga';
+       7  import type { Logger } from 'pino';
+       8  import type { Config } from './config/env.ts';
+       9 +import type { PropertyRepository, WeatherClient } from './domai
+         +n/ports.ts';                                                   
+      10  import type { GraphQLContext } from './graphql/context.ts';
+      11 +import { createMaskError } from './graphql/errors.ts';         
+      12  import { resolvers } from './graphql/resolvers.ts';
+      13 +import { createPropertyService } from './services/property.serv
+         +ice.ts';                                                       
+      14  
+      15  const typeDefs = readFileSync(new URL('../schema.graphql', impo
+          rt.meta.url), 'utf8');
+      16  
+      17 +// Ports, not concrete adapters: `main.ts` passes the Drizzle r
+         +epository and the Weatherstack                                 
+      18 +// client, tests pass fakes.                                   
+      19  export type AppDeps = {
+      20    config: Config;
+      21    logger: Logger;
+      22 +  repository: PropertyRepository;                              
+      23 +  weather: WeatherClient;                                      
+      24  };
+      25  
+      26  export type App = {
+     ...
+      80    };
+      81  }
+      82  
+      76 -// Composition root: S-01 wires services, repositories and adap
+         -ters here.                                                     
+      77 -export function createApp({ logger }: AppDeps): App {          
+      83 +// Composition root: services are built here from the ports.   
+      84 +export function createApp({ logger, repository, weather }: AppD
+         +eps): App {                                                    
+      85 +  const services = { property: createPropertyService({ reposito
+         +ry, weather }) };                                              
+      86    const yoga = createYoga<object, GraphQLContext>({
+      87      schema: createSchema<GraphQLContext>({ typeDefs, resolvers 
+          }),
+      88      context: () => {
+      89        const requestId = randomUUID();
+      82 -      return { requestId, logger: logger.child({ requestId }) }
+         -;                                                              
+      90 +      return { requestId, logger: logger.child({ requestId }), 
+         +services };                                                    
+      91      },
+      92      plugins: [operationLogging(logger)],
+      93 +    maskedErrors: { maskError: createMaskError(logger) },      
+      94      logging: false,
+      95    });
+     … 1 more lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/main.ts (+18 -2)
+       1  import { createServer } from 'node:http';
+       2 +import { createWeatherstackClient } from './adapters/weathersta
+         +ck/client.ts';                                                 
+       3  import { createApp } from './app.ts';
+       4  import { ConfigError, loadConfig } from './config/env.ts';
+       5  import type { Config } from './config/env.ts';
+       6 +import { createDb } from './db/client.ts';                     
+       7  import { createLogger } from './logger.ts';
+       8 +import { createPropertyRepository } from './repositories/proper
+         +ty.repository.ts';                                             
+       9  
+      10  function readConfig(): Config {
+      11    try {
+     ...
+      21  
+      22  const config = readConfig();
+      23  const logger = createLogger(config.logLevel);
+      21 -const { yoga } = createApp({ config, logger });                
+      24 +// The pool connects on first use, so a missing database shows 
+         +up per request, not at start.                                  
+      25 +const { db, close: closeDb } = createDb(config.databaseUrl);   
+      26 +const { yoga } = createApp({                                   
+      27 +  config,                                                      
+      28 +  logger,                                                      
+      29 +  repository: createPropertyRepository(db),                    
+      30 +  weather: createWeatherstackClient({                          
+      31 +    baseUrl: config.weatherstackBaseUrl,                       
+      32 +    accessKey: config.weatherstackKey,                         
+      33 +    logger,                                                    
+      34 +  }),                                                          
+      35 +});                                                            
+      36  const server = createServer((request, response) => {
+      37    // Yoga handles its own errors, so the returned promise is no
+          t awaited.
+      38    void yoga(request, response);
+     ...
+      45  function shutdown(signal: NodeJS.Signals): void {
+      46    logger.info({ signal }, 'shutting down');
+      47    server.close(() => {
+      34 -    process.exit(0);                                           
+      48 +    void closeDb().finally(() => {                             
+      49 +      process.exit(0);                                         
+      50 +    });                                                        
+      51    });
+      52  }
+      53  
+
+● Now app.test.ts, the test helpers and operations.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/app.test.ts'…)
+  ⎿  $ tsc -p . && pnpm -r typecheck
+     apps/web typecheck$ tsc -p tsconfig.app.json && tsc -p tsconfig.node.j
+     son
+     … +5 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/app.test.ts (+8 -1)
+      1  import { describe, expect, it } from 'vitest';
+      2 +import { InMemoryPropertyRepository } from '../test/fakes/proper
+        +ty-repository.ts';                                              
+      3 +import { FakeWeatherClient } from '../test/fakes/weather.ts';   
+      4  import { createApp } from './app.ts';
+      5  import { loadConfig } from './config/env.ts';
+      6  import { createLogger } from './logger.ts';
+     ...
+      15      },
+      16    });
+      17    const config = loadConfig({ WEATHERSTACK_KEY: 'TEST_WEATHERST
+          ACK_KEY' });
+      16 -  const { yoga } = createApp({ config, logger });              
+      18 +  const { yoga } = createApp({                                 
+      19 +    config,                                                    
+      20 +    logger,                                                    
+      21 +    repository: new InMemoryPropertyRepository(),              
+      22 +    weather: new FakeWeatherClient(),                          
+      23 +  });                                                          
+      24    const operationLines = () =>
+      25      lines.filter(
+      26        (line): line is { msg: string; requestId: unknown } =>
+  ⎿  Updated apps/api/test/helpers/app.ts (+35 -5)
+       1  import { inject } from 'vitest';
+       2 +import { createWeatherstackClient } from '../../src/adapters/we
+         +atherstack/client.ts';                                         
+       3  import { createApp } from '../../src/app.ts';
+       4  import { loadConfig } from '../../src/config/env.ts';
+       5  import { createDb } from '../../src/db/client.ts';
+       6  import type { Database } from '../../src/db/client.ts';
+       7 +import type { PropertyRepository, WeatherClient } from '../../s
+         +rc/domain/ports.ts';                                           
+       8 +import { createPropertyRepository } from '../../src/repositorie
+         +s/property.repository.ts';                                     
+       9 +import { FakeWeatherClient } from '../fakes/weather.ts';       
+      10  import { captureLogs } from './logs.ts';
+      11  import type { LogLine } from './logs.ts';
+      12  import { TEST_WEATHERSTACK_KEY } from './secrets.ts';
+      13  
+      14  export type ExecuteResult = { data?: unknown; errors?: unknown[
+          ] };
+      15  
+      12 -export type TestApp = {                                        
+      16 +export type TestApp<W extends WeatherClient = WeatherClient> = 
+         +{                                                              
+      17    db: Database;
+      18 +  weather: W;                                                  
+      19    execute: (document: string, variables?: Record<string, unknow
+          n>) => Promise<ExecuteResult>;
+      20    logs: () => LogLine[];
+      21    close: () => Promise<void>;
+      22  };
+      23  
+      24 +// `weather`: a fake (the default serves the recorded sample), 
+         +or 'msw' for the real                                          
+      25 +// Weatherstack client against the MSW handlers. `repository`: 
+         +replaces the Drizzle repository,                               
+      26 +// e.g. one whose insert throws (FR-05 AC6); `db` still points 
+         +at the test database.                                          
+      27 +export type TestAppOptions<W> = { weather?: W; repository?: Pro
+         +pertyRepository };                                             
+      28 +                                                               
+      29  function isExecuteResult(value: unknown): value is ExecuteResul
+          t {
+      30    return (
+      31      typeof value === 'object' &&
+     ...
+      35  }
+      36  
+      37  // The real composition root against the Testcontainers databas
+          e, with the sentinel key and a
+      28 -// captured logger. S-01 adds the `weather` option and passes `
+         -db` into `createApp`.                                          
+      29 -export function createTestApp(): TestApp {                     
+      38 +// captured logger.                                            
+      39 +export function createTestApp(                                 
+      40 +  options?: TestAppOptions<FakeWeatherClient>,                 
+     … 36 more lines (ctrl+o to expand)
+  ⎿  Created apps/api/test/helpers/graphql.ts (+30 -0)
+       1 +import { expect } from 'vitest';                               
+       2 +import type { ExecuteResult } from './app.ts';                 
+       3 +                                                               
+       4 +export type ResultError = {                                    
+       5 +  message: string;                                             
+       6 +  extensions: Record<string, unknown>;                         
+       7 +  path?: unknown;                                              
+       8 +  locations?: unknown;                                         
+       9 +};                                                             
+      10 +                                                               
+      11 +function isResultError(value: unknown): value is ResultError { 
+      12 +  return (                                                     
+      13 +    typeof value === 'object' &&                               
+      14 +    value !== null &&                                          
+      15 +    'message' in value &&                                      
+      16 +    typeof value.message === 'string' &&                       
+      17 +    'extensions' in value &&                                   
+      18 +    typeof value.extensions === 'object' &&                    
+      19 +    value.extensions !== null                                  
+      20 +  );                                                           
+      21 +}                                                              
+      22 +                                                               
+      23 +// Asserts exactly one error, with `extensions.code` = `code`, 
+         +and returns it for further checks.                             
+      24 +export function expectGraphQLError(result: ExecuteResult, code:
+         + string): ResultError {                                        
+      25 +  expect(result.errors).toHaveLength(1);                       
+      26 +  const error = result.errors?.[0];                            
+      27 +  if (!isResultError(error)) return expect.fail('expectGraphQLE
+         +rror: not a GraphQL error');                                   
+      28 +  expect(error.extensions.code).toBe(code);                    
+      29 +  return error;                                                
+      30 +}                                                              
+  ⎿  Created apps/api/test/operations.ts (+44 -0)
+       1 +// The operations integration tests send, selecting every field
+         + of `Property`.                                                
+       2 +const PROPERTY_FIELDS = /* GraphQL */ `                        
+       3 +  fragment PropertyFields on Property {                        
+       4 +    id                                                         
+       5 +    street                                                     
+       6 +    city                                                       
+       7 +    state                                                      
+       8 +    zipCode                                                    
+       9 +    lat                                                        
+      10 +    long                                                       
+      11 +    createdAt                                                  
+      12 +    weatherData {                                              
+      13 +      units                                                    
+      14 +      current {                                                
+      15 +        temperature                                            
+      16 +        feelsLike                                              
+      17 +        weatherDescriptions                                    
+      18 +        weatherIcons                                           
+      19 +        windSpeed                                              
+      20 +        windDir                                                
+      21 +        humidity                                               
+      22 +        raw                                                    
+      23 +      }                                                        
+      24 +    }                                                          
+      25 +  }                                                            
+      26 +`;                                                             
+      27 +                                                               
+      28 +export const CREATE_PROPERTY = /* GraphQL */ `                 
+      29 +  mutation CreateProperty($street: String!, $city: String!, $st
+         +ate: String!, $zipCode: String!) {                             
+      30 +    createProperty(street: $street, city: $city, state: $state,
+         + zipCode: $zipCode) {                                          
+      31 +      ...PropertyFields                                        
+      32 +    }                                                          
+      33 +  }                                                            
+      34 +  ${PROPERTY_FIELDS}                                           
+      35 +`;                                                             
+      36 +                                                               
+      37 +export const PROPERTY = /* GraphQL */ `                        
+      38 +  query Property($id: ID!) {                                   
+      39 +    property(id: $id) {                                        
+      40 +      ...PropertyFields                                        
+     … 4 more lines (ctrl+o to expand)
+
+● Typecheck green (the DateTime { input, output } risk from the plan didn't
+  materialize). Now the integration tests.
+
+● Write(apps/api/test/integration/create-property.int.test.ts)
+  ⎿  Wrote 301 lines to
+     apps/api/test/integration/create-property.int.test.ts
+       1 import { afterEach, beforeEach, describe, expect, it, vi } from 
+       2 import { properties } from '../../src/db/schema.ts';
+       3 import { InMemoryPropertyRepository } from '../fakes/property-re
+         pository.ts';
+       5 import { validInput } from '../fixtures/property.ts';
+       6 import { weatherstackResponse } from '../fixtures/weatherstack.t
+       7 import { createTestApp } from '../helpers/app.ts';
+       8 import type { ExecuteResult, TestApp, TestAppOptions } from '../
+         helpers/app.ts';
+      10 import { expectGraphQLError } from '../helpers/graphql.ts';
+     … +342 lines (ctrl+o to expand)
+  ⎿  PostToolUse:Write hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/test/integration/create-property.int.test.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/test/integ
+     ration/create-property.int.test.ts
+        68:7   error  Unsafe assignment of an `any` value        
+     @typescript-eslint/no-unsafe-assignment
+        75:7   error  Unsafe assignment of an `any` value        
+     @typescript-eslint/no-unsafe-assignment
+        79:11  error  Unsafe assignment of an error typed value  
+     @typescript-eslint/no-unsafe-assignment
+        80:11  error  Unsafe assignment of an error typed value  
+     @typescript-eslint/no-unsafe-assignment
+        81:11  error  Unsafe assignment of an error typed value  
+     @typescript-eslint/no-unsafe-assignment
+        82:11  error  Unsafe assignment of an error typed value  
+     @typescript-eslint/no-unsafe-assignment
+        83:11  error  Unsafe assignment of an error typed value  
+     @typescript-eslint/no-unsafe-assignment
+        84:11  error  Unsafe assignment of an error typed value  
+     @typescript-eslint/no-unsafe-assignment
+        85:11  error  Unsafe assignment of an error typed value  
+     @typescript-eslint/no-unsafe-assignment
+       310:9   error  Unsafe assignment of an `any` value        
+     @typescript-eslint/no-unsafe-assignment
+
+     ✖ 10 problems (10 errors, 0 warnings)
+
+● Fixing lint: use the sample's literal values (as weather.test.ts does) and
+  avoid asymmetric matchers inside object literals.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/test/integration/create-property.int.test.ts'…)
+  ⎿  docker-ok
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+18 
+     -19)
+      60  describe('createProperty', () => {
+      61    it('FR-05 AC1: returns the new property with the weather snap
+          shot, and property(id) returns it again', async () => {
+      62      const app = testApp();
+      63 -    const sample = weatherstackResponse();                     
+      63  
+      64      const created = createdProperty(await app.execute(CREATE_PR
+          OPERTY, validInput()));
+      65  
+      67 -    expect(created).toEqual({                                  
+      68 -      id: expect.stringMatching(UUID),                         
+      66 +    const { id, createdAt, ...rest } = created;                
+      67 +    expect(id).toMatch(UUID);                                  
+      68 +    expect(Date.now() - Date.parse(String(createdAt))).toBeLess
+         +Than(60_000);                                                  
+      69 +    // Key fields as in the recorded sample's `current`; `raw` 
+         +is that object whole.                                          
+      70 +    expect(rest).toEqual({                                     
+      71        street: '15528 E Golden Eagle Blvd',
+      72        city: 'Fountain Hills',
+      73        state: 'AZ',
+      74        zipCode: '85268',
+      75        lat: 33.609,
+      76        long: -111.729,
+      75 -      createdAt: expect.any(String),                           
+      77        weatherData: {
+      78          units: 'IMPERIAL',
+      79          current: {
+      79 -          temperature: sample.current.temperature,             
+      80 -          feelsLike: sample.current.feelslike,                 
+      81 -          weatherDescriptions: sample.current.weather_descripti
+         -ons,                                                           
+      82 -          weatherIcons: sample.current.weather_icons,          
+      83 -          windSpeed: sample.current.wind_speed,                
+      84 -          windDir: sample.current.wind_dir,                    
+      85 -          humidity: sample.current.humidity,                   
+      86 -          raw: sample.current,                                 
+      80 +          temperature: 82,                                     
+      81 +          feelsLike: 79,                                       
+      82 +          weatherDescriptions: ['Clear '],                     
+      83 +          weatherIcons: [                                      
+      84 +            'https://cdn.worldweatheronline.com/images/wsymbols
+         +01_png_64/wsymbol_0008_clear_sky_night.png',                   
+      85 +          ],                                                   
+      86 +          windSpeed: 6,                                        
+      87 +          windDir: 'NE',                                       
+     … 23 more lines (ctrl+o to expand)
+
+● Lint clean, Docker up. Running the API unit and integration projects:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Everything gets masked, and even a parse error returns 500, so instanceof 
+  GraphQLError must be failing in the running app. Likely the dual-package
+  hazard (two graphql module instances). Checking:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Under plain Node instanceof works. So the split only happens under Vitest.
+  Checking graphql 17's exports map:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Found it: graphql 17's development export condition causes Vite to resolve a
+  different GraphQLError class than the one Node loads for externalized Yoga,
+  creating a duplicate class mismatch. I'll check graphql-js's recommended fix
+  for this.
+
+  Called context7, ran 1 shell command (ctrl+o to expand)
+
+● graphql-js docs confirm the dual-instance hazard. Checking how Vitest 5 sets
+  resolve conditions for node-environment tests:
+
+  Called context7 (ctrl+o to expand)
+
+● I'll check which graphql files are actually being loaded under Vitest to find
+  the mismatch in entry points.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● A non-dev CJS copy (graphql/error/GraphQLError.js) is loaded alongside the
+  __dev__ one. Tracing who requires it:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Found the root cause: Vite's ssr.resolve.externalConditions lacks development,
+  so our code loads graphql/index.js while Yoga's worker (started with
+  --conditions development) loads graphql/__dev__/index.js, creating two
+  distinct GraphQLError classes that went unnoticed until now. I'll test a
+  config fix for this empirically.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Neither works. A sharper probe: capture the error Yoga hands to maskError and
+  compare its class with ours, under each config variant.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● No variant changes anything, so the project-level ssr option may not be
+  reaching the worker. Checking the root config:
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Determining which copy each side holds:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Found it: Node resolves graphql's module-sync export condition natively, but
+  Vite doesn't recognize it and falls back to node, causing a mismatch between
+  what Yoga and our source get. I'll add module-sync to Vite's
+  externalConditions so it resolves the same way Node does.
+
+● Bash(source ~/.nvm/nvm.sh && nvm use >/dev/null && python3 - <<'EOF'
+      for p in
+      ['apps/api/vitest.unit.config.ts','apps/api/vitest.int.config.ts']:…)
+  ⎿  ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      FAIL  |api-unit| src/app.test.ts > createApp > logs one operation lin
+     e for a parse error
+     … +38 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/vitest.unit.config.ts (+4 -0)
+       1  import { defineConfig } from 'vitest/config';
+       2  
+       3  export default defineConfig({
+       4 +  // Resolve externalized packages the way Node 24 does. Withou
+         +t `module-sync`, Vite picks                                    
+       5 +  // graphql's CJS build for our imports while Yoga, loaded nat
+         +ively, gets the ESM one: two                                   
+       6 +  // `GraphQLError` classes, and `instanceof` in the error mask
+         +ing fails.                                                     
+       7 +  ssr: { resolve: { externalConditions: ['module-sync'] } },   
+       8    test: {
+       9      name: 'api-unit',
+      10      root: import.meta.dirname,
+  ⎿  Updated apps/api/vitest.int.config.ts (+4 -0)
+       1  import { defineConfig } from 'vitest/config';
+       2  
+       3  export default defineConfig({
+       4 +  // Resolve externalized packages the way Node 24 does. Withou
+         +t `module-sync`, Vite picks                                    
+       5 +  // graphql's CJS build for our imports while Yoga, loaded nat
+         +ively, gets the ESM one: two                                   
+       6 +  // `GraphQLError` classes, and `instanceof` in the error mask
+         +ing fails.                                                     
+       7 +  ssr: { resolve: { externalConditions: ['module-sync'] } },   
+       8    test: {
+       9      name: 'api-int',
+      10      root: import.meta.dirname,
+  ⎿  (timeout 5m)
+● Still not effective. Checking how Vitest 5 actually resolves externalized
+  imports:
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● Phase 4 code is complete and passing type checks/lint, but tests are failing
+  because Vitest loads two separate copies of graphql 17, breaking instanceof 
+  GraphQLError checks and masking errors. I'm now narrowing down the Vite
+  resolution causing the duplicate module.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Found that Vitest resolves bare externals with CJS conditions inside the
+  worker, loading __dev__/index.js, while Yoga's native ESM import pulls
+  __dev__/index.mjs—causing the duplicate, which doesn't occur in production
+  since Node resolves only one copy. Now I'll try aliasing our graphql import to
+  the exact file Node itself resolves.
+
+● Bash(source ~/.nvm/nvm.sh && nvm use >/dev/null && python3 - <<'EOF'
+      for p in
+      ['apps/api/vitest.unit.config.ts','apps/api/vitest.int.config.ts']:…)
+  ⎿  import { fileURLToPath } from 'node:url';
+     import { defineConfig } from 'vitest/config';
+     … +20 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/vitest.unit.config.ts (+7 -4)
+       1 +import { fileURLToPath } from 'node:url';                      
+       2  import { defineConfig } from 'vitest/config';
+       3  
+       4  export default defineConfig({
+       4 -  // Resolve externalized packages the way Node 24 does. Withou
+         -t `module-sync`, Vite picks                                    
+       5 -  // graphql's CJS build for our imports while Yoga, loaded nat
+         -ively, gets the ESM one: two                                   
+       6 -  // `GraphQLError` classes, and `instanceof` in the error mask
+         -ing fails.                                                     
+       7 -  ssr: { resolve: { externalConditions: ['module-sync'] } },   
+       5 +  resolve: {                                                   
+       6 +    // One graphql instance: Vitest resolves our bare `graphql`
+         + import with CJS conditions, while                             
+       7 +    // Yoga, loaded natively, gets the ESM build. Two `GraphQLE
+         +rror` classes break `instanceof`                               
+       8 +    // in the error masking. Point our import at the file Node 
+         +itself resolves.                                               
+       9 +    alias: [{ find: /^graphql$/, replacement: fileURLToPath(imp
+         +ort.meta.resolve('graphql')) }],                               
+      10 +  },                                                           
+      11    test: {
+      12      name: 'api-unit',
+      13      root: import.meta.dirname,
+  ⎿  Updated apps/api/vitest.int.config.ts (+7 -4)
+       1 +import { fileURLToPath } from 'node:url';                      
+       2  import { defineConfig } from 'vitest/config';
+       3  
+       4  export default defineConfig({
+       4 -  // Resolve externalized packages the way Node 24 does. Withou
+         -t `module-sync`, Vite picks                                    
+       5 -  // graphql's CJS build for our imports while Yoga, loaded nat
+         -ively, gets the ESM one: two                                   
+       6 -  // `GraphQLError` classes, and `instanceof` in the error mask
+         -ing fails.                                                     
+       7 -  ssr: { resolve: { externalConditions: ['module-sync'] } },   
+       5 +  resolve: {                                                   
+       6 +    // One graphql instance: Vitest resolves our bare `graphql`
+         + import with CJS conditions, while                             
+       7 +    // Yoga, loaded natively, gets the ESM build. Two `GraphQLE
+         +rror` classes break `instanceof`                               
+       8 +    // in the error masking. Point our import at the file Node 
+         +itself resolves.                                               
+       9 +    alias: [{ find: /^graphql$/, replacement: fileURLToPath(imp
+         +ort.meta.resolve('graphql')) }],                               
+      10 +  },                                                           
+      11    test: {
+      12      name: 'api-int',
+      13      root: import.meta.dirname,
+
+● All 140 unit tests pass. Verifying it's one instance and not luck:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Same GraphQLError class on both sides (the first assertion passed; the second
+  was only there to print). Running integration:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● 56/56 integration tests pass. Now the test-plan Cookbook edits:
+
+● Bash(python3 - <<'EOF'
+      p='context/test-plan.md'…)
+  ⎿  35:| TR-08 | Input validation lets bad data through or rejects valid d
+     ata: ZIP+4, 4-digit zip, leading-zero zip turned into a number, territ
+     ories, full state names, blank or overlong street/city (FR-07 AC1 – AC
+     … +54 lines (ctrl+o to expand)
+  ⎿  Updated context/test-plan.md (+15 -13)
+      110  | Module | Why | Target score | CI (report / break at N%) |
+      111  |--------|-----|--------------|---------------------------|
+      112  | `packages/shared/src/address.ts` (address zod schema, `norma
+           lizeAddress`) and `packages/shared/src/states.ts` lookup | Val
+           idation and normalization decide what gets stored, what counts
+            as a duplicate, and what the form accepts. A flipped length b
+           ound or regex anchor passes a "runs the code" test (TR-07, TR-
+           08). | 90% | Not in CI. Local `break` at 85% after the baselin
+           e. |
+      113 -| `apps/api/src/adapters/weatherstack/` response schema, error
+          - classification and mapper | Third-party payload mapping: a 20
+          -0 error body, a missing key field and snake_case mapping are e
+          -xactly where a silent bug stores bad data or burns quota (TR-0
+          -2, TR-03, TR-11, TR-16). | 85% | Not in CI. Local `break` at 8
+          -0% after the baseline. |                                      
+      113 +| `apps/api/src/adapters/weatherstack/` response schema and er
+          +ror classification, and `apps/api/src/domain/weather.ts` (key-
+          +field schema, `toCurrentWeather` mapper) | Third-party payload
+          + mapping: a 200 error body, a missing key field and snake_case
+          + mapping are exactly where a silent bug stores bad data or bur
+          +ns quota (TR-02, TR-03, TR-11, TR-16). | 85% | Not in CI. Loca
+          +l `break` at 80% after the baseline. |                        
+      114  | `apps/api/src/adapters/weatherstack/redact.ts` (URL / error 
+           redaction) | One wrong regex leaks the key (TR-01). Small modu
+           le, so every mutant should die. | 100% (equivalents excepted) 
+           | Not in CI. Local `break` at 100% of non-equivalent mutants. 
+           |
+      115  | `apps/api/src/services/property.service.ts` create flow and 
+           `regionMatchesState` | The order validate → duplicate → weathe
+           r → region → save, and the region comparison, are business rul
+           es where a swapped step costs quota or stores bad records (TR-
+           04, TR-05, TR-09). Tested with `FakeWeatherClient` and an in-m
+           emory repository fake. | 80% | Not in CI. Local `break` at 75%
+            after the baseline. |
+      116  | `apps/api/src/graphql/errors.ts` (domain error → `extensions
+           .code`, masking) and the `properties` args schema | Error mapp
+           ing and query argument rules (bounds, blank filters, upper-cas
+           ing) are tables; a mutant in a table entry is a wrong code or 
+           a wrong bound (TR-12, TR-14). | 90% | Not in CI. Local `break`
+            at 85% after the baseline. |
+     ...
+      174  MSW setup is `apps/api/test/setup/msw.ts`, the web one `apps/w
+           eb/src/test/setup.ts`.
+      175  `api-unit` also runs the hermetic helper tests in `apps/api/te
+           st/**/*.test.ts`.
+      176  
+      177 -Helpers marked *(S-01)* below do not exist yet. They land with
+          - the `WeatherClient` port in                                  
+      178 -S-01.                                                         
+      179 -                                                              
+      177  ### Add a unit test
+      178  
+      179  For pure logic: validation, normalization, mapping, error clas
+           sification, UI components.
+     ...
+      186     copying a test.
+      187  5. Assert the result the caller sees: the returned value, the 
+           parsed object, the thrown domain
+      188     error's `code`. Do not assert on private helpers or call or
+           der inside the unit.
+      192 -6. Adapter tests: start from `apps/api/test/msw/weatherstack.t
+          -s` handlers *(S-01)*. Override per test                       
+      189 +6. Adapter tests: start from the `weatherstackHandlers` in `ap
+          +ps/api/test/msw/weatherstack.ts`                              
+      190 +   (`ok`, `status`, `networkError`; each records its requests)
+          +. Override per test                                           
+      191     with `server.use(http.get('*/current', () => HttpResponse.j
+           son(...)))` (imports from
+      192     `msw/http` in MSW 3). To check the
+      193     request, read it inside the handler and assert on `url.sear
+           chParams` (compare `access_key`
+     ...
+      210  2. Call `const app = createTestApp()` from `apps/api/test/help
+           ers/app.ts`, and
+      211     `afterAll(app.close)`. It wires the real composition root w
+           ith the test database from
+      212     `inject('databaseUrl')`, the sentinel key and a captured lo
+           gger, and returns
+      215 -   `{ db, execute, logs, close }`. *(S-01)* adds the `weather`
+          - option:                                                      
+      216 -   `createTestApp({ weather: new FakeWeatherClient(weatherstac
+          -kResponse()) })`.                                             
+      213 +   `{ db, weather, execute, logs, close }`. `weather` defaults
+          + to a `FakeWeatherClient`                                     
+      214 +   (`apps/api/test/fakes/weather.ts`) serving the recorded sam
+          +ple; pass your own with                                       
+      215 +   `createTestApp({ weather: new FakeWeatherClient(weatherstac
+          +kResponse({...})) })`.                                        
+      216 +   `repository` replaces the Drizzle repository, e.g. an `InMe
+          +moryPropertyRepository`                                       
+      217 +   (`apps/api/test/fakes/property-repository.ts`) with `failIn
+          +sert(error)`.                                                 
+      218  3. In `beforeEach`, call `await resetDb(app.db)`. Seed with `s
+           eedProperty(app.db, {...})` when
+      219     the test needs existing rows; it returns the inserted row.
+      220  4. Execute operations with `await app.execute(document, variab
+           les)`. It sends the request
+      220 -   through `yoga.fetch` and returns `{ data, errors }`. Use th
+          -e typed documents from                                        
+     … 21 more lines (ctrl+o to expand)
+
+● Cookbook done. Running the full agent checks: codegen cleanliness, typecheck,
+  lint, format, and the whole test suite.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All green: codegen produces no further changes, typecheck, lint and
+  format:check pass, and pnpm test gives 28 files / 310 tests passing. Logging
+  the deviations in the plan:
+
+● Bash(cat >> context/changes/create-property-with-weather/plan.md <<'EOF'
+      - Phase 4: `apps/api/vitest.{unit,int}.config.ts` alias `graphql` to the
+      file Node resolves…)
+  ⎿   apps/api/package.json                              |   1 +
+      apps/api/schema.graphql                            |  55 +++++++-
+      apps/api/src/app.test.ts                           |   9 +-
+     … +13 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/create-property-with-weather/plan.md (+12 -0)
+      480    carries `StoredWeather` through `db/schema.ts`, so the plann
+           ed type change happens there.
+      481  - Phase 3: the repository's `toProperty` narrows the `text` `s
+           tate` column with `isStateCode`
+      482    and throws on a stored non-US code, with no cast. One extra 
+           integration test covers it.
+      483 +- Phase 4: `apps/api/vitest.{unit,int}.config.ts` alias `graph
+          +ql` to the file Node resolves                                 
+      484 +  (not in the file list). Under Vitest 5 our bare `graphql` im
+          +port resolved to graphql 17's                                 
+      485 +  `__dev__/index.js` (CJS conditions), while Yoga, loaded nati
+          +vely, got `__dev__/index.mjs`:                                
+      486 +  two `GraphQLError` classes, so `instanceof` in `createMaskEr
+          +ror` failed and every error was                               
+      487 +  masked (a parse error even returned HTTP 500). Plain `node s
+          +rc/main.ts` loads one copy.                                   
+      488 +- Phase 4: `createMaskError` walks `cause`, not `originalError
+          +`. graphql 17 sets both and marks                             
+      489 +  `originalError` deprecated.                                 
+      490 +- Phase 4: the web client output did not change. The client pr
+          +eset emits only the types its                                 
+      491 +  documents use, and the web app queries only `health`. A thro
+          +waway probe document confirmed the                            
+      492 +  new `scalars` config types `createdAt` as `string` and `raw`
+          + as `unknown` for S-04.                                       
+      493 +- Phase 4: `test/integration/smoke.int.test.ts` is unchanged: 
+          +`createTestApp()` without options                             
+      494 +  keeps working. The Cookbook also documents the `repository` 
+          +option and the handler names.                                 
+
+● Phase 4 is built and every agent check passes. Two human checks remain before
+  I commit.
+
+  Human checks, which need you to run them:
+
+  1. One real create (this uses one call of the Weatherstack quota):
+     - docker compose up -d postgres && pnpm db:migrate && pnpm dev (needs
+       WEATHERSTACK_KEY in .env).
+     - In GraphiQL at http://localhost:4000/graphql, run this once:
+  mutation { createProperty(street: "15528 E Golden Eagle Blvd", city: "Fountain
+  Hills", state: "AZ", zipCode: "85268") {
+    id lat long createdAt weatherData { units current { temperature feelsLike
+  weatherDescriptions windSpeed windDir humidity } } } }
+     - Expect plausible weather, lat 33.609 and long -111.729. Then run { 
+       property(id: "<that id>") { id street lat long } } and check you get the
+       same property back.
+  2. Read the BAD_USER_INPUT wording. This one makes no Weatherstack call:
+  mutation { createProperty(street: "1 Main St", city: "Boston", state: "XX",
+  zipCode: "123") { id } }
+     The message should read: Invalid input: state (must be a 2-letter US state 
+     code (50 states or DC)), zipCode (must be 5 digits).
+
+  What changed:
+  - apps/api/schema.graphql: the new types plus createProperty and property(id).
+  - codegen.ts and the generated resolver types: the JSON and DateTime scalar
+    mappings for the API and the web client.
+  - apps/api/package.json and pnpm-lock.yaml: added graphql-scalars ^2.0.0.
+  - src/graphql/errors.ts and its test (new): badUserInput and createMaskError,
+    with 9 unit cases built with locatedError.
+  - src/graphql/resolvers.ts and context.ts: zod validation in the resolvers, a
+    malformed id returns null, the scalars, and services.property in the
+    context.
+  - src/app.ts: takes the repository and weather client as ports, builds the
+    service, and wires the error masking.
+  - src/main.ts: creates the DB pool, the Drizzle repository and the
+    Weatherstack client, and closes the pool on shutdown.
+  - src/app.test.ts: uses the fakes.
+  - test/helpers/app.ts: createTestApp gets the weather (fake or 'msw') and
+    repository options.
+  - test/helpers/graphql.ts and test/operations.ts (new): expectGraphQLError and
+    the two documents.
+  - test/integration/create-property.int.test.ts (new): covers FR-05 AC1–3 and
+    AC6 (both the fake-repository case and the real DB CHECK case), FR-07 AC1–5,
+    FR-10 AC2 with NODE_ENV=development, the property null cases, and MSW happy
+    path and 500.
+  - vitest.unit.config.ts and vitest.int.config.ts: the graphql alias described
+    below.
+  - context/test-plan.md: removed the (S-01) markers, added the helper paths,
+    and the mutation-target row now names domain/weather.ts.
+
+  Checks:
+
+  ┌───────────────────┬────────────────────────────────┐
+  │       Check       │             Result             │
+  ├───────────────────┼────────────────────────────────┤
+  │ pnpm codegen      │ no further changes             │
+  ├───────────────────┼────────────────────────────────┤
+  │ pnpm typecheck    │ passes                         │
+  ├───────────────────┼────────────────────────────────┤
+  │ pnpm lint         │ passes                         │
+  ├───────────────────┼────────────────────────────────┤
+  │ pnpm format:check │ passes                         │
+  ├───────────────────┼────────────────────────────────┤
+  │ pnpm test         │ 310/310 tests in 28 files pass │
+  └───────────────────┴────────────────────────────────┘
+
+  Deviations (logged in plan.md):
+  - Tests loaded two copies of graphql. Plan: no Vitest config change. Code:
+    under Vitest our source got graphql 17's CJS dev build while Yoga got the
+    ESM one, so the error masking's instanceof check failed and every error was
+    masked. Consequence: both API Vitest configs now alias graphql to the file
+    Node itself resolves. A normal node src/main.ts run loads one copy, so
+    production is not affected.
+  - The masking follows graphql 17's cause chain rather than the deprecated
+    originalError.
+  - The generated web client code didn't change, because it only emits types for
+    queries the web app uses. A throwaway test query confirmed S-04 will get
+    string and unknown instead of any.
+  - smoke.int.test.ts needed no change.
+
+  Once you confirm both checks, I'll stage the files above plus plan.md and
+  context/test-plan.md by path. I'll leave the untracked implement-S-01-*.txt,
+  plan-S-01.txt and plan-review-S-01.txt alone. Proposed commit message:
+
+  feat(create-property-with-weather): wire createProperty and property(id) 
+  through GraphQL
+
+  Refs #3
+
+  This is the last phase, so tell me if you'd rather use Closes #3 here.
+  Otherwise it goes into the closing docs(create-property-with-weather): close 
+  plan commit that records this phase's hash.
+
+✻ Worked for 12m 2s · done 9:18 PM
+
+● Unknown command: /esport. Did you mean /export?
+
+● Args from unknown skill: implement-S-01-4

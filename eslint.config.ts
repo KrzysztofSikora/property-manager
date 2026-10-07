@@ -76,5 +76,19 @@ export default defineConfig(
     files: ['apps/api/src/adapters/**/*.ts'],
     rules: restrictImports('**/services/**', '**/graphql/**', '**/db/**'),
   },
+  // Types, ports and domain errors: every layer imports them, so they import no layer.
+  {
+    files: ['apps/api/src/domain/**/*.ts'],
+    rules: restrictImports(
+      '**/graphql/**',
+      '**/services/**',
+      '**/repositories/**',
+      '**/adapters/**',
+      '**/db/**',
+      'graphql*',
+      'drizzle-orm*',
+      'pg',
+    ),
+  },
   prettier,
 );

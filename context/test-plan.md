@@ -110,7 +110,7 @@ per container start is too slow, and the integration tests in TR-06, TR-13 and T
 | Module | Why | Target score | CI (report / break at N%) |
 |--------|-----|--------------|---------------------------|
 | `packages/shared/src/address.ts` (address zod schema, `normalizeAddress`) and `packages/shared/src/states.ts` lookup | Validation and normalization decide what gets stored, what counts as a duplicate, and what the form accepts. A flipped length bound or regex anchor passes a "runs the code" test (TR-07, TR-08). | 90% | Not in CI. Local `break` at 85% after the baseline. |
-| `apps/api/src/adapters/weatherstack/` response schema, error classification and mapper | Third-party payload mapping: a 200 error body, a missing key field and snake_case mapping are exactly where a silent bug stores bad data or burns quota (TR-02, TR-03, TR-11, TR-16). | 85% | Not in CI. Local `break` at 80% after the baseline. |
+| `apps/api/src/adapters/weatherstack/` response schema and error classification, and `apps/api/src/domain/weather.ts` (key-field schema, `toCurrentWeather` mapper) | Third-party payload mapping: a 200 error body, a missing key field and snake_case mapping are exactly where a silent bug stores bad data or burns quota (TR-02, TR-03, TR-11, TR-16). | 85% | Not in CI. Local `break` at 80% after the baseline. |
 | `apps/api/src/adapters/weatherstack/redact.ts` (URL / error redaction) | One wrong regex leaks the key (TR-01). Small module, so every mutant should die. | 100% (equivalents excepted) | Not in CI. Local `break` at 100% of non-equivalent mutants. |
 | `apps/api/src/services/property.service.ts` create flow and `regionMatchesState` | The order validate → duplicate → weather → region → save, and the region comparison, are business rules where a swapped step costs quota or stores bad records (TR-04, TR-05, TR-09). Tested with `FakeWeatherClient` and an in-memory repository fake. | 80% | Not in CI. Local `break` at 75% after the baseline. |
 | `apps/api/src/graphql/errors.ts` (domain error → `extensions.code`, masking) and the `properties` args schema | Error mapping and query argument rules (bounds, blank filters, upper-casing) are tables; a mutant in a table entry is a wrong code or a wrong bound (TR-12, TR-14). | 90% | Not in CI. Local `break` at 85% after the baseline. |
@@ -174,9 +174,6 @@ Vitest projects (root `vitest.config.ts`): `shared` (`packages/shared/vitest.con
 MSW setup is `apps/api/test/setup/msw.ts`, the web one `apps/web/src/test/setup.ts`.
 `api-unit` also runs the hermetic helper tests in `apps/api/test/**/*.test.ts`.
 
-Helpers marked *(S-01)* below do not exist yet. They land with the `WeatherClient` port in
-S-01.
-
 ### Add a unit test
 
 For pure logic: validation, normalization, mapping, error classification, UI components.
@@ -189,7 +186,8 @@ For pure logic: validation, normalization, mapping, error classification, UI com
    copying a test.
 5. Assert the result the caller sees: the returned value, the parsed object, the thrown domain
    error's `code`. Do not assert on private helpers or call order inside the unit.
-6. Adapter tests: start from `apps/api/test/msw/weatherstack.ts` handlers *(S-01)*. Override per test
+6. Adapter tests: start from the `weatherstackHandlers` in `apps/api/test/msw/weatherstack.ts`
+   (`ok`, `status`, `networkError`; each records its requests). Override per test
    with `server.use(http.get('*/current', () => HttpResponse.json(...)))` (imports from
    `msw/http` in MSW 3). To check the
    request, read it inside the handler and assert on `url.searchParams` (compare `access_key`
@@ -212,23 +210,27 @@ replaced.
 2. Call `const app = createTestApp()` from `apps/api/test/helpers/app.ts`, and
    `afterAll(app.close)`. It wires the real composition root with the test database from
    `inject('databaseUrl')`, the sentinel key and a captured logger, and returns
-   `{ db, execute, logs, close }`. *(S-01)* adds the `weather` option:
-   `createTestApp({ weather: new FakeWeatherClient(weatherstackResponse()) })`.
+   `{ db, weather, execute, logs, close }`. `weather` defaults to a `FakeWeatherClient`
+   (`apps/api/test/fakes/weather.ts`) serving the recorded sample; pass your own with
+   `createTestApp({ weather: new FakeWeatherClient(weatherstackResponse({...})) })`.
+   `repository` replaces the Drizzle repository, e.g. an `InMemoryPropertyRepository`
+   (`apps/api/test/fakes/property-repository.ts`) with `failInsert(error)`.
 3. In `beforeEach`, call `await resetDb(app.db)`. Seed with `seedProperty(app.db, {...})` when
    the test needs existing rows; it returns the inserted row.
 4. Execute operations with `await app.execute(document, variables)`. It sends the request
-   through `yoga.fetch` and returns `{ data, errors }`. Use the typed documents from
-   `apps/api/test/operations.ts` *(S-01)*.
+   through `yoga.fetch` and returns `{ data, errors }`. Use the documents from
+   `apps/api/test/operations.ts`.
 5. Assert, in this order:
    - the GraphQL result (`data`, or `errors[0].extensions.code` with `expectGraphQLError(result,
-     'PROPERTY_ALREADY_EXISTS')` *(S-01)*);
+     'PROPERTY_ALREADY_EXISTS')` from `apps/api/test/helpers/graphql.ts`, which also returns the
+     error for checks on `message` and `extensions.fields`);
    - the database state (`countProperties(app.db)` or a read through the repository);
-   - weather calls (`expect(app.weather.calls).toHaveLength(n)` *(S-01)*);
+   - weather calls (`expect(app.weather.calls).toHaveLength(n)`);
    - for failure cases, no leak: `expectNoSecret(result, app.logs())` from
      `apps/api/test/helpers/secrets.ts`.
-6. For adapter failures end to end, use `createTestApp({ weather: 'msw' })` *(S-01)*, which
+6. For adapter failures end to end, use `createTestApp({ weather: 'msw' })`, which
    wires the real `WeatherClient` against the MSW handlers instead of the fake.
-7. For races (FR-08 AC2), use `FakeWeatherClient.withBarrier(2)` *(S-01)*, which holds calls
+7. For races (FR-08 AC2), use `FakeWeatherClient.withBarrier(2)`, which holds calls
    until two have arrived, then fire both operations with `Promise.all`.
 8. Run `pnpm test` (Docker must be running).
 

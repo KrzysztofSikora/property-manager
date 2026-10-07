@@ -8,3 +8,23 @@
 - Seen in: property-schema, mutation check
 - Scope: every `/mutation` run (`stryker.config.json` in `apps/api`, `apps/web`,
   `packages/shared`, `tooling`)
+
+## Assert an error's cause or code, not only its type
+- Why: a test that checks only `toBeInstanceOf(WeatherUnavailableError)` passes when the cause
+  is empty, wrong, or comes from a different failure path. In S-01, 23 of the 32 adapter
+  survivors (`client.ts`, `response.ts`) came from such tests. One TR-01 test passed only
+  because the logged URL already contained `[REDACTED]`, so it never checked the redacted
+  error message it was written for.
+- Seen in: create-property-with-weather, mutation check
+- Scope: tests of adapters and error mapping (`apps/api/src/adapters/`, `graphql/errors.ts`).
+  Assert `cause` / `extensions.code` and the logged details, not just the class.
+
+## Test log redaction with the sensitive data where the filter must skip it
+- Why: a test that only checks that the output is clean passes when the filter is weakened, if
+  the fixture never puts the secret where the weakened filter would let it through. In S-01,
+  dropping the `^` anchor from the stack-frame regex in `summarizeError` survived: no fixture
+  message contained " at ", so the `Name: message` line was never mistaken for a frame.
+- Seen in: create-property-with-weather, mutation re-run after review
+- Scope: redaction and log-summary code (`adapters/weatherstack/redact.ts`, `graphql/errors.ts`,
+  `db/migrate-cli.ts`, `tooling/secret-scan.ts`). Add a case where the secret sits in the
+  part the filter must drop and looks like what it keeps.

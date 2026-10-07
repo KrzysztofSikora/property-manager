@@ -1,0 +1,32 @@
+# Plan review: create-property-with-weather
+
+Verdict: READY WITH NOTES
+
+| # | Severity | Check | Finding | Suggested change |
+|---|----------|-------|---------|------------------|
+| 1 | major | Grounding / Phasing | `apps/api` has no dependency on `@property-manager/shared` (`apps/api/package.json:16-23` lists only drizzle-orm, graphql, graphql-yoga, pg, pino, zod; `apps/api/node_modules/@property-manager` does not exist). The plan imports shared from the API from Phase 1 on: "`apps/api/test/fixtures/property.ts`: `PropertyInput` becomes `AddressInput` from shared" (Phase 1), `ErrorCode` "from `@property-manager/shared`" in `domain/errors.ts` (Phase 2), and `addressSchema` in the resolver (Phase 4). No phase adds the dependency, so Phase 1 `pnpm typecheck` fails under pnpm's strict `node_modules`. | Add `apps/api/package.json`: `"@property-manager/shared": "workspace:*"` (plus `pnpm install` and the lockfile) to the Phase 1 file list. |
+| 2 | major | Grounding / Design | The masking finding does not hold for resolver-thrown errors. The plan says "a `GraphQLError` without `originalError` passes through unchanged" (Findings) and "An original `GraphQLError` is returned as it is" (Design, `createMaskError`). In graphql 17, `locatedError` wraps any error whose `path` is not an array, so the `badUserInput` error a resolver throws arrives as a `GraphQLError` whose `originalError` is a `GraphQLError` (`node_modules/.pnpm/graphql@17.0.2/.../error/locatedError.js`: `isLocatedGraphQLError` → `new GraphQLError(..., { path, originalError })`). Yoga's own check recurses through the chain (`graphql-yoga@5.24.2/cjs/error.js:20-28`, `isOriginalGraphQLError`). If the implementation follows the wording ("no `originalError`" means pass through), `BAD_USER_INPUT` is masked to `INTERNAL_SERVER_ERROR`. The Phase 4 unit table ("a plain `GraphQLError` passes through") would not catch this. Only the FR-07 integration test would. | Specify how `createMaskError` treats the chain: walk `originalError` until the first error that is not a `GraphQLError`. A `DomainError` maps to its code. If the chain ends in a `GraphQLError`, return the error as it is (the wrapper keeps the inner `extensions`). Anything else is masked. Build the unit table cases with `locatedError(...)`: a wrapped `GraphQLError` (BAD_USER_INPUT), a wrapped `DomainError`, and a wrapped plain `Error`. |
+| 3 | major | Traceability / Lessons | The `current` mapper moves out of the mutation target. `context/test-plan.md:113` scopes the target as "`apps/api/src/adapters/weatherstack/` response schema, error classification and mapper" (TR-16). The plan puts the mapper in `domain/weather.ts` (`toCurrentWeather`, `currentKeyFieldsSchema`), and its "Mutation targets touched" list leaves that file out. The code would then disagree with the test plan (CLAUDE.md: "If code and an artifact disagree, raise it"), and `/mutation` would skip the key-field schema. | Add `apps/api/src/domain/weather.ts` to "Mutation targets touched". Update the test-plan row at line 113 in the Phase 4 `context/test-plan.md` edit, which already touches that file. |
+| 4 | minor | Design | Design, Shared: "Each field is preprocessed by the normalization". In zod 4, `z.preprocess` has input type `unknown` by default (`zod@4.6.5 v4/classic/schemas.d.ts:816`, `B = unknown`), so `AddressInput = z.input<typeof addressSchema>` becomes `{ street: unknown; ... }`. That weakens `validInput()` and S-05's form typing. A `.refine(isStateCode)` also does not narrow the output to `StateCode`, which the contract requires. | Simpler: use `z.string().trim().overwrite(collapse)` for street and city, and `z.string().trim().toUpperCase().refine(isStateCode, msg).transform((s) => s as StateCode)` for state, or `.pipe(z.enum(stateCodes))`. Input types then stay `string`. |
+| 5 | minor | Failure paths | FR-05 AC6 ("Given the database rejects the save") is proven only with a repository whose `insert` throws (Phase 4). The real DB rejection path (a Drizzle error with SQL in its message, through masking) has no test. It is cheap to add: lat/lon have "No range check in zod; the DB CHECK is the backstop" (Decisions), so a `FakeWeatherClient` with `location.lat: "999"` hits `properties_lat_range` (`apps/api/src/db/schema.ts:45`). | Keep the fake-repository case (TR-05/TR-12 name it). Add one integration case with an out-of-range `lat` from the fake: `INTERNAL_SERVER_ERROR`, count 0, and the response does not contain `properties_lat_range` or `insert into`. |
+| 6 | minor | Design | Design, `createMaskError`: "`new GraphQLError(err.message, { extensions: { code }, path })`" drops `nodes`/`positions`, so domain errors lose `locations` while other errors keep them. | Pass `nodes`, `source`, `positions` and `path` from the wrapping `GraphQLError`, as Yoga's `mask-error.js` does. |
+| 7 | minor | Phasing | Phase 4 regenerates "the web client output … if it changes". The client preset emits all schema scalars, and with no `scalars` config on the web output, `JSON`/`DateTime` become `any` in `apps/web/src/graphql/graphql.ts`. ESLint ignores that path (`eslint.config.ts:28`), so S-04 would consume `any` without noticing. | Either set `scalars: { JSON: 'unknown', DateTime: 'string' }` on the web output in the same `codegen.ts` edit, or record this as an S-04 note. |
+
+## What is good
+
+- Strong grounding. Every cited `file:line` checks out (`app.ts:77-88`, `eslint.config.ts:49-78`,
+  `db/schema.ts:13-14/38-45`, `codegen.ts:7-15`, `test/helpers/app.ts:28-53`, `states.ts:56-63`,
+  the sample's types and `lat`/`lon` strings). The library claims also hold: Yoga's dev-mode
+  `originalError` leak exists in `mask-error.js`, and `graphql-scalars@2.0.0` has the peer
+  `^16 || ^17`.
+- Spotting that adapters may not import `services/**`, and so moving the ports to `domain/`
+  with its own ESLint block, fits the layer rules without weakening them.
+- Every in-scope AC (FR-05 AC1–3, AC6; FR-07 AC1–5; FR-10 AC2) maps to a named test at both
+  the unit and the integration level. S-02/S-03 scope is fenced explicitly, and the roadmap
+  diff records the pulled-forward `property(id)`.
+- Phases are ordered by dependency, each with runnable agent checks. The single real
+  Weatherstack call is correctly a human check (quota R-01). Phase 3 checks that
+  `db:generate` produces no migration.
+- The custom `maskError`, which never forwards `isDev`, plus a test with `NODE_ENV=development`
+  stubbed, closes a real FR-10 AC2 gap. The lessons rule (`--concurrency 4`) is carried into
+  the mutation note.

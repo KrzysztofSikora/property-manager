@@ -9,9 +9,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-
-// S-01 narrows `current` when it adds the Weatherstack mapper.
-export type WeatherSnapshot = { units: 'IMPERIAL'; current: Record<string, unknown> };
+import type { StoredWeather } from '../domain/property.ts';
 
 // Change this file and run `pnpm db:generate`; never edit a generated migration by hand.
 // CI drift detection compares this file with the snapshot, so it cannot see an edited .sql.
@@ -29,7 +27,7 @@ export const properties = pgTable(
     zipCode: text('zip_code').notNull(),
     lat: doublePrecision('lat').notNull(),
     long: doublePrecision('long').notNull(),
-    weatherData: jsonb('weather_data').$type<WeatherSnapshot>().notNull(),
+    weatherData: jsonb('weather_data').$type<StoredWeather>().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
