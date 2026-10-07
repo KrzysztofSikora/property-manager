@@ -461,7 +461,7 @@ is a single statement, so a failure at any step stores nothing (NFR-08).
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: Shared address schema (3f63dd6)
-- [ ] Phase 2: Domain and Weatherstack adapter
+- [x] Phase 2: Domain and Weatherstack adapter (a964edb)
 - [ ] Phase 3: Repository and service
 - [ ] Phase 4: GraphQL wiring and end-to-end create
 
@@ -476,3 +476,7 @@ is a single statement, so a failure at any step stores nothing (NFR-08).
 - Phase 2: `response.ts` puts `currentKeyFieldsSchema` (from `domain/weather.ts`) inside the
   response schema instead of calling `toCurrentWeather`. Same schema, one parse, and the issue
   paths in the error cause read `current.<field>`.
+- Phase 3: `test/helpers/db.ts` is unchanged. `seedProperty` takes `NewPropertyRow`, which now
+  carries `StoredWeather` through `db/schema.ts`, so the planned type change happens there.
+- Phase 3: the repository's `toProperty` narrows the `text` `state` column with `isStateCode`
+  and throws on a stored non-US code, with no cast. One extra integration test covers it.
