@@ -54,3 +54,9 @@ export const PROPERTIES = /* GraphQL */ `
   }
   ${PROPERTY_FIELDS}
 `;
+
+export const DELETE_PROPERTY = /* GraphQL */ `
+  mutation DeleteProperty($id: ID!) {
+    deleteProperty(id: $id)
+  }
+`;

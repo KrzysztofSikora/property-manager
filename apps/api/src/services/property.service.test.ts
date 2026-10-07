@@ -2,6 +2,7 @@ import { normalizeAddress } from '@property-manager/shared';
 import { describe, expect, it } from 'vitest';
 import {
   PropertyAlreadyExistsError,
+  PropertyNotFoundError,
   WeatherLocationMismatchError,
   WeatherUnavailableError,
 } from '../domain/errors.ts';
@@ -191,5 +192,30 @@ describe('PropertyService.getById', () => {
     const { service } = setup();
 
     expect(await service.getById(crypto.randomUUID())).toBeNull();
+  });
+});
+
+describe('PropertyService.delete', () => {
+  it('FR-09 AC1 (service half): returns the id and removes the row', async () => {
+    const { service, repository } = setup();
+    const kept = await service.create(address);
+    const deleted = await service.create(normalizeAddress(validInput({ street: '1 Main St' })));
+
+    expect(await service.delete(deleted.id)).toBe(deleted.id);
+    expect(repository.rows).toEqual([kept]);
+  });
+
+  it('FR-09 AC2 (service half): an unknown id throws PROPERTY_NOT_FOUND and deletes nothing', async () => {
+    const { service, repository } = setup();
+    const stored = await service.create(address);
+
+    const error: unknown = await service.delete(crypto.randomUUID()).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(PropertyNotFoundError);
+    expect(error).toMatchObject({
+      code: 'PROPERTY_NOT_FOUND',
+      message: 'No property with this id exists.',
+    });
+    expect(repository.rows).toEqual([stored]);
   });
 });

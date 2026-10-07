@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { captureLogs } from '../../test/helpers/logs.ts';
 import {
   PropertyAlreadyExistsError,
+  PropertyNotFoundError,
   WeatherLocationMismatchError,
   WeatherQuotaExceededError,
   WeatherUnavailableError,
@@ -99,7 +100,7 @@ describe('maskError', () => {
     expect(masked.extensions).toEqual({ code: 'WEATHER_UNAVAILABLE' });
   });
 
-  // FR-10 AC1: each create error reaches the client with its code and message.
+  // FR-10 AC1: each domain error reaches the client with its code and message.
   it.each([
     [
       new WeatherUnavailableError({ cause: { status: 500 } }),
@@ -126,6 +127,7 @@ describe('maskError', () => {
       'PROPERTY_ALREADY_EXISTS',
       'A property with this address already exists.',
     ],
+    [new PropertyNotFoundError(), 'PROPERTY_NOT_FOUND', 'No property with this id exists.'],
   ])('FR-10 AC1: maps %o to %s with its message', (domainError, code, message) => {
     const masked = asGraphQLError(maskError(thrownByResolver(domainError), MASKED));
 

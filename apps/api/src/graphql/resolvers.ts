@@ -1,6 +1,7 @@
 import { addressSchema } from '@property-manager/shared';
 import { DateTimeResolver, JSONResolver } from 'graphql-scalars';
 import { z } from 'zod';
+import { PropertyNotFoundError } from '../domain/errors.ts';
 import { badUserInput } from './errors.ts';
 import type { Resolvers } from './generated/resolvers-types.ts';
 import { propertiesArgsSchema } from './properties-args.ts';
@@ -32,6 +33,12 @@ export const resolvers: Resolvers = {
       const parsed = addressSchema.safeParse(args);
       if (!parsed.success) throw badUserInput(parsed.error.issues);
       return services.property.create(parsed.data);
+    },
+    // A malformed id cannot match a row: PROPERTY_NOT_FOUND without a query (FR-09 AC2).
+    deleteProperty: (_parent, { id }, { services }) => {
+      const parsed = propertyId.safeParse(id);
+      if (!parsed.success) throw new PropertyNotFoundError();
+      return services.property.delete(parsed.data);
     },
   },
 };

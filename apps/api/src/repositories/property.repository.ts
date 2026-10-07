@@ -108,5 +108,14 @@ export function createPropertyRepository(db: Database): PropertyRepository {
         { isolationLevel: 'repeatable read', accessMode: 'read only' },
       );
     },
+
+    // One statement, so the delete and the not-found check cannot race.
+    async deleteById(id) {
+      const rows = await db
+        .delete(properties)
+        .where(eq(properties.id, id))
+        .returning({ id: properties.id });
+      return rows.length > 0;
+    },
   };
 }

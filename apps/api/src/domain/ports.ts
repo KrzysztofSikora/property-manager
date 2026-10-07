@@ -15,4 +15,6 @@ export type PropertyRepository = {
   findById(id: string): Promise<Property | null>;
   // Filtered, sorted and paged; `totalCount` counts every match (FR-01, FR-02, FR-03).
   list(query: PropertyListQuery): Promise<PropertyPage>;
+  // False when no row had this id.
+  deleteById(id: string): Promise<boolean>;
 };

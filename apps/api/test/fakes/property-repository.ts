@@ -43,6 +43,12 @@ export class InMemoryPropertyRepository implements PropertyRepository {
     return Promise.resolve(this.rows.find((row) => row.id === id) ?? null);
   }
 
+  deleteById(id: string): Promise<boolean> {
+    const index = this.rows.findIndex((row) => row.id === id);
+    if (index !== -1) this.rows.splice(index, 1);
+    return Promise.resolve(index !== -1);
+  }
+
   // Filtering and order are proved against PostgreSQL; a second implementation here would only
   // be tested against itself.
   list(): Promise<PropertyPage> {

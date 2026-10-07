@@ -34,9 +34,15 @@ export type Mutation = {
   __typename?: 'Mutation';
   /**
    * Validates and normalizes the address, fetches the current weather once, and stores the
-   * property. Errors: BAD_USER_INPUT, WEATHER_UNAVAILABLE, INTERNAL_SERVER_ERROR.
+   * property. Errors: BAD_USER_INPUT, PROPERTY_ALREADY_EXISTS, WEATHER_UNAVAILABLE,
+   * WEATHER_QUOTA_EXCEEDED, WEATHER_LOCATION_MISMATCH, INTERNAL_SERVER_ERROR.
    */
   createProperty?: Maybe<Property>;
+  /**
+   * Permanently deletes the property and returns its id. Errors: PROPERTY_NOT_FOUND (also for an
+   * id that is not a UUID).
+   */
+  deleteProperty: Scalars['ID']['output'];
 };
 
 
@@ -45,6 +51,11 @@ export type MutationCreatePropertyArgs = {
   state: Scalars['String']['input'];
   street: Scalars['String']['input'];
   zipCode: Scalars['String']['input'];
+};
+
+
+export type MutationDeletePropertyArgs = {
+  id: Scalars['ID']['input'];
 };
 
 export type Property = {
@@ -256,6 +267,7 @@ export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes
 
 export type MutationResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   createProperty?: Resolver<Maybe<ResolversTypes['Property']>, ParentType, ContextType, RequireFields<MutationCreatePropertyArgs, 'city' | 'state' | 'street' | 'zipCode'>>;
+  deleteProperty?: Resolver<ResolversTypes['ID'], ParentType, ContextType, RequireFields<MutationDeletePropertyArgs, 'id'>>;
 };
 
 export type PropertyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Property'] = ResolversParentTypes['Property']> = {

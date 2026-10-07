@@ -64,3 +64,13 @@ export class PropertyAlreadyExistsError extends DomainError {
     super('A property with this address already exists.', options);
   }
 }
+
+// The id is not echoed: it is client input, and a malformed one is reported the same way.
+export class PropertyNotFoundError extends DomainError {
+  override name = 'PropertyNotFoundError';
+  readonly code = 'PROPERTY_NOT_FOUND';
+
+  constructor(options?: ErrorOptions) {
+    super('No property with this id exists.', options);
+  }
+}

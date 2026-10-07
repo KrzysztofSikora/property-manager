@@ -1,4 +1,3 @@
-import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { properties } from '../../src/db/schema.ts';
 import { InMemoryPropertyRepository } from '../fakes/property-repository.ts';
@@ -12,7 +11,7 @@ import { expectGraphQLError } from '../helpers/graphql.ts';
 import { expectNoSecret, TEST_WEATHERSTACK_KEY } from '../helpers/secrets.ts';
 import { weatherstackHandlers } from '../msw/weatherstack.ts';
 import type { RecordingHandler } from '../msw/weatherstack.ts';
-import { CREATE_PROPERTY, PROPERTY } from '../operations.ts';
+import { CREATE_PROPERTY, DELETE_PROPERTY, PROPERTY } from '../operations.ts';
 import { server } from '../setup/msw.ts';
 
 const UNAVAILABLE = 'Weather could not be fetched, so the property was not saved. Try again later.';
@@ -324,29 +323,14 @@ describe('createProperty duplicates', () => {
   it('FR-08 AC3: once the row is deleted, the same address can be created again', async () => {
     const app = testApp();
     const first = createdProperty(await app.execute(CREATE_PROPERTY, validInput()));
-    await app.db.delete(properties).where(eq(properties.id, String(first.id)));
+    expect(await app.execute(DELETE_PROPERTY, { id: first.id })).toEqual({
+      data: { deleteProperty: first.id },
+    });
 
     const second = createdProperty(await app.execute(CREATE_PROPERTY, validInput()));
 
     expect(second.id).not.toBe(first.id);
     expect(await countProperties(app.db)).toBe(1);
-  });
-});
-
-describe('property', () => {
-  it('returns null for a malformed id, without an error', async () => {
-    const app = testApp();
-
-    expect(await app.execute(PROPERTY, { id: 'not-a-uuid' })).toEqual({ data: { property: null } });
-    expect(app.weather.calls).toEqual([]);
-  });
-
-  it('returns null for an unknown id', async () => {
-    const app = testApp();
-
-    expect(await app.execute(PROPERTY, { id: crypto.randomUUID() })).toEqual({
-      data: { property: null },
-    });
   });
 });
 

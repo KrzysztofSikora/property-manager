@@ -89,7 +89,13 @@ type Query {
 type Mutation {
   """
   Validates and normalizes the address, fetches the current weather once, and stores the
-  property. Errors: BAD_USER_INPUT, WEATHER_UNAVAILABLE, INTERNAL_SERVER_ERROR.
+  property. Errors: BAD_USER_INPUT, PROPERTY_ALREADY_EXISTS, WEATHER_UNAVAILABLE,
+  WEATHER_QUOTA_EXCEEDED, WEATHER_LOCATION_MISMATCH, INTERNAL_SERVER_ERROR.
   """
   createProperty(street: String!, city: String!, state: String!, zipCode: String!): Property
+  """
+  Permanently deletes the property and returns its id. Errors: PROPERTY_NOT_FOUND (also for an
+  id that is not a UUID).
+  """
+  deleteProperty(id: ID!): ID!
 }
