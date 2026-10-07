@@ -12,7 +12,7 @@
     "typecheck": "tsc -p . && pnpm -r typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:unit": "vitest run --project shared --project api-unit --project tooling",
+    "test:unit": "vitest run --project shared --project api-unit --project web --project tooling",
     "test": "vitest run",
     "prepare": "git config core.hooksPath .githooks",
     "codegen": "graphql-codegen"
@@ -20,11 +20,13 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@graphql-codegen/cli": "^7.4.4",
+    "@graphql-codegen/client-preset": "^6.2.1",
     "@graphql-codegen/typescript": "^6.1.1",
     "@graphql-codegen/typescript-resolvers": "^6.1.0",
     "@types/node": "^24.19.1",
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "jiti": "^2.7.0",
     "prettier": "^3.9.9",
     "typescript": "6.0.3",

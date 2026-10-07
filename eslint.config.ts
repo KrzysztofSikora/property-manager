@@ -2,6 +2,7 @@ import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
 import type { Linter } from 'eslint';
 import { defineConfig } from 'eslint/config';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 // Node type stripping runs `.ts` files as they are, so a `./x.js` specifier fails at runtime.
@@ -40,6 +41,10 @@ export default defineConfig(
       },
     },
     rules: restrictImports(),
+  },
+  {
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    extends: [reactHooks.configs.flat['recommended-latest']],
   },
   {
     files: ['apps/api/src/graphql/**/*.ts'],

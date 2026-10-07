@@ -13,6 +13,15 @@ const config: CodegenConfig = {
         contextType: '../context.ts#GraphQLContext',
       },
     },
+    'apps/web/src/graphql/': {
+      preset: 'client',
+      documents: ['apps/web/src/**/*.{ts,tsx}', '!apps/web/src/graphql/**'],
+      config: {
+        documentMode: 'string',
+        enumsAsTypes: true,
+        useTypeImports: true,
+      },
+    },
   },
   hooks: { afterAllFileWrite: ['prettier --write'] },
 };

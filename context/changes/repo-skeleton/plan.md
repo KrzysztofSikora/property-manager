@@ -546,7 +546,7 @@ Library facts:
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: Workspace, static rules and commit gate (a25205e)
 - [x] Phase 2: API skeleton with config, logging, Yoga and server codegen (537d8aa)
-- [ ] Phase 3: API test harness (integration project, Testcontainers, MSW, Stryker)
+- [x] Phase 3: API test harness (integration project, Testcontainers, MSW, Stryker) (d0abb88)
 - [ ] Phase 4: Web shell
 - [ ] Phase 5: CI, env template, docs and test-plan sync
 
@@ -587,3 +587,24 @@ Library facts:
   `onUnhandledFrame` cause), so "MSW guards integration tests too" is proven by a test.
   `.stryker-tmp/` is added to `.gitignore` and the ESLint ignores. `packages/shared` gets its
   own `vitest` dev dependency for the Stryker runner.
+- Phase 4: `@graphql-codegen/client-preset` is `^6.2.1` (locked 6.2.1). 6.2.2 and three of its
+  `@graphql-codegen/*` dependencies were published on 2026-10-07, inside pnpm's
+  `minimumReleaseAge`. pnpm auto-added a `minimumReleaseAgeExclude` bypass; it was reverted, so
+  the policy has no exclusions.
+- Phase 4: the client preset's `.ts` relative imports work under `bundler` resolution
+  (`allowImportingTsExtensions` from the base), so the *Codegen* fallback is not needed. The
+  output imports `@graphql-typed-document-node/core`, added as a web dev dependency.
+  `@testing-library/dom` is added as the peer of `@testing-library/react`.
+- Phase 4: MSW 3 has no top-level `graphql.query`, only `graphql.link(url).query(...)`, and
+  imports come from `msw/graphql` and `msw/http`. `src/test/msw.ts` exports
+  `api = graphql.link('/graphql')`; tests use `api.query(...)`. A GraphQL resolver's body is
+  typed, so the HTTP 500 case returns a plain `Response`.
+- Phase 4: `apps/web/tsconfig.json` is a solution file referencing `tsconfig.app.json` (`src`)
+  and `tsconfig.node.json` (Vite/Vitest configs). The ESLint project service only discovers
+  files named `tsconfig.json`, so a standalone `tsconfig.node.json` left the configs
+  "not found by the project service". `typecheck` runs the two leaf configs.
+- Phase 4: `execute()` checks the envelope with zod and narrows `data` with a type predicate
+  `isResultOf(document, data)` (an object check) instead of an `as` cast. Field shapes come from
+  the codegen document type. A missing or non-object `data` also throws `GraphQLRequestError`.
+- Phase 4: React hooks lint is `eslint-plugin-react-hooks` `configs.flat['recommended-latest']`
+  on `apps/web/src/**`. `ApiStatus` renders with `role="status"`.
