@@ -1,0 +1,153 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /shape brief.txt                                                              
+
+  Listed 2 directories (ctrl+o to expand)
+
+● User answered Claude's questions:
+  ⎿  · Co ma się stać, gdy wywołanie Weatherstack w mutacji createProperty się 
+     nie powiedzie (timeout, błąd sieci, odpowiedź {success:false}, wyczerpany 
+     limit)? Rekomenduję odrzucenie mutacji: brief zabrania wywołań poza 
+     tworzeniem, więc nieruchomość zapisana bez pogody nigdy jej nie dostanie. 
+     Najmocniejszy argument przeciw: darmowy plan to ok. 100 zapytań/mies., więc
+     po wyczerpaniu limitu nie da się dodać żadnej nieruchomości. Wpływa na: 
+     schemat (czy weatherData/lat/long są nullable), obsługę błędów, testy 
+     adaptera. → nic nie zapisujemy jak w punkcie 1, zrób błąd o skończonym 
+     limicie API ( w praktyce bedzie mozna albo zrobic upgrade planu albo 
+     podmienic api key na nowy)
+     · Jakie zapytanie (`query`) wysyłamy do Weatherstack i czy sprawdzamy, co 
+     zwrócił? Rekomenduję kod ZIP z kontrolą stanu: ZIP jest jednoznaczny w USA,
+     a Weatherstack nie geokoduje ulic, więc pełny adres i tak daje współrzędne
+     miejscowości. Sprawdzamy, czy `location.region` odpowiada podanemu 
+     stanowi, żeby nie zapisać pogody z innego miejsca (np. 'Springfield'). 
+     Argument przeciw: odrzucimy poprawne adresy, gdy Weatherstack źle rozpozna 
+     ZIP. Wpływa na: dokładność lat/long (centroid ZIP/miasta, nie budynku), 
+     walidację, README. → ZIP + kontrola stanu (Rec.)
+     · Jak działa filtrowanie po city, zipCode i state (US 3)? Rekomenduję: 
+     wszystkie filtry opcjonalne i łączone przez AND; city bez rozróżniania 
+     wielkości liter i częściowe (contains), state i zipCode dokładne (state 
+     normalizowany do wielkich liter). Argument przeciw: częściowe dopasowanie 
+     miasta jest trudniejsze do zaindeksowania. Przy małej skali to nie problem.
+     Wpływa na: argumenty GraphQL, zapytania w repozytorium, indeksy, testy. → 
+     City contains, reszta exact (Rec.)
+
+● User answered Claude's questions:
+  ⎿  · Czy pozwalamy dodać drugą nieruchomość o tym samym adresie? Rekomenduję 
+     odrzucać duplikaty (street+city+state+zip po trim, zwinięciu spacji i bez 
+     rozróżniania wielkości liter). Sprawdzamy to przed wywołaniem Weatherstack,
+     więc nie zużywamy limitu. Argument przeciw: prosta normalizacja nie złapie
+     'Blvd' vs 'Boulevard', więc ochrona jest częściowa. Wpływa na: unikalny 
+     indeks w DB, kod błędu, kolejność kroków w serwisie. → Odrzucaj duplikaty 
+     (Rec.)
+     · W jakich jednostkach pobieramy pogodę i jak ją wystawiamy w GraphQL? 
+     Rekomenduję jednostki imperialne (units=f, °F, mph), bo nieruchomości są w 
+     USA. Zapisujemy cały obiekt `current` bez zmian (brief: 'object containing 
+     current property') i wystawiamy go jako typowany obiekt WeatherData z 
+     polami z odpowiedzi plus pole `units`. Argument przeciw: typowany obiekt 
+     wymaga utrzymywania schematu, gdy Weatherstack zmieni pola. Zwykły JSON 
+     scalar byłby prostszy, ale gorszy dla klienta i walidacji. Wpływa na: 
+     schemat GraphQL, schemat zod odpowiedzi, widok szczegółów. → °F + typowany 
+     obiekt (Rec.)
+     · Czy lista nieruchomości ma paginację? Brief mówi 'query all the 
+     properties'. Rekomenduję opcjonalną paginację offset/limit (domyślnie 20, 
+     maks. 100) plus totalCount. To standard dla list w API i nadal pozwala 
+     przejść po wszystkich rekordach. Argument przeciw: brief jej nie wymaga, a 
+     dodaje kod i stany UI. Przy małej skali zwrócenie wszystkiego też działa. 
+     Wpływa na: kształt zapytania `properties`, UI listy, testy. → Offset/limit 
+     + total (Rec.)
+
+● User answered Claude's questions:
+  ⎿  · Jakie ekrany ma frontend? Rekomenduję 3 widoki: (1) lista z filtrami 
+     city/state/zip, sortowaniem po dacie (rosnąco/malejąco), paginacją i 
+     usuwaniem z potwierdzeniem; (2) szczegóły z adresem, lat/long i pogodą; (3)
+     formularz dodawania z walidacją po stronie klienta i komunikatami błędów 
+     API (limit, duplikat, niezgodny stan). Każdy z widocznymi stanami 
+     ładowania, pustym i błędu. Argument przeciw: osobne strony to routing, a 
+     modal na liście byłby lżejszy. Wpływa na: routing, liczbę komponentów, 
+     testy e2e. → Lista + szczegóły + formularz (Rec.)
+     · Czy potrzebne jest uwierzytelnianie? Brief mówi tylko 'as a user' i nie 
+     wspomina logowania. Rekomenduję brak autoryzacji jako jawny non-goal: 
+     aplikacja działa lokalnie, a cała praca ma iść w zakres z briefu. Argument 
+     przeciw: 'delete any property' bez autoryzacji wygląda źle w ocenie 'best 
+     practices'. Wpływa na: zakres, middleware, UI logowania. → Statyczny API 
+     key
+     · Jak recenzent ma uruchomić aplikację? Rekomenduję jedną komendę `docker 
+     compose up` (DB + API + frontend) i alternatywnie uruchomienie lokalne 
+     przez npm, opisane w README. Recenzent wpisuje tylko własny 
+     WEATHERSTACK_KEY do .env. Argument przeciw: Docker to dodatkowa zależność i
+     wolniejszy dev loop. Jeśli wybierzemy SQLite, wystarczy samo npm. Wpływa 
+     na: wybór DB w /tech-stack, README, CI. → docker compose + npm (Rec.)
+
+● User answered Claude's questions:
+  ⎿  · Statyczny API key: które operacje chroni i skąd frontend go bierze? 
+     Rekomenduję chronić tylko mutacje (create/delete). Odczyty zostają otwarte,
+     bo user stories 1–4 to publiczny katalog. Frontend dostaje klucz przez 
+     zmienną środowiskową przy buildzie. W README zapiszemy wprost, że klucz 
+     jest widoczny w bundlu przeglądarki, więc chroni przed przypadkowymi 
+     wywołaniami API z zewnątrz, a nie przed użytkownikiem UI. Argument przeciw:
+     skoro klucz jest w bundlu, ochrona jest pozorna. Uczciwiej byłoby zrobić 
+     pełny auth albo nie robić go wcale. Wpływa na: kontekst GraphQL, kod błędu 
+     UNAUTHENTICATED, .env.example, testy. → Jednak bez auth
+
+● Write(context/shape-notes.md)
+  ⎿  Wrote 109 lines to context/shape-notes.md
+       1 # Shape notes: Property Manager
+       3 ## Brief summary
+         r managing property records
+       5 through a GraphQL API. Users can list properties, sort them by c
+       6 city, zip code and state, view any property's details, add prope
+       7 States) and delete them. When a property is created, the create 
+       8 `/current` endpoint once and stores the `current` weather object
+          together with the latitude and
+         y, technology choices, scope
+          a public rep
+     … +196 lines (ctrl+o to expand)
+
+● Zapisałem notatki w context/shape-notes.md. Mają 14 decyzji, 12 założeń, 7
+  non-goali, 6 odłożonych pytań i 6 ryzyk. Nic, co zostało otwarte, nie blokuje
+  /prd.
+
+  Twoje decyzje:
+  - Błąd Weatherstack: mutacja się nie udaje i nic nie zapisujemy. Gdy skończy
+    się limit, API zwraca osobny, czytelny błąd (WEATHER_QUOTA_EXCEEDED) z
+    informacją, że trzeba podnieść plan albo podmienić klucz.
+  - Zapytanie do Weatherstack: wysyłamy kod ZIP. Jeśli location.region w
+    odpowiedzi nie pasuje do podanego stanu, odrzucamy dodanie. lat/long to
+    współrzędne obszaru ZIP, nie budynku, co opiszemy w README.
+  - Filtry: łączone przez AND. city dopasowuje częściowo, bez rozróżniania
+    wielkości liter, a state i zipCode dokładnie.
+  - Duplikaty: odrzucamy je przed wywołaniem API, więc nie zużywają limitu.
+    Dodatkowo chroni przed nimi unikalny indeks w bazie.
+  - Pogoda: w °F, cały obiekt current zapisany bez zmian i wystawiony w GraphQL
+    jako typowany WeatherData razem z polem units.
+  - Lista: paginacja offset/limit (domyślnie 20, maks. 100) z totalCount,
+    sortowanie po dacie w obu kierunkach.
+  - Frontend: 3 widoki (lista, szczegóły, formularz), każdy ze stanami
+    ładowania, pustym i błędu.
+  - Autoryzacja: brak, zapisane jako non-goal. Zostaliśmy przy tym po omówieniu,
+    że statyczny klucz w bundlu przeglądarki tylko udawałby ochronę.
+  - Uruchamianie: docker compose up dla recenzenta, npm do pracy lokalnej.
+
+  Założenia, o które nie pytałem, bo łatwo je zmienić:
+  - state przyjmuje 50 stanów i DC.
+  - ZIP to 5 cyfr zapisanych jako string.
+  - Nieruchomości nie da się edytować, a usunięcie jest trwałe.
+  - Domyślnie najnowsze są na górze.
+  - Wywołanie Weatherstack ma timeout około 5 s i nie jest ponawiane.
+
+  Ryzyko do sprawdzenia przy adapterze (R-02): darmowy plan Weatherstack w
+  przeszłości odrzucał HTTPS, a brief podaje adres https://. Sprawdzimy to
+  jednym ręcznym wywołaniem, gdy będziemy pisać adapter. Adres bazowy jest już w
+  .env, więc ewentualna zmiana nie wymaga zmian w kodzie.
+
+  Niczego nie commitowałem. Następny krok to /prd.
+
+✻ Cooked for 2m 18s · done 2:51 PM
+
+❯ /export                                                                       
+  ⎿  Export cancelled
