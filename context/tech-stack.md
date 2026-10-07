@@ -31,7 +31,7 @@ Yoga on graphql 17) was tested in a `node:24-alpine` container.
 | HTTP mocks | MSW | 3.0 | Weatherstack at HTTP level in adapter tests; GraphQL in UI tests |
 | DB in tests | Testcontainers (PostgreSQL) | 12.2 | Real migrations and unique index; `pnpm test` needs only Docker |
 | E2E | Playwright | 1.63 | Already configured as MCP; API pointed at a stub Weatherstack |
-| Mutation testing | StrykerJS + vitest-runner | 10.0 | Peer `vitest >=2`; targets from `context/test-plan.md` |
+| Mutation testing | StrykerJS (command runner) | 10.0 | vitest-runner 10.0 is broken on Vitest 5 (stryker-js#6210); targets from `context/test-plan.md` |
 | TypeScript | `typescript` | 6.0.3 | One version for `tsc`, typescript-eslint and the editor |
 | Lint / format | ESLint flat config + typescript-eslint `strictTypeChecked` + Prettier | 10.12 / 8.71 / 3.9 | Type-aware rules enforce NFR-04 and NFR-06 |
 | Local run | Docker Compose: postgres + api + web | Compose v5 | One command (FR-14) |
@@ -195,8 +195,9 @@ Yoga on graphql 17) was tested in a `node:24-alpine` container.
   - `@testcontainers/postgresql` for repository and API integration tests.
   - Playwright e2e against the Compose stack, with `WEATHERSTACK_BASE_URL` pointed at a stub
     server, so there are no real calls (NFR-02).
-  - StrykerJS 10 with `@stryker-mutator/vitest-runner`, scoped to the targets in
-    `context/test-plan.md`.
+  - StrykerJS 10 with the `command` runner running each package's hermetic Vitest config,
+    scoped to the targets in `context/test-plan.md`. `@stryker-mutator/vitest-runner` 10.0
+    runs zero tests per runtime mutant on Vitest 5 (stryker-js#6210); return to it once fixed.
 - Strongest case against: PGlite needs no Docker and starts faster. Jest is more widely known.
 - Why we still accept it: Testcontainers runs the real driver, migrations and unique-index
   behaviour that FR-08 AC2 depends on, and Docker is required anyway. Jest's ESM and TS

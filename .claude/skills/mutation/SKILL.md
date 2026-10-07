@@ -43,15 +43,15 @@ which files you will mutate and why, in one line each.
 If `stryker.config.json` is missing in the target package, propose this setup and wait for
 approval. Check the current option names with context7 before writing it.
 
-- Dev dependencies: `@stryker-mutator/core` and `@stryker-mutator/vitest-runner`.
-- `vitest.unit.config.ts` that includes only hermetic tests (no database, no network), so a
-  run takes minutes, not hours.
-- `stryker.config.json`: vitest runner pointed at that config, the vitest runner listed under
-  `plugins` (pnpm does not hoist it), per-test coverage analysis, `ignoreStatic`, incremental
-  mode with the incremental file under `reports/`, and reporters `clear-text`, `progress`,
-  `html` and `json` writing to `reports/mutation/`. `mutate` lists the risk-critical
-  directories and excludes tests and generated code. Set the `break` threshold to `null`
-  until the first baseline exists.
+- Dev dependency: `@stryker-mutator/core`. Not `@stryker-mutator/vitest-runner`: 10.0 runs
+  zero tests per runtime mutant on Vitest 5 (stryker-js#6210), so every mutant "survives".
+  Revisit when a fixed release ships.
+- A hermetic Vitest config (no database, no network), so a run takes minutes, not hours.
+- `stryker.config.json`: `testRunner: "command"` with `commandRunner.command` running
+  `node_modules/.bin/vitest run -c <hermetic config>`, `coverageAnalysis: "off"`, reporters
+  `clear-text`, `progress`, `html` and `json` writing to `reports/mutation/`, `mutate: []`
+  (targets come from `--mutate`). Raise `timeoutMS` if parallel runs time out on load
+  (jsdom suites). Set the `break` threshold to `null` until the first baseline exists.
 - A `test:mutation` script, and `reports/` in `.gitignore`.
 
 ## 3. Run
