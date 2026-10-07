@@ -1,0 +1,566 @@
+<title>Property Manager — instrukcja implementacji</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: sticky left index on wide screens, one reading column (~68ch) beside it; stacks to one column on phones. */
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --ink: #18212c;
+  --muted: #5a6573;
+  --line: #d9dee3;
+  --accent: #1d6680;
+  --accent-soft: #e2eff3;
+  --warn: #9a5b00;
+  --warn-soft: #fbf0dc;
+  --ok: #2c7a4b;
+  --code-bg: #eef1f3;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.25rem;
+  --step-2: 1.6rem;
+  --step-3: 2.4rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161c; --surface: #18202a; --ink: #e4e9ee; --muted: #9aa6b3; --line: #2b3542;
+    --accent: #6cc0dc; --accent-soft: #17323d; --warn: #e9b35c; --warn-soft: #33270f;
+    --ok: #6cc893; --code-bg: #1e2833; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161c; --surface: #18202a; --ink: #e4e9ee; --muted: #9aa6b3; --line: #2b3542;
+  --accent: #6cc0dc; --accent-soft: #17323d; --warn: #e9b35c; --warn-soft: #33270f;
+  --ok: #6cc893; --code-bg: #1e2833; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: var(--step-0); line-height: 1.6;
+  padding-inline: 16px; padding-block: 0 64px;
+}
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.shell {
+  max-width: 1120px; margin: 0 auto;
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px;
+}
+@media (max-width: 860px) { .shell { grid-template-columns: minmax(0, 1fr); gap: 0; } nav.toc { display: none; } }
+
+nav.toc {
+  position: sticky; top: env(safe-area-inset-top, 0px); align-self: start;
+  padding-block: 40px; font-size: var(--step--1);
+}
+nav.toc p { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; font-size: .75rem; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; counter-reset: toc; }
+nav.toc a { color: var(--muted); text-decoration: none; display: block; padding: 2px 0 2px 10px; border-left: 2px solid transparent; }
+nav.toc a:hover { color: var(--ink); border-left-color: var(--accent); }
+
+main { min-width: 0; max-width: 68ch; }
+
+header.hero { padding-block: 48px 24px; border-bottom: 1px solid var(--line); }
+.eyebrow { font-family: var(--font-display); font-weight: 700; font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; color: var(--accent); margin: 0 0 10px; }
+h1 { font-family: var(--font-display); font-stretch: 85%; font-weight: 800; font-size: var(--step-3); line-height: 1.05; margin: 0 0 16px; text-wrap: balance; }
+.lede { font-size: var(--step-1); color: var(--muted); margin: 0 0 24px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; padding: 0; list-style: none; font-size: var(--step--1); }
+.facts li { display: grid; }
+.facts b { font-family: var(--font-display); font-size: var(--step-1); font-variant-numeric: tabular-nums; }
+.facts span { color: var(--muted); }
+
+section { padding-block: 40px 8px; scroll-margin-top: 16px; }
+h2 { font-family: var(--font-display); font-stretch: 90%; font-weight: 750; font-size: var(--step-2); line-height: 1.15; margin: 0 0 14px; text-wrap: balance; }
+h2 .n { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: .35em; }
+h3 { font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); margin: 28px 0 8px; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 1.3em; }
+li { margin-bottom: 4px; }
+
+code { font-family: var(--font-mono); font-size: .86em; background: var(--code-bg); padding: .1em .35em; border-radius: 4px; }
+.cmd { position: relative; margin: 0 0 16px; }
+.cmd pre {
+  margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px;
+  padding: 12px 84px 12px 14px; overflow-x: auto; font-family: var(--font-mono); font-size: .84rem; line-height: 1.5;
+}
+.cmd pre code { background: none; padding: 0; font-size: inherit; }
+.copy {
+  position: absolute; top: 8px; right: 8px;
+  font: 600 .72rem var(--font-body); letter-spacing: .04em; text-transform: uppercase;
+  background: var(--surface); color: var(--muted); border: 1px solid var(--line); border-radius: 4px;
+  padding: 4px 8px; cursor: pointer;
+}
+.copy:hover { color: var(--accent); border-color: var(--accent); }
+
+.table-wrap { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 700; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tfoot td { font-weight: 600; border-top: 2px solid var(--ink); }
+
+.flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 10px; font-family: var(--font-mono); font-size: .8rem; }
+.flow span { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; }
+.flow i { color: var(--muted); font-style: normal; }
+.loop { border: 1px dashed var(--accent); border-radius: 8px; padding: 12px 14px 4px; margin: 0 0 18px; background: var(--accent-soft); }
+.loop p.label { font-size: var(--step--1); color: var(--accent); font-weight: 600; margin: 0 0 6px; }
+
+.note { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 12px 14px; margin: 0 0 18px; border-radius: 0 6px 6px 0; font-size: var(--step--1); }
+.note strong { color: var(--warn); }
+
+.steps { list-style: none; padding: 0; counter-reset: step; display: grid; gap: 18px; }
+.steps > li { counter-increment: step; display: grid; grid-template-columns: 2.2rem minmax(0, 1fr); gap: 12px; margin: 0; }
+.steps > li::before {
+  content: counter(step); font-family: var(--font-display); font-weight: 800; font-size: var(--step-1);
+  color: var(--accent); line-height: 1.4; font-variant-numeric: tabular-nums;
+}
+.steps > li > div { min-width: 0; }
+.steps h3 { margin-top: 0; }
+.out { font-size: var(--step--1); color: var(--muted); margin: -4px 0 10px; }
+.out code { color: var(--ink); }
+
+.gate { display: inline-block; font: 600 .7rem var(--font-body); text-transform: uppercase; letter-spacing: .06em; color: var(--ok); border: 1px solid currentColor; border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
+
+.checklist { list-style: none; padding: 0; display: grid; gap: 4px; }
+.checklist label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; padding: 6px 8px; border-radius: 6px; }
+.checklist label:hover { background: var(--surface); }
+.checklist input { margin-top: .35em; accent-color: var(--accent); width: 1rem; height: 1rem; flex: none; }
+.checklist input:checked + span { color: var(--muted); text-decoration: line-through; }
+.progress { font-size: var(--step--1); color: var(--muted); margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+
+footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); font-size: var(--step--1); color: var(--muted); }
+
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="shell">
+  <nav class="toc" aria-label="Spis treści">
+    <p>Spis treści</p>
+    <ol>
+      <li><a href="#cel">Cel i ocena</a></li>
+      <li><a href="#proces">Proces w skrócie</a></li>
+      <li><a href="#setup">0. Przygotowanie</a></li>
+      <li><a href="#fundament">1. Od briefu do roadmapy</a></li>
+      <li><a href="#roadmapa">2. Roadmapa</a></li>
+      <li><a href="#petla">3. Pętla na każdy element</a></li>
+      <li><a href="#weather">Weatherstack: pułapki</a></li>
+      <li><a href="#testy">Testy i quality gates</a></li>
+      <li><a href="#oddanie">4. Oddanie</a></li>
+      <li><a href="#skille">Skille: ściąga</a></li>
+      <li><a href="#estymacja">Estymacja</a></li>
+      <li><a href="#checklista">Checklista</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <p class="eyebrow">Zadanie rekrutacyjne · AI Software Engineer</p>
+      <h1>Property Manager: instrukcja implementacji</h1>
+      <p class="lede">GraphQL API i frontend w React do zarządzania nieruchomościami. Przy tworzeniu nieruchomości aplikacja pobiera aktualną pogodę z Weatherstack. Całość budujemy w podejściu AI-first, z własnymi skillami w Claude Code.</p>
+      <ul class="facts">
+        <li><b>17–26 h</b><span>+ 15–20% bufora</span></li>
+        <li><b>10 skilli</b><span>w <code>.claude/skills/</code></span></li>
+        <li><b>8 elementów</b><span>3 fundamenty, 5 slice'ów</span></li>
+        <li><b>1 repo</b><span>publiczne, z sesjami AI</span></li>
+      </ul>
+    </header>
+
+    <section id="cel">
+      <h2>Cel i kryteria oceny</h2>
+      <p>Encja <code>Property</code> ma pola <code>id</code>, <code>city</code>, <code>street</code>, <code>state</code> (skrót, np. AZ), <code>zipCode</code> (5 cyfr), <code>weatherData</code> (obiekt <code>current</code> z Weatherstack), <code>lat</code> i <code>long</code>. API pozwala wylistować nieruchomości, posortować je po dacie utworzenia, filtrować po mieście, kodzie i stanie, pobrać szczegóły, dodać i usunąć. Weatherstack wywołujemy <strong>tylko</strong> w mutacji tworzącej nieruchomość.</p>
+      <p>Stack narzucony przez firmę to TypeScript/Node na backendzie i React/TypeScript na frontendzie. Bazę danych wybieramy sami.</p>
+      <p>Rekruter oceni:</p>
+      <ul>
+        <li>jakość kodu: code smells, wzorce, standardy, złożoność;</li>
+        <li>dobór technologii i bibliotek;</li>
+        <li>kompletność zakresu;</li>
+        <li><strong>jakość zestawu narzędzi AI i promptów</strong>. Tę część oceny budują skille, artefakty w <code>context/</code> i opublikowane sesje.</li>
+      </ul>
+    </section>
+
+    <section id="proces">
+      <h2>Proces w skrócie</h2>
+      <p>Każdy krok zostawia plik w <code>context/</code>, który czyta następny krok. Dzięki temu decyzje nie giną razem z sesją, a rekruter widzi tok rozumowania obok kodu.</p>
+      <div class="flow" aria-label="Kroki jednorazowe">
+        <span>brief</span><i>→</i><span>/shape</span><i>→</i><span>/prd</span><i>→</i><span>/tech-stack</span><i>→</i><span>/roadmap</span><i>→</i><span>/test-plan</span>
+      </div>
+      <div class="loop">
+        <p class="label">Dla każdego elementu roadmapy (change-id):</p>
+        <div class="flow">
+          <span>/plan</span><i>→</i><span>/plan-review</span><i>→</i><span>/implement</span><i>⟲ każda faza</i><i>→</i><span>/mutation</span><i>→</i><span>/review</span><i>→</i><span>poprawki + lessons</span>
+        </div>
+      </div>
+      <p>Wszystkie skille uruchamiasz ręcznie, Claude nie wywoła ich sam. Zatwierdzasz stack, podział na fazy, każdą fazę i każdy commit. <code>/plan-review</code> i <code>/review</code> działają w osobnym kontekście, więc recenzent nie przejmuje założeń autora.</p>
+    </section>
+
+    <section id="setup">
+      <h2><span class="n">0</span>Przygotowanie środowiska</h2>
+      <p class="out">Czas: 1–2 h. Skille są już gotowe w <code>property-manager/.claude/skills/</code>.</p>
+      <ol class="steps">
+        <li><div>
+          <h3>Repozytorium</h3>
+          <div class="cmd"><pre><code>cd ~/projects/taskTreeCover/property-manager
+git init -b main
+cp ../spectreecover docs/brief.txt</code></pre></div>
+        </div></li>
+        <li><div>
+          <h3>Klucz Weatherstack i sprawdzenie planu</h3>
+          <p>Załóż darmowe konto i od razu sprawdź, czy Twój plan obsługuje HTTPS. Darmowe plany zwykle odrzucają HTTPS błędem <code>105</code> i mają mały miesięczny limit zapytań.</p>
+          <div class="cmd"><pre><code>curl -s "https://api.weatherstack.com/current?access_key=$WEATHERSTACK_KEY&amp;query=85268" | head -c 400</code></pre></div>
+          <p>Klucz trzymaj w <code>.env</code> (dodanym do <code>.gitignore</code>), a w repo zostaw tylko <code>.env.example</code>.</p>
+        </div></li>
+        <li><div>
+          <h3><code>CLAUDE.md</code></h3>
+          <p>Krótki, najwyżej 60–80 linii. Opisz w nim:</p>
+          <ul>
+            <li>stack i strukturę monorepo;</li>
+            <li>komendy: <code>pnpm dev</code>, <code>test</code>, <code>typecheck</code>, <code>lint</code>;</li>
+            <li>konwencje: warstwy resolver → service → repository/adapter, walidacja zod na wejściu, brak <code>any</code>;</li>
+            <li>zakazy: żadnych sekretów w kodzie i żadnych prawdziwych wywołań Weatherstack w testach;</li>
+            <li>odnośniki do <code>context/prd.md</code>, <code>tech-stack.md</code> i <code>lessons.md</code>.</li>
+          </ul>
+          <p>Uzupełniaj go po <code>/tech-stack</code> i <code>F-01</code>.</p>
+        </div></li>
+        <li><div>
+          <h3>Serwery MCP (<code>.mcp.json</code>)</h3>
+          <div class="cmd"><pre><code>{
+  "mcpServers": {
+    "context7":   { "command": "npx", "args": ["-y", "@upstash/context7-mcp"] },
+    "playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@latest"] }
+  }
+}</code></pre></div>
+        </div></li>
+        <li><div>
+          <h3>Hook z typecheckiem (<code>.claude/settings.json</code>)</h3>
+          <p>Dodaj go po <code>F-01</code>, kiedy istnieje już skrypt <code>typecheck</code>. Kod wyjścia 2 przekazuje błędy z powrotem agentowi, więc sam je poprawi.</p>
+          <div class="cmd"><pre><code>{
+  "hooks": {
+    "PostToolUse": [{
+      "matcher": "Edit|Write",
+      "hooks": [{ "type": "command", "command": "pnpm -s typecheck 1>&amp;2 || exit 2" }]
+    }]
+  }
+}</code></pre></div>
+        </div></li>
+      </ol>
+    </section>
+
+    <section id="fundament">
+      <h2><span class="n">1</span>Od briefu do roadmapy</h2>
+      <p class="out">Czas: 2–3 h. Uruchamiaj kroki po kolei w jednej sesji. Między krokami możesz zrobić <code>/clear</code>, bo wszystko jest w plikach.</p>
+      <ol class="steps">
+        <li><div>
+          <h3>/shape <span class="gate">wywiad</span></h3>
+          <div class="cmd"><pre><code>/shape docs/brief.txt</code></pre></div>
+          <p class="out">Wynik: <code>context/shape-notes.md</code> z decyzjami, założeniami, non-goals i ryzykami.</p>
+          <p>Decyzje, które warto podjąć tutaj:</p>
+          <ul>
+            <li>co wysyłamy do Weatherstack: pełny adres czy sam zip;</li>
+            <li>co robimy, gdy Weatherstack nie odpowiada: odrzucamy mutację czy zapisujemy bez pogody;</li>
+            <li>czy filtry są dokładne, czy częściowe i bez rozróżniania wielkości liter;</li>
+            <li>czy potrzebna jest paginacja;</li>
+            <li>czy usuwanie jest trwałe, czy miękkie.</li>
+          </ul>
+        </div></li>
+        <li><div>
+          <h3>/prd</h3>
+          <div class="cmd"><pre><code>/prd</code></pre></div>
+          <p class="out">Wynik: <code>context/prd.md</code> z wymaganiami FR i kryteriami Given/When/Then oraz tabelą, która wiąże każdy punkt briefu z wymaganiem.</p>
+        </div></li>
+        <li><div>
+          <h3>/tech-stack <span class="gate">akceptacja</span></h3>
+          <div class="cmd"><pre><code>/tech-stack</code></pre></div>
+          <p class="out">Wynik: <code>context/tech-stack.md</code> z porównaniem opcji, najmocniejszym argumentem przeciw każdemu wyborowi i wersjami sprawdzonymi w context7.</p>
+          <p>Spodziewany wynik:</p>
+          <ul>
+            <li>monorepo na pnpm workspaces;</li>
+            <li>backend: GraphQL Yoga lub Apollo Server, schema-first z graphql-codegen;</li>
+            <li>baza: PostgreSQL w Dockerze, Prisma lub Drizzle, walidacja zod;</li>
+            <li>frontend: Vite, React, Apollo Client lub urql z typowanymi hookami;</li>
+            <li>testy: Vitest i MSW, do E2E Playwright.</li>
+          </ul>
+        </div></li>
+        <li><div>
+          <h3>/roadmap</h3>
+          <div class="cmd"><pre><code>/roadmap</code></pre></div>
+          <p class="out">Wynik: <code>context/roadmap.md</code> z tabelą statusów (todo, planned, in-progress, review, done).</p>
+        </div></li>
+        <li><div>
+          <h3>/test-plan</h3>
+          <div class="cmd"><pre><code>/test-plan</code></pre></div>
+          <p class="out">Wynik: <code>context/test-plan.md</code> z rejestrem ryzyk, poziomami testów, bramkami jakości i instrukcjami, jak dodać każdy rodzaj testu.</p>
+        </div></li>
+      </ol>
+    </section>
+
+    <section id="roadmapa">
+      <h2><span class="n">2</span>Proponowana roadmapa</h2>
+      <p>To punkt odniesienia do porównania z tym, co wygeneruje <code>/roadmap</code>. Najbardziej ryzykowna integracja, Weatherstack, jest w pierwszym slice'ie.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>change-id</th><th>Zakres</th><th class="num">Czas</th></tr></thead>
+        <tbody>
+          <tr><td>F-01</td><td><code>repo-skeleton</code></td><td>Monorepo, TypeScript w trybie strict, ESLint i Prettier, Vitest, docker-compose z Postgresem, CI</td><td class="num">1–1,5 h</td></tr>
+          <tr><td>F-02</td><td><code>graphql-and-schema</code></td><td>Schemat bazy z migracją, szkielet serwera GraphQL, codegen</td><td class="num">1 h</td></tr>
+          <tr><td>S-01</td><td><code>create-property-with-weather</code></td><td><code>createProperty</code>, walidacja (stan z listy USA, zip <code>^\d{5}$</code>), adapter <code>WeatherProvider</code> z timeoutem i mapowaniem błędów</td><td class="num">2–2,5 h</td></tr>
+          <tr><td>S-02</td><td><code>list-filter-sort</code></td><td><code>properties(filter, sort)</code>, filtry po city, zipCode i state, sortowanie po <code>createdAt</code></td><td class="num">1–1,5 h</td></tr>
+          <tr><td>S-03</td><td><code>details-and-delete</code></td><td><code>property(id)</code> i <code>deleteProperty(id)</code>, obsługa nieistniejącego id</td><td class="num">1 h</td></tr>
+          <tr><td>S-04</td><td><code>ui-list</code></td><td>Lista z filtrami i sortowaniem, stany: ładowanie, pusto, błąd</td><td class="num">2–3 h</td></tr>
+          <tr><td>S-05</td><td><code>ui-create-details-delete</code></td><td>Formularz dodawania, widok szczegółów z pogodą, usuwanie z potwierdzeniem w UI</td><td class="num">2–3 h</td></tr>
+          <tr><td>F-03</td><td><code>delivery</code></td><td>README, <code>docs/ai-setup.md</code>, eksport sesji, test E2E ścieżki głównej</td><td class="num">2–3 h</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="petla">
+      <h2><span class="n">3</span>Pętla dla każdego elementu roadmapy</h2>
+      <p>Powtórz ją dla F-01, F-02, S-01 i kolejnych. Tam, gdzie jest napisane „akceptacja”, decyzję podejmujesz Ty.</p>
+      <ol class="steps">
+        <li><div>
+          <h3>/plan <span class="gate">akceptacja</span></h3>
+          <div class="cmd"><pre><code>/plan S-01</code></pre></div>
+          <ul>
+            <li>Najpierw research: kod przez subagenta Explore, dokumentacja przez context7.</li>
+            <li>Potem najwyżej 6 pytań o decyzje, z sugerowaną odpowiedzią.</li>
+            <li>Zatwierdzasz listę faz, dopiero potem powstaje pełny plan.</li>
+            <li>Każda faza ma sprawdzenia agenta (komendy) i sprawdzenia, które robisz Ty.</li>
+          </ul>
+          <p class="out">Wynik: <code>context/changes/&lt;change-id&gt;/plan.md</code></p>
+        </div></li>
+        <li><div>
+          <h3>/plan-review</h3>
+          <div class="cmd"><pre><code>/plan-review create-property-with-weather</code></pre></div>
+          <p>Działa w świeżym kontekście i kończy się werdyktem <code>READY</code>, <code>READY WITH NOTES</code> albo <code>NEEDS CHANGES</code>. Jeśli plan wymaga zmian, popraw go przez <code>/plan</code> w trybie edycji.</p>
+        </div></li>
+        <li><div>
+          <h3>/implement, jedna faza na uruchomienie <span class="gate">akceptacja</span></h3>
+          <div class="cmd"><pre><code>/implement create-property-with-weather</code></pre></div>
+          <p>Co dzieje się w każdej fazie:</p>
+          <ul>
+            <li>agent pisze test, który najpierw nie przechodzi, i dopiero potem kod;</li>
+            <li>uruchamia sprawdzenia, typecheck i lint;</li>
+            <li>czeka, aż wykonasz swoje sprawdzenia;</li>
+            <li>proponuje commit <code>feat(&lt;change-id&gt;): …</code> i robi go po Twojej akceptacji, dodając pliki po nazwie;</li>
+            <li>dopisuje hash commita do sekcji Progress w planie.</li>
+          </ul>
+          <p>Gdy kontekst robi się długi, zrób <code>/clear</code> przed następną fazą.</p>
+        </div></li>
+        <li><div>
+          <h3>/mutation</h3>
+          <div class="cmd"><pre><code>/mutation create-property-with-weather</code></pre></div>
+          <p>Stryker mutuje tylko krytyczną logikę zmiany: walidację, adapter Weatherstack, mapowanie błędów i budowanie filtrów. Używa szybkich testów bez bazy i sieci. Każdy mutant, który przeżył, dostaje jedną decyzję:</p>
+          <ul>
+            <li><code>strengthen</code>: dopisujemy asercję na zachowanie;</li>
+            <li><code>equivalent</code>: mutacja nie zmienia niczego obserwowalnego;</li>
+            <li><code>accept</code>: test byłby lustrem implementacji;</li>
+            <li><code>bug</code>: kod produkcyjny jest już błędny, więc sprawa idzie do Ciebie.</li>
+          </ul>
+          <p>Kod produkcyjny pozostaje nietknięty. Po dopisaniu asercji Stryker uruchamia się ponownie.</p>
+          <p class="out">Wynik: <code>context/changes/&lt;change-id&gt;/mutation.md</code> z wynikiem przed i po. Pomijasz ten krok dla F-01, F-02 i slice'ów czysto UI.</p>
+        </div></li>
+        <li><div>
+          <h3>/review <span class="gate">akceptacja</span></h3>
+          <div class="cmd"><pre><code>/review create-property-with-weather</code></pre></div>
+          <p>Review działa w świeżym kontekście i robi trzy rzeczy:</p>
+          <ul>
+            <li>porównuje plan z diffem: <code>done</code>, <code>diverged</code>, <code>absent</code>, <code>unplanned</code>;</li>
+            <li>ocenia 6 obszarów jako ok, concern albo fail;</li>
+            <li>zgłasza najwyżej 10 potwierdzonych znalezisk <code>R1…</code>.</li>
+          </ul>
+          <p>Potem w głównej sesji decydujesz o każdym znalezisku: fix, defer, reject albo <em>make it a rule</em>. Ta ostatnia opcja dopisuje regułę do <code>context/lessons.md</code>, a kolejne skille będą jej przestrzegać.</p>
+        </div></li>
+      </ol>
+      <div class="note"><strong>Zapisuj sesje na bieżąco.</strong> Po każdym zakończonym elemencie roadmapy wyeksportuj sesję (<code>/export</code>) do <code>ai-sessions/</code>. Na koniec trudno odtworzyć kolejność pracy.</div>
+    </section>
+
+    <section id="weather">
+      <h2>Weatherstack: pułapki do obsłużenia</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Pułapka</th><th>Co zrobić</th></tr></thead>
+        <tbody>
+          <tr><td>Błąd przychodzi z HTTP 200 i <code>{"success": false, "error": {…}}</code></td><td>Adapter jawnie sprawdza <code>success</code> i mapuje kod błędu na błąd GraphQL. To osobny przypadek testowy.</td></tr>
+          <tr><td>Darmowy plan może nie obsługiwać HTTPS (błąd <code>105</code>)</td><td>Bazowy URL ustawiany przez env (<code>WEATHERSTACK_BASE_URL</code>), z decyzją opisaną w README.</td></tr>
+          <tr><td>Mały miesięczny limit zapytań</td><td>W testach i developmencie zawsze MSW. Prawdziwe API tylko w sprawdzeniach ręcznych.</td></tr>
+          <tr><td><code>location.lat</code> i <code>location.lon</code> są stringami</td><td>Parsowanie do liczb i mapowanie <code>lon</code> na <code>long</code> w adapterze, z walidacją zod na odpowiedzi.</td></tr>
+          <tr><td>Treść zapytania wpływa na trafność lokalizacji</td><td>Decyzja z <code>/shape</code>, np. <code>"street, city, state zip"</code>, z zipem jako planem awaryjnym.</td></tr>
+          <tr><td>Wywołanie tylko przy tworzeniu</td><td>Adapter wstrzykiwany wyłącznie do <code>CreatePropertyService</code>. Test sprawdza, że zapytania nie wywołują pogody.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="testy">
+      <h2>Testy i quality gates</h2>
+      <p>Brief nie wymaga testów ani quality gates wprost. Ocenia jednak „coding standards and best practices” i jakość zestawu narzędzi AI, więc testy i automatyczne bramki są oczekiwane domyślnie. To również najmocniejszy dowód, że kod napisany przez AI został zweryfikowany. Ostateczny kształt ustali <code>/test-plan</code>. Poniżej punkt startowy.</p>
+      <h3>Co testujemy i na jakim poziomie</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Poziom</th><th>Zakres</th><th>Narzędzia</th></tr></thead>
+        <tbody>
+          <tr><td>Unit</td><td>Walidacja wejścia (stan, zip, puste pola), mapowanie odpowiedzi Weatherstack (stringi na liczby, <code>lon</code> na <code>long</code>), mapowanie błędów, w tym <code>success: false</code> i timeout</td><td>Vitest</td></tr>
+          <tr><td>Integracja</td><td>Zapytania GraphQL przez serwer do prawdziwej bazy Postgres: tworzenie, lista, filtry, sortowanie, szczegóły, usuwanie, nieistniejące id. Weatherstack jest podmieniony na poziomie sieci. Test sprawdza też, że zapytania nie wywołują pogody.</td><td>Vitest, <code>yoga.fetch</code> lub supertest, MSW, Postgres z docker-compose lub Testcontainers</td></tr>
+          <tr><td>Komponenty</td><td>Formularz (walidacja i błędy z API), lista (ładowanie, pusto, błąd)</td><td>Vitest, Testing Library, MSW</td></tr>
+          <tr><td>E2E</td><td>1–2 kluczowe ścieżki: dodaj nieruchomość, zobacz ją na liście z filtrem, otwórz szczegóły, usuń</td><td>Playwright, z Weatherstackiem podmienionym w backendzie</td></tr>
+        </tbody>
+      </table></div>
+      <p>Nie testujemy kodu generowanego przez codegen, samego frameworka ani prawdziwego Weatherstacka w testach automatycznych.</p>
+      <h3>Bramki jakości</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Bramka</th><th>Kiedy</th><th>Musi przejść</th></tr></thead>
+        <tbody>
+          <tr><td>Hook w Claude Code</td><td>Po każdej edycji pliku przez agenta</td><td>Typecheck (błędy wracają do agenta)</td></tr>
+          <tr><td>Pre-commit (husky i lint-staged)</td><td>Każdy commit, także te z <code>/implement</code></td><td>ESLint i Prettier na zmienionych plikach, typecheck, testy jednostkowe</td></tr>
+          <tr><td>CI (GitHub Actions)</td><td>Każdy push i PR</td><td>Lint, typecheck, testy jednostkowe i integracyjne z Postgresem, build, E2E</td></tr>
+          <tr><td>Stryker (<code>/mutation</code>, job w CI)</td><td>Po każdym slice'ie backendu; w CI tryb przyrostowy</td><td>Na start tylko raport; po ustaleniu bazy <code>break</code> na jej poziomie</td></tr>
+          <tr><td><code>/review</code></td><td>Koniec każdego elementu roadmapy</td><td>Werdykt bez znalezisk typu blocker</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Testy mutacyjne (Stryker)</h3>
+      <p>Pokrycie kodu mówi tylko, że kod wykonał się w testach. Testy mutacyjne sprawdzają, czy asercje zauważyłyby błąd. Stryker wprowadza drobne celowe usterki, np. <code>&gt;</code> zamiast <code>&gt;=</code> albo odwrócony warunek, i uruchamia testy. Mutant, który przeżył, to miejsce, którego nie pilnuje żadna asercja. AI rzadko zostawia kod niepokryty, ale często pokryty tylko pozornie, dlatego to dobra bramka dla testów pisanych przez agenta.</p>
+      <ul>
+        <li><strong>Zakres:</strong> tylko pakiet <code>api</code>, katalogi z logiką (walidacja, serwisy, adapter, mapowanie błędów). Pomijamy resolvery, kod z codegenu i konfigurację.</li>
+        <li><strong>Szybkie przebiegi:</strong> osobny <code>vitest.unit.config.ts</code> z testami bez bazy i sieci, analiza pokrycia per test oraz tryb przyrostowy.</li>
+        <li><strong>Próg:</strong> na start <code>break: null</code>. Po pierwszym <code>/mutation</code> ustal bazowy wynik, np. 70%, i dopiero wtedy włącz go w CI.</li>
+        <li><strong>Wynik to wskazówka, nie cel.</strong> Liczą się decyzje o każdym mutancie, który przeżył, zapisane w <code>mutation.md</code>. Nie gonimy 100%.</li>
+      </ul>
+      <p>Szkic konfiguracji. <code>/mutation</code> sprawdza aktualne nazwy opcji w context7 przed zapisaniem:</p>
+      <div class="cmd"><pre><code>// apps/api/stryker.config.json
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "packageManager": "pnpm",
+  "testRunner": "vitest",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "vitest": { "configFile": "vitest.unit.config.ts" },
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/domain/**/*.ts", "src/services/**/*.ts", "src/weather/**/*.ts",
+    "!src/**/*.test.ts", "!src/generated/**"
+  ],
+  "ignoreStatic": true,
+  "incremental": true,
+  "incrementalFile": "reports/stryker-incremental.json",
+  "reporters": ["clear-text", "progress", "html", "json"],
+  "htmlReporter": { "fileName": "reports/mutation/index.html" },
+  "jsonReporter": { "fileName": "reports/mutation/mutation.json" },
+  "thresholds": { "high": 85, "low": 70, "break": null }
+}</code></pre></div>
+      <p>Dopisz do <code>CLAUDE.md</code> krótki akapit swoimi słowami: Stryker działa tylko na celach z sekcji <em>Mutation targets</em> w test planie, przebiegi są zawężone (<code>--mutate</code>), a mutanty, które przeżyły, rozpatrujemy pojedynczo i nie poprawiamy kodu produkcyjnego pod mutanty.</p>
+      <p>Próg pokrycia kodu testami można ustawić tylko dla warstwy serwisów i adapterów, np. 80%. Nie ma sensu liczyć go globalnie, bo pokrycie nie jest celem samym w sobie. Zielony badge CI w README to prosty, widoczny sygnał dla rekrutera.</p>
+    </section>
+
+    <section id="oddanie">
+      <h2><span class="n">4</span>Oddanie</h2>
+      <ul>
+        <li><strong>README</strong>: wymagania (Node, pnpm, Docker), <code>cp .env.example .env</code>, <code>docker compose up -d</code>, <code>pnpm i &amp;&amp; pnpm dev</code>, przykładowe zapytania GraphQL, decyzje architektoniczne i znane ograniczenia.</li>
+        <li><strong><code>docs/ai-setup.md</code></strong>: skille, <code>CLAUDE.md</code>, hooki, MCP, przebieg pracy (<code>docs/ai-workflow.md</code>) i odnośniki do artefaktów w <code>context/</code>.</li>
+        <li><strong><code>ai-sessions/</code></strong>: wyeksportowane sesje z zamaskowanym kluczem API. Sprawdź je poleceniem <code>grep</code> pod kątem klucza przed pushem.</li>
+        <li><strong>Walkthrough</strong>: pokaż przejście od briefu przez PRD, roadmapę, plan i commity faz do review i lessons, a na koniec działającą aplikację.</li>
+      </ul>
+    </section>
+
+    <section id="skille">
+      <h2>Skille: ściąga</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Komenda</th><th>Wynik</th><th>Co gwarantuje</th></tr></thead>
+        <tbody>
+          <tr><td><code>/shape &lt;brief&gt;</code></td><td><code>shape-notes.md</code></td><td>Rundy najwyżej 3 pytań z rekomendacją. Decyzje D-xx, non-goals, ryzyka.</td></tr>
+          <tr><td><code>/prd</code></td><td><code>prd.md</code></td><td>Każdy punkt briefu ma odpowiednik w PRD. Każde wymaganie Must ma kryterium, które da się zautomatyzować.</td></tr>
+          <tr><td><code>/tech-stack</code></td><td><code>tech-stack.md</code></td><td>2–3 opcje na obszar, argument przeciw każdemu wyborowi, wersje sprawdzone w context7.</td></tr>
+          <tr><td><code>/roadmap</code></td><td><code>roadmap.md</code></td><td>Fundamenty F-xx i pionowe slice'y S-xx. Każde wymaganie Must ma swój element.</td></tr>
+          <tr><td><code>/test-plan</code></td><td><code>test-plan.md</code></td><td>Ryzyka, najtańszy skuteczny poziom testu, bramki jakości, instrukcje.</td></tr>
+          <tr><td><code>/plan &lt;id&gt;</code></td><td><code>changes/&lt;id&gt;/plan.md</code></td><td>Research, decyzje z użytkownikiem, zaakceptowane fazy, sprawdzenia agenta i Twoje.</td></tr>
+          <tr><td><code>/plan-review &lt;id&gt;</code></td><td><code>plan-review.md</code></td><td>Świeży kontekst, 9 kontroli, werdykt.</td></tr>
+          <tr><td><code>/implement &lt;id&gt; [n]</code></td><td>kod i commit</td><td>Jedna faza na raz, test najpierw, Twoje sprawdzenia, commit po akceptacji, hash w Progress.</td></tr>
+          <tr><td><code>/mutation &lt;id&gt;</code></td><td><code>mutation.md</code></td><td>Stryker na krytycznych modułach, decyzja dla każdego mutanta, który przeżył, asercje tylko tam, gdzie jest realna luka, wynik przed i po.</td></tr>
+          <tr><td><code>/review &lt;id&gt;</code></td><td><code>review.md</code></td><td>Plan kontra diff, najwyżej 10 potwierdzonych znalezisk, decyzje i reguły w <code>lessons.md</code>.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="estymacja">
+      <h2>Estymacja</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Etap</th><th class="num">Godziny</th></tr></thead>
+        <tbody>
+          <tr><td>0. Przygotowanie: repo, <code>CLAUDE.md</code>, MCP, hooki, Weatherstack</td><td class="num">1–2</td></tr>
+          <tr><td>1. Shape, PRD, tech stack, roadmapa, test plan</td><td class="num">2–3</td></tr>
+          <tr><td>Fundamenty F-01 i F-02</td><td class="num">2–2,5</td></tr>
+          <tr><td>Backend S-01 do S-03</td><td class="num">4–5</td></tr>
+          <tr><td>Frontend S-04 i S-05</td><td class="num">4–6</td></tr>
+          <tr><td>Testy mutacyjne: konfiguracja Strykera i <code>/mutation</code> dla S-01 do S-03</td><td class="num">1–2</td></tr>
+          <tr><td>Review, poprawki, lessons</td><td class="num">1–2</td></tr>
+          <tr><td>F-03: oddanie, E2E, sesje, README</td><td class="num">2–3</td></tr>
+        </tbody>
+        <tfoot><tr><td>Razem (+ 15–20% bufora)</td><td class="num">17–26</td></tr></tfoot>
+      </table></div>
+    </section>
+
+    <section id="checklista">
+      <h2>Checklista przed oddaniem</h2>
+      <p class="progress" id="progress" aria-live="polite"></p>
+      <ul class="checklist" id="checklist">
+        <li><label><input type="checkbox" id="c1"><span>Wszystkie 7 user stories działają end-to-end (API i UI)</span></label></li>
+        <li><label><input type="checkbox" id="c2"><span>Weatherstack wywoływany tylko w <code>createProperty</code>, co potwierdza test</span></label></li>
+        <li><label><input type="checkbox" id="c3"><span><code>lat</code> i <code>long</code> to liczby, <code>weatherData</code> zawiera obiekt <code>current</code></span></label></li>
+        <li><label><input type="checkbox" id="c4"><span>Typecheck, lint i testy przechodzą w CI</span></label></li>
+        <li><label><input type="checkbox" id="c11"><span>Slice'y backendu mają <code>mutation.md</code>, a każdy mutant, który przeżył, ma decyzję</span></label></li>
+        <li><label><input type="checkbox" id="c5"><span>README: świeży klon uruchamia się według instrukcji (sprawdzone w czystym katalogu)</span></label></li>
+        <li><label><input type="checkbox" id="c6"><span><code>context/</code> zawiera shape-notes, PRD, tech stack, roadmapę, test plan, plany, review i lessons</span></label></li>
+        <li><label><input type="checkbox" id="c7"><span>Każdy element roadmapy ma status <code>done</code>, a fazy mają hashe commitów</span></label></li>
+        <li><label><input type="checkbox" id="c8"><span><code>ai-sessions/</code> wyeksportowane i przejrzane, klucz API zamaskowany</span></label></li>
+        <li><label><input type="checkbox" id="c9"><span><code>docs/ai-setup.md</code> opisuje skille, hooki, MCP i <code>CLAUDE.md</code></span></label></li>
+        <li><label><input type="checkbox" id="c10"><span>Repo publiczne, link wysłany rekruterowi</span></label></li>
+      </ul>
+    </section>
+
+    <footer>
+      Proces i skille: <code>docs/ai-workflow.md</code> oraz <code>.claude/skills/*/SKILL.md</code>.
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll('.cmd').forEach(function (block) {
+    var btn = document.createElement('button');
+    btn.className = 'copy';
+    btn.type = 'button';
+    btn.textContent = 'Kopiuj';
+    btn.addEventListener('click', function () {
+      var text = block.querySelector('pre').innerText;
+      var done = function () { btn.textContent = 'Skopiowano'; setTimeout(function () { btn.textContent = 'Kopiuj'; }, 1500); };
+      var fallback = function () {
+        var range = document.createRange();
+        range.selectNodeContents(block.querySelector('pre'));
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        btn.textContent = 'Zaznaczono, Ctrl+C';
+      };
+      try {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } catch (e) { fallback(); }
+    });
+    block.appendChild(btn);
+  });
+
+  var KEY = 'pm-guide-checklist';
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('#checklist input'));
+  var progress = document.getElementById('progress');
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+  function render() {
+    var n = boxes.filter(function (b) { return b.checked; }).length;
+    progress.textContent = 'Gotowe: ' + n + ' / ' + boxes.length;
+  }
+  boxes.forEach(function (b) {
+    b.checked = !!saved[b.id];
+    b.addEventListener('change', function () {
+      saved[b.id] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+      render();
+    });
+  });
+  render();
+})();
+</script>
