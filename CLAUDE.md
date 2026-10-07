@@ -52,7 +52,17 @@ silently pick one.
 
 ## Stack
 
-TODO: fill in after `/tech-stack` (`context/tech-stack.md`).
+Details and trade-offs: `context/tech-stack.md`.
+
+- Node 24 (`.nvmrc`), pnpm 12 workspaces: `apps/api`, `apps/web`, `packages/shared`.
+- API: GraphQL Yoga + graphql 17, SDL-first with GraphQL Code Generator; Drizzle ORM + `pg`
+  on PostgreSQL 18; zod; native `fetch`; pino.
+- Web: React 19 + Vite 8, React Router 8, TanStack Query, Tailwind 4.
+- Tests: Vitest 5, Testing Library, MSW 3, Testcontainers, Playwright, StrykerJS.
+- The API runs on Node type stripping (no tsx, no build): no enums or parameter properties,
+  `import type` for types, local imports end in `.ts`. tsc and ESLint enforce this.
+- TypeScript 6.0 (one compiler for tsc, typescript-eslint and the editor;
+  TS 7 is blocked by typescript-eslint support).
 
 ## Commands
 

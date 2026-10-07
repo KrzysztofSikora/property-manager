@@ -1,0 +1,268 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /tech-stack                                                                   
+
+● I'll start by reading the PRD and the other context artifacts.
+
+  Read 2 files, listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● The npm registry is the fastest authoritative source for current versions.
+  I'll check those first, then use context7 for the setup details.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Several majors moved since my training data: TypeScript 7, graphql 17, Vitest
+  5, MSW 3, React Router 8. Next I'll check whether their peer dependencies fit
+  together, and look up the current Node LTS.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● TypeScript 7 is out, but typescript-eslint caps TypeScript at <6.1, so I'll
+  pin TS 6.0. Apollo Server 5 supports only graphql 16. Now I'll check the
+  setups that matter most in the docs.
+
+  Called context7 6 times (ctrl+o to expand)
+
+● I'll check whether a shared workspace package still works with native type
+  stripping in a Node 24 container, since Node 24 won't strip types from files
+  under node_modules, where pnpm symlinks workspace packages.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Type stripping works fine through the pnpm symlink since Node resolves it to
+  the real path, so the API doesn't need tsx or a build step. Next I'll check
+  the codegen and TanStack Query setup.
+
+  Called context7 2 times, ran 1 shell command (ctrl+o to expand)
+
+● I've finished checking versions and compatibility, and I'm presenting the
+  proposed stack for you to confirm. I'll write context/tech-stack.md once you
+  approve.
+
+  Proposed tech stack (versions checked 2026-10-07 against the npm registry, 
+  nodejs.org and Docker Hub; setups checked with context7)
+
+  Area: Runtime
+  Choice: Node.js LTS
+  Version: 24.x (24.21)
+  Why: Active LTS. Node 26 isn't LTS yet.
+  Runner-up and why it lost: Node 22: still supported, but Vitest 5, MSW 3 and
+  React Router 8 need ≥22.12 anyway, and 24 is supported for longer.
+  ────────────────────────────────────────
+  Area: Running TS on the API
+  Choice: Node's built-in type stripping (erasableSyntaxOnly)
+  Version: —
+  Why: No tsx and no build step. I tested it in a node:24 container through a
+  pnpm-style workspace symlink, and it works.
+  Runner-up and why it lost: tsx is the safer, better-known option. We don't
+  need
+  it, though: no enums or decorators, and codegen can emit enumsAsTypes.
+  ────────────────────────────────────────
+  Area: Package manager / layout
+  Choice: pnpm workspaces: apps/api, apps/web, packages/shared
+  Version: pnpm 10+
+  Why: shared holds the zod address schema, state list and error codes, so the
+  UI
+  form and the API apply the same rules (FR-07, FR-13).
+  Runner-up and why it lost: npm workspaces: one tool fewer, but slower, and
+  missing dependencies aren't caught as strictly.
+  ────────────────────────────────────────
+  Area: GraphQL server
+  Choice: GraphQL Yoga on node:http
+  Version: 5.24
+  Why: Error masking is on by default, which fits FR-10 AC2. Errors carry codes
+  through extensions.code. Few dependencies.
+  Runner-up and why it lost: Apollo Server 5: better known, but it needs graphql
+
+  16 and an Express/standalone layer. Yoga does the same here with less.
+  ────────────────────────────────────────
+  Area: graphql-js
+  Choice: graphql
+  Version: 16.14
+  Why: Mature, and the whole ecosystem supports it.
+  Runner-up and why it lost: 17.0: only 4 months old and Apollo can't use it
+  yet.
+  Nothing in it helps us.
+  ────────────────────────────────────────
+  Area: Schema approach
+  Choice: SDL-first schema.graphql + GraphQL Code Generator
+  (typescript-resolvers
+  for the server, client-preset for the web)
+  Version: cli 7.4
+  Why: One schema file a reviewer can read, with types from resolver to React
+  component.
+  Runner-up and why it lost: Pothos (code-first): no codegen step on the server,
+
+  but the contract is harder to read in review.
+  ────────────────────────────────────────
+  Area: Database
+  Choice: PostgreSQL in Docker Compose
+  Version: 18
+  Why: A real unique index for concurrent duplicates (FR-08 AC2), jsonb for the
+  weather snapshot, and docker compose up starts it (FR-14).
+  Runner-up and why it lost: SQLite: no container needed, but it handles
+  concurrent writes worse and the brief expects a database service to start.
+  ────────────────────────────────────────
+  Area: Data access
+  Choice: Drizzle ORM + pg, migrations with drizzle-kit
+  Version: 0.45 / kit 0.31
+  Why: Types come straight from the TS schema with no generate step, it reads
+  like SQL, it supports a unique index on an expression, and jsonb().$type<>()
+  types the snapshot.
+  Runner-up and why it lost: Prisma 7: more mature tooling, but it adds a
+  generate step and its own schema language. Drizzle 1.0 is still beta, so we
+  use stable 0.45.
+  ────────────────────────────────────────
+  Area: Validation
+  Choice: zod
+  Version: 4.x
+  Why: CLAUDE.md requires it. Used for arguments, env config and the
+  Weatherstack
+  response.
+  Runner-up and why it lost: —
+  ────────────────────────────────────────
+  Area: Outbound HTTP
+  Choice: Native fetch + AbortSignal.timeout(5000)
+  Version: built in
+  Why: Covers the 5 s timeout and single attempt (A-08) with no extra
+  dependency.
+  Runner-up and why it lost: axios/ky: nothing we need from them.
+  ────────────────────────────────────────
+  Area: Config
+  Choice: node --env-file + zod parse
+  Version: built in
+  Why: No dotenv. Fails fast and names the missing variable (FR-14 AC3).
+  Runner-up and why it lost: dotenv: Node already does this.
+  ────────────────────────────────────────
+  Area: Logging
+  Choice: pino, JSON logs, request id per operation; URLs redacted by our own
+  helper
+  Version: 10.x
+  Why: Answers OQ-05. Structured logs we can capture and check that the key is
+  absent (NFR-01).
+  Runner-up and why it lost: Yoga's built-in console logger: no structure to
+  assert on.
+  ────────────────────────────────────────
+  Area: Frontend
+  Choice: React + Vite SPA
+  Version: 19.3 / Vite 8
+  Why: The brief requires React. Vite is the standard SPA tool.
+  Runner-up and why it lost: Next.js: SSR isn't needed and it adds a second
+  server.
+  ────────────────────────────────────────
+  Area: Routing
+  Choice: React Router (declarative mode)
+  Version: 8.x
+  Why: Three routes. useSearchParams covers filters in the URL (FR-11 AC3).
+  Runner-up and why it lost: TanStack Router: typed search params, but more
+  setup
+  than three routes need.
+  ────────────────────────────────────────
+  Area: Data fetching
+  Choice: TanStack Query + codegen TypedDocumentString + a small fetch wrapper
+  (the pattern the codegen docs recommend)
+  Version: 5.104
+  Why: Typed operations, and after a delete or create we refetch with an
+  explicit
+  invalidateQueries.
+  Runner-up and why it lost: urql/Apollo Client: normalized caches help little
+  here, and our delete returns only an ID, so cache invalidation would be
+  manual anyway.
+  ────────────────────────────────────────
+  Area: Forms
+  Choice: Plain React state + the shared zod schema
+  Version: —
+  Why: Four fields don't need a form library.
+  Runner-up and why it lost: React Hook Form: one dependency for four inputs.
+  ────────────────────────────────────────
+  Area: Styling
+  Choice: Tailwind CSS (Vite plugin)
+  Version: 4.3
+  Why: Fast to build a table, form and native <dialog>, and readable in JSX.
+  Runner-up and why it lost: CSS Modules: no dependency at all. Tailwind wins on
+
+  speed for loading, empty and error states.
+  ────────────────────────────────────────
+  Area: Unit/integration tests
+  Choice: Vitest (both apps) + Testing Library
+  Version: 5.0
+  Why: One runner for both apps, and native ESM/TS.
+  Runner-up and why it lost: Jest: ESM and TypeScript handling is still awkward.
+  ────────────────────────────────────────
+  Area: HTTP mocks
+  Choice: MSW
+  Version: 3.0
+  Why: Mocks Weatherstack at the HTTP level for adapter tests (timeout, 429,
+  success:false), and mocks GraphQL for UI tests. Other tests use a fake
+  adapter.
+  Runner-up and why it lost: nock: Node only, so it can't serve the UI tests.
+  ────────────────────────────────────────
+  Area: DB in tests
+  Choice: Testcontainers (Postgres)
+  Version: 12.2
+  Why: Tests run against the real unique index and migrations, and pnpm test
+  needs no setup beyond Docker.
+  Runner-up and why it lost: PGlite: no Docker, but a different driver and less
+  faithful concurrency.
+  ────────────────────────────────────────
+  Area: E2E
+  Choice: Playwright, API pointed at a stub Weatherstack through
+  WEATHERSTACK_BASE_URL
+  Version: 1.63
+  Why: Playwright MCP is already configured. No real API calls (NFR-02).
+  Runner-up and why it lost: Cypress: heavier, and nothing in it we need.
+  ────────────────────────────────────────
+  Area: Mutation
+  Choice: StrykerJS + vitest-runner
+  Version: 10.0
+  Why: Peer dependency vitest >=2, so Vitest 5 works. Targets come from
+  /test-plan.
+  Runner-up and why it lost: —
+  ────────────────────────────────────────
+  Area: TypeScript
+  Choice: TS strict
+  Version: 6.0.3 (not 7)
+  Why: typescript-eslint supports only TypeScript <6.1. TS 7, the Go-native
+  compiler, would break type-aware lint.
+  Runner-up and why it lost: Revisit when typescript-eslint supports 7.
+  ────────────────────────────────────────
+  Area: Lint/format
+  Choice: ESLint flat config + typescript-eslint strictTypeChecked
+  (no-explicit-any, layer boundaries with built-in no-restricted-imports) +
+  Prettier
+  Version: 10.12 / 8.71 / 3.9
+  Why: Type-aware rules enforce NFR-04 and NFR-06 without extra plugins.
+  Runner-up and why it lost: Biome: one fast tool, but weaker type-aware rules.
+  ────────────────────────────────────────
+  Area: Local run
+  Choice: docker compose up (Postgres + API + web). Locally: pnpm dev against
+  the
+  compose database
+  Version: Compose v5
+  Why: One command (FR-14).
+  Runner-up and why it lost: —
+
+  Architecture: resolver (maps GraphQL) → service (rules: normalize, duplicate
+  check, weather call, region check, save) → PropertyRepository (Drizzle) and
+  WeatherClient (fetch adapter). Dependencies are injected through a composition
+  root, so tests swap in a fake WeatherClient (NFR-07).
+
+  Things to know before you approve:
+  1. Your local Node is v20.20, which reached end of life in April 2026. Vitest
+     5, MSW 3 and React Router 8 won't run on it. You need Node 24 locally (I'd
+     add an .nvmrc / engines field). Docker works either way.
+  2. We're deliberately on TS 6.0 and graphql 16, one major behind, for
+     ecosystem compatibility.
+  3. Using Node's built-in type stripping means: import type everywhere
+     (verbatimModuleSyntax), .ts extensions in imports, no TS enums or parameter
+     properties.
+
+  Approve as is, or tell me what to change (for example tsx instead of type
+  stripping, or Apollo instead of Yoga), and I'll write context/tech-stack.md.
+
+✻ Brewed for 4m 6s · done 3:22 PM
