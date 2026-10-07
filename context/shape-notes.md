@@ -26,9 +26,9 @@ AI sessions and a README with run instructions.
 |----|-------|----------|--------|--------|
 | D-01 | Weatherstack failure on create | The mutation fails and nothing is saved. `weatherData`, `lat`, `long` are always present (non-null) on a stored property. | No other call is allowed later, so a property saved without weather could never get it. | user |
 | D-02 | Usage limit reached | Return a dedicated, clearly worded GraphQL error (e.g. `WEATHER_QUOTA_EXCEEDED`) that tells the operator to upgrade the plan or replace the API key. Other failures (timeout, network, invalid response, other API errors) return a generic `WEATHER_UNAVAILABLE`-type error. | The free plan quota is small, and when it runs out the operator has a clear fix. | user |
-| D-03 | Weatherstack query | `query` = the 5-digit `zipCode`. | A US ZIP is unambiguous. Weatherstack does not geocode streets, so a full address would not improve accuracy. | user |
+| D-03 | Weatherstack query | `query` = the full normalized address: `"<street>, <city>, <state> <zipCode>, United States"` (e.g. `"15528 E Golden Eagle Blvd, Fountain Hills, AZ 85268, United States"`). | The brief asks for the weather "for the location of the property", i.e. its address. The country suffix stops the query from resolving abroad. Revised 2026-10-07 (was: `zipCode` only). | user |
 | D-04 | Location check | Reject the creation if `location.region` in the response does not match the submitted `state`. Nothing is saved. | Stops weather from another place being stored silently. | user |
-| D-05 | lat/long precision | `lat`/`long` are the coordinates Weatherstack returns for the ZIP area, not the building. The README states this. | It is a limit of the API, so we document it. | user (follows D-03) |
+| D-05 | lat/long precision | `lat`/`long` are the coordinates of the location Weatherstack resolves the address to. In practice this is the town (verified 2026-10-07: the street is ignored), not the building. The README states this. | Weatherstack is a weather API, not a geocoder, so we document the limit. | user (follows D-03) |
 | D-06 | Filtering | All filters are optional and combined with AND. `city`: case-insensitive partial match (contains). `state`: exact match, normalized to upper case. `zipCode`: exact match. | Convenient in the UI and predictable for codes. | user |
 | D-07 | Duplicates | Reject a property whose normalized address (street + city + state + zip, trimmed, whitespace collapsed, case-insensitive) already exists. The check runs before the Weatherstack call and is backed by a unique constraint in the DB. Error e.g. `PROPERTY_ALREADY_EXISTS`. | Avoids duplicate records and saves API quota. | user |
 | D-08 | Weather units | Request imperial units (`units=f`: °F, mph, in). Store the unit system with the data. | The properties are in the USA. | user |
@@ -68,7 +68,7 @@ AI sessions and a README with run instructions.
 - NG-01 Authentication, authorization and user accounts (D-13).
 - NG-02 Editing properties.
 - NG-03 Refreshing or re-fetching weather after creation (forbidden by C-03).
-- NG-04 Street-level geocoding or address verification beyond the ZIP/state check.
+- NG-04 Our own geocoding or address verification beyond the state check (D-04).
 - NG-05 Addresses outside the 50 states + DC.
 - NG-06 Soft delete, audit history, undo.
 - NG-07 Public deployment or hosting. The app runs locally.
@@ -93,8 +93,8 @@ AI sessions and a README with run instructions.
   rejected HTTPS (error `https_access_restricted`), but the brief gives an `https://` URL. We will
   find out with one manual call during the adapter change. The base URL is in env (A-11), and any
   switch to HTTP is documented.
-- R-03 **ZIP/region mismatch false negatives** (low / medium). Weatherstack may resolve a valid
-  ZIP to a neighbouring state or a differently named region, so a correct address gets rejected.
+- R-03 **Address/region mismatch false negatives** (low / medium). Weatherstack may resolve a valid
+  address to a neighbouring state or a differently named region, so a correct address gets rejected.
   We will see it during manual tests with Zillow addresses near state borders. The error message
   names both states, so the cause is visible.
 - R-04 **Response shape drift** (low / medium). Weatherstack fields can change or be missing on

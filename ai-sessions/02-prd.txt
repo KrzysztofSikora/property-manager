@@ -1,0 +1,73 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /prd                                                                          
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Write(context/prd.md)
+  ⎿  Wrote 501 lines to context/prd.md
+       1 # PRD: Property Manager
+       3 Sources: brief `docs/brief.txt`, shape notes `context/shape-note
+         s.md` (IDs C-, D-, A-, NG-,
+       4 Q-, R- refer to them).
+       6 ## Problem and goal
+       7 
+         eather at each property at
+       9 the time it was added. The goal is a running full-stack applicat
+         ion with a GraphQL API that
+          Adding a property fetches the
+     … +744 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I wrote the PRD to context/prd.md. It contains 9 user stories and 16
+  functional requirements. FR-01 to FR-15 are Must and FR-16 (demo seed data) is
+  Could. Every brief item, numbered B-1…B-7h plus objective, notes, assessment
+  and delivery items, has a row in the traceability table.
+
+  I made two decisions the shape notes had left for this step:
+  - Error codes (Q-03): BAD_USER_INPUT, PROPERTY_ALREADY_EXISTS,
+    PROPERTY_NOT_FOUND, WEATHER_QUOTA_EXCEEDED, WEATHER_UNAVAILABLE,
+    WEATHER_LOCATION_MISMATCH and INTERNAL_SERVER_ERROR. Each has a trigger and
+    the meaning its message must carry (FR-10).
+  - Weather fields on the details page (Q-02): observation time, description and
+    icon, temperature and feels-like, wind, humidity, pressure, precipitation,
+    cloud cover, UV index and visibility. astro and air_quality are optional, so
+    the page must render without them (FR-12).
+
+  A few other points are pinned down:
+  - Create order: validate → duplicate check → weather call → region check →
+    save. A failure at any step saves nothing.
+  - Weatherstack errors: each error case maps to one of our codes, the call has
+    a 5 s timeout and is never retried, and the key is always redacted.
+  - Paging: sorting breaks ties on createdAt by id, so pages don't overlap or
+    skip records.
+  - Duplicates: two simultaneous creates of the same address store one record;
+    the database's unique constraint guarantees this, not just the check before
+    the weather call.
+
+  The self-check passes. Weatherstack's error codes (101/104/105/615) and the
+  free-plan limits are marked UNVERIFIED because I wrote them from memory and
+  haven't checked the current docs.
+
+  Open questions for you, listed as OQ-01 to OQ-06 in the PRD:
+  - OQ-01: we still don't know whether the free plan accepts HTTPS (risk R-02).
+  - OQ-02: a bare 5-digit ZIP query might resolve to a postal code outside the
+    US. The region check would then reject a valid address. If one manual call
+    shows this happens, we could change decision D-03 to query "<zip>, United 
+    States".
+  - OQ-03: the recorded sample (docs/samples/weatherstack-current.json) is a
+    city query in metric units, not a ZIP query in imperial units. The exact
+    shape of the units=f response still needs one real call.
+
+  Next step is /tech-stack.
+
+✻ Brewed for 2m 18s · done 2:59 PM
+
+❯ /export                                                                       
+  ⎿  Export cancelled
