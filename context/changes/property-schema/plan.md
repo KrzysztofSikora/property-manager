@@ -369,7 +369,10 @@ them into exit 1. The `DrizzleQueryError.cause` finding is recorded for S-02.
 - Testcontainers start-up time per suite: one container per run (F-01), plus one migration of
   a single table. This is negligible, and no action is needed.
 - Hand-editing a generated migration would break drift detection. The rule: change
-  `schema.ts` and regenerate, never edit SQL by hand. The CI drift step enforces it.
+  `schema.ts` and regenerate, never edit SQL by hand. The CI drift step catches a
+  `schema.ts` change that was not regenerated; it cannot see a hand-edited `.sql` file
+  (drizzle-kit compares `schema.ts` with the snapshot, not the SQL). Such an edit is caught
+  only by `schema.int.test.ts`, for the constraints it tests (review R2).
 - `drizzle-kit generate` in CI needs no database. The spike ran it with no `dbCredentials`
   set, because it reads only the schema and the journal. Resolved.
 - Mutation: Phase 1 touches the target `packages/shared/src/states.ts`, and Phase 2 touches

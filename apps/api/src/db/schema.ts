@@ -14,6 +14,7 @@ import {
 export type WeatherSnapshot = { units: 'IMPERIAL'; current: Record<string, unknown> };
 
 // Change this file and run `pnpm db:generate`; never edit a generated migration by hand.
+// CI drift detection compares this file with the snapshot, so it cannot see an edited .sql.
 // The CHECKs are a backstop for NFR-08. The full rules (state list, address format) live in
 // the zod schemas and `@property-manager/shared`.
 export const properties = pgTable(

@@ -1,0 +1,413 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan-review property-schema                                                  
+  ⎿  Running in the background as @plan-review
+
+● Agent "/plan-review property-schema" finished · 1m 57s
+
+● The plan review for F-02 (property-schema) is done. The verdict is ready to 
+  implement with notes: nothing blocks it, but there is 1 major and 6 minor
+  findings. The full review is in
+  context/changes/property-schema/plan-review.md, and plan.md hasn't been
+  changed.
+
+  Major
+  1. No test that the migrate command keeps the database URL secret. The plan
+     says the command exits 1 on a config or migration error and never prints
+     the URL. The URL can contain the password, but no test checks either claim.
+     Suggested fix:
+     - Run the command against an unreachable URL whose password is a sentinel
+       value. Check that it exits 1 and that its error output doesn't contain
+       the sentinel.
+     - Also check that an invalid URL gives a config error and exit 1.
+
+  Minor
+  2. Phase order: the Phase 2 schema tests insert rows that collide with each
+  other, but resetDb only arrives in Phase 3. Either move the database helpers
+  into Phase 2, or have the schema test clear the table in beforeEach until
+  resetDb exists.
+  3. smoke.int.test.ts isn't in the Files list. The new harness.int.test.ts is
+  meant to replace its app setup, but that file also holds the TR-25 test. The
+  plan should say whether it is edited, renamed or deleted, and keep TR-25.
+  4. The weather_data CHECK also accepts a JSON array. ["units","current"]
+  passes the current check. Add jsonb_typeof(weather_data) = 'object', or record
+  why the gap is accepted.
+  5. The new import ban on src/db/** doesn't cover adapters. It covers resolvers
+  and services only.
+  6. The "missing required column → 23502" tests won't type-check as written. A
+  Drizzle insert without the column fails the type check, and any is banned. The
+  plan should say how the test builds that row.
+  7. Mismatch with the test plan. The Cookbook in context/test-plan.md documents
+  createTestApp({ weather }), but this plan builds createTestApp() with no
+  options. The Cookbook update should mark the weather option as added in S-01.
+
+  What checked out: every file and line the plan cites matches the repo. The
+  Drizzle API claims match the current docs. Each part of the roadmap acceptance
+  has an integration test. There is no context/lessons.md yet, so there were no
+  lessons to check against.
+
+  If you want, I can update plan.md with these fixes before you approve it.
+
+✻ Crunched for 7s · done 8:02 PM
+
+❯ update plan with fixes                                                        
+
+  Listed 1 directory, ran 2 shell commands (ctrl+o to expand)
+
+● Applying all seven fixes to plan.md.
+
+● Update(context/changes/property-schema/plan.md)
+  ⎿  Added 4 lines
+      106  | Migrate command config | New `loadDatabaseConfig(env)` in `c
+           onfig/env.ts`, which parses only `DATABASE_URL` with the same 
+           rule and default | `pnpm db:migrate` must not need the Weather
+           stack key. Reusing the schema entry keeps one rule. | research
+            |
+      107  | `seedProperty` path | Inserts through the Drizzle table dire
+           ctly, not `PropertyRepository` | The repository does not exist
+            until S-01, and a seed helper should not depend on the code u
+           nder test. Test-plan *Test data* wording is updated. | researc
+           h |
+      108  | Migrations folder | `apps/api/drizzle/`, added to `.prettier
+           ignore` | drizzle-kit's default `out`. Its JSON is machine-wri
+           tten. | research |
+      109 +| `weather_data` CHECK shape | Adds `jsonb_typeof(weather_data
+          +) = 'object'` before the key checks | jsonb `?` also matches s
+          +tring elements of an array, so `["units","current"]` would pas
+          +s the key checks alone. One extra clause closes it. | plan rev
+          +iew |                                                         
+      110 +| Who may import `src/db/**` | Only repositories (and the test
+          + harness). Banned in `graphql/**`, `services/**` and `adapters
+          +/**`. | Adapters are third-party HTTP only (`tech-stack.md`). 
+          +The shared repositories/adapters ESLint block is split so the 
+          +ban applies to adapters alone. | plan review |                
+      111 +| Migrate CLI testability | `migrate-cli.ts` exports `runMigra
+          +teCli(env, stderr): Promise<0 \| 1>`. The entry runs it only u
+          +nder `import.meta.main` and sets `process.exitCode`. | The exi
+          +t code and the no-URL rule can then be tested in process, with
+          +out spawning Node. | plan review |                            
+      112 +| Fate of `smoke.int.test.ts` | Edited in place, not renamed. 
+          +The health case switches to `createTestApp`; the `select 1` an
+          +d TR-25 cases stay. | Keeps the TR-25 reference in `test-plan.
+          +md` valid, and no second harness file is needed. | plan review
+          + |                                                            
+      113  
+      114  ## Design
+      115  
+
+● Update(context/changes/property-schema/plan.md)
+  ⎿  Added 1 line, removed 1 line
+      141    | `zip_code` | `text` | NOT NULL, CHECK `^[0-9]{5}$` |
+      142    | `lat` | `double precision` | NOT NULL, CHECK −90…90 |
+      143    | `long` | `double precision` | NOT NULL, CHECK −180…180 |
+      144 -  | `weather_data` | `jsonb` | NOT NULL, CHECK has keys `units
+          -` and `current` |                                             
+      144 +  | `weather_data` | `jsonb` | NOT NULL, CHECK `jsonb_typeof =
+          + 'object'` and has keys `units` and `current` |               
+      145    | `created_at` | `timestamptz` | NOT NULL, `DEFAULT now()` |
+      146  
+      147    - Unique index `properties_address_unique` on
+
+● Update(context/changes/property-schema/plan.md)
+  ⎿  Added 13 lines, removed 5 lines
+      156  - `migrate.ts`: `runMigrations(databaseUrl: string): Promise<v
+           oid>`. It opens its own
+      157    single-connection pool, runs `migrate(db, { migrationsFolder
+            })` with the folder resolved
+      158    from `import.meta.url` (not the cwd), then closes the pool.
+      159 -- `migrate-cli.ts`: reads `loadDatabaseConfig(process.env)` an
+          -d calls `runMigrations`. On                                   
+      160 -  `ConfigError` or a migration error it prints a message and e
+          -xits 1. It never prints the URL,                              
+      161 -  because the URL may hold a password.                        
+      159 +- `migrate-cli.ts`:                                           
+      160 +  - `runMigrateCli(env, stderr: (line: string) => void): Promi
+          +se<0 | 1>` reads                                              
+      161 +    `loadDatabaseConfig(env)` and calls `runMigrations`.      
+      162 +  - On `ConfigError` it writes the config message (which names
+          + `DATABASE_URL`, not its value)                               
+      163 +    and returns 1.                                            
+      164 +  - On a migration error it writes `Migration failed: <message
+          +>` with the URL and its                                       
+      165 +    password replaced by `[REDACTED]`, and returns 1. It never
+          + prints the URL, because the URL                              
+      166 +    may hold a password.                                      
+      167 +  - Under `import.meta.main` it runs with `process.env` and `c
+          +onsole.error`, and sets                                       
+      168 +    `process.exitCode`.                                       
+      169  - `apps/api/drizzle.config.ts`: `dialect: 'postgresql'`, `sche
+           ma: './src/db/schema.ts'`,
+      170    `out: './drizzle'`. `generate` does not need the DB URL.
+      171  - Layering: `src/db/**` belongs to the persistence layer. ESLi
+           nt adds `**/db/**` to the
+      165 -  banned groups for `graphql/**` and `services/**`. Services g
+          -et rows only through                                          
+      166 -  repositories (S-01).                                        
+      172 +  banned groups for `graphql/**`, `services/**` and `adapters/
+          +**`. The current shared                                       
+      173 +  repositories/adapters block is split in two so that only ada
+          +pters get the ban. Services get                               
+      174 +  rows only through repositories (S-01).                      
+      175  
+      176  ### Test harness (`apps/api/test/`)
+      177  
+
+● Update(context/changes/property-schema/plan.md)
+  ⎿  Added 4 lines, removed 2 lines
+      247      *Design*, plus `PropertyRow`, `NewPropertyRow` and `Weathe
+           rSnapshot`.
+      248    - `apps/api/src/db/client.ts`: `createDb`, `Database`.
+      249    - `apps/api/src/db/migrate.ts`: `runMigrations(databaseUrl)`
+           .
+      250 -  - `apps/api/src/db/migrate-cli.ts`: the CLI entry. Exit 0 on
+          - success, 1 on a config or                                    
+      251 -    migration error, and the URL is never printed.            
+      250 +  - `apps/api/src/db/migrate-cli.ts`: `runMigrateCli` and the 
+          +`import.meta.main` entry.                                     
+      251 +    Exit 0 on success, 1 on a config or migration error, and t
+          +he URL is never printed.                                      
+      252 +  - `apps/api/src/db/migrate-cli.test.ts`: unit tests for the 
+          +failure paths (below). No                                     
+      253 +    Docker needed.                                            
+      254    - `apps/api/drizzle/0000_create_properties.sql` and `apps/ap
+           i/drizzle/meta/*`: generated by
+      255      `pnpm db:generate --name create_properties`. Commit the ou
+           tput.
+      256    - `apps/api/src/config/env.ts`: `loadDatabaseConfig(env): { 
+           databaseUrl }`. It reuses the
+
+● Update(context/changes/property-schema/plan.md)
+  ⎿  Added 15 lines, removed 5 lines
+      259      `WEATHERSTACK_KEY` it succeeds; with an invalid URL it giv
+           es a `ConfigError` naming
+      260      `DATABASE_URL`; when unset it uses the default.
+      261    - `apps/api/test/setup/postgres.ts`: runs `runMigrations` be
+           fore `provide`.
+      262 -  - `apps/api/test/integration/schema.int.test.ts`: constraint
+          - tests (below).                                               
+      263 -  - `eslint.config.ts`: adds `**/db/**` to the banned groups f
+          -or `graphql/**` and                                           
+      264 -    `services/**`.                                            
+      265 -  - `tooling/guardrails.test.ts`: one more case, a service imp
+          -orting `../db/schema.ts`                                      
+      266 -    fails lint.                                               
+      262 +  - `apps/api/test/helpers/db.ts`: `resetDb` and `countPropert
+          +ies` (moved here from Phase 3,                                
+      263 +    because the schema test needs them). `seedProperty` is add
+          +ed in Phase 3.                                                
+      264 +  - `apps/api/test/integration/schema.int.test.ts`: constraint
+          + tests (below). `beforeEach`                                  
+      265 +    calls `resetDb`.                                          
+      266 +    - Rows that do not fit `NewPropertyRow` (a missing require
+          +d column, `weather_data` `{}`                                 
+      267 +      or an array) go through a local `insertRaw(row: Record<s
+          +tring, unknown>)`. It builds a                                
+      268 +      parameterised `INSERT` from the row's keys and runs it o
+          +n a `pg.Client`, so the pg error                              
+      269 +      (with `code`) is thrown directly.                       
+      270 +    - Well-typed rows go through Drizzle `db.insert`, and the 
+          +test reads the code from                                      
+      271 +      `error.cause`.                                          
+      272 +    - No casts to `any`.                                      
+      273 +  - `eslint.config.ts`: adds `**/db/**` to the banned groups f
+          +or `graphql/**`, `services/**`                                
+      274 +    and `adapters/**`. Splits the repositories/adapters block 
+          +so repositories may import it.                                
+      275 +  - `tooling/guardrails.test.ts`: two more cases. A service im
+          +porting `../db/schema.ts`                                     
+      276 +    fails lint, and so does an adapter. A repository importing
+          + it passes.                                                   
+      277    - `.prettierignore`: adds `apps/api/drizzle/`.
+      278    - `.github/workflows/ci.yml`: a "Migration drift" step runs 
+           `pnpm db:generate` and then
+      279      fails if `git status --porcelain -- apps/api/drizzle` is n
+           on-empty.
+
+● Update(context/changes/property-schema/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      288        street, city, state, zip_code, lat, long, weather_data).
+            This is NFR-08, TR-05 schema
+      289        half.
+      290    - The CHECKs: `it.each` over lat 90.1, long −180.1, zip `852
+           6`, state `az`, `weather_data`
+      291 -    `{}` → `23514`. Boundary values lat ±90 and long ±180 are 
+          -accepted.                                                     
+      291 +    `{}` and `weather_data` `["units","current"]` → `23514`. B
+          +oundary values lat ±90 and                                    
+      292 +    long ±180 are accepted.                                   
+      293    - A row inserted without `id`/`created_at` gets a v7 UUID (`
+           uuid_extract_version = 7`)
+      294      and a `created_at` within the last minute.
+      295    - A different zip with the same street and city is accepted 
+           (the index is not on street
+
+● Update(context/changes/property-schema/plan.md)
+  ⎿  Added 6 lines, removed 1 line
+      295    - A different zip with the same street and city is accepted 
+           (the index is not on street
+      296      alone).
+      297    - FR-08 AC3 groundwork: after deleting the row, the same add
+           ress inserts again.
+      298 -  - Unit (`api-unit`): `loadDatabaseConfig`, and the guardrail
+          - test for the db import ban.                                  
+      298 +  - Unit (`api-unit`): `loadDatabaseConfig`, and the guardrail
+          + tests for the db import ban.                                 
+      299 +  - Unit (`api-unit`), migrate CLI failure paths (CLAUDE.md no
+          +-secrets rule):                                               
+      300 +    - `DATABASE_URL=postgres://u:<sentinel>@127.0.0.1:1/x` (no
+          +thing listens) returns 1, and                                 
+      301 +      no captured stderr line contains the sentinel.          
+      302 +    - `DATABASE_URL=not-a-url` returns 1, stderr names `DATABA
+          +SE_URL`, and `runMigrations` is                               
+      303 +      never reached.                                          
+      304  - Agent checks:
+      305    - `pnpm vitest run --project api-int`
+      306    - `pnpm vitest run --project api-unit --project tooling`
+
+● Update(context/changes/property-schema/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      319  - Files:
+      320    - `apps/api/test/helpers/secrets.ts`: `TEST_WEATHERSTACK_KEY
+           `, `expectNoSecret`.
+      321    - `apps/api/test/helpers/logs.ts`: `captureLogs`.
+      322 -  - `apps/api/test/helpers/db.ts`: `resetDb`, `seedProperty`, 
+          -`countProperties`.                                            
+      322 +  - `apps/api/test/helpers/db.ts`: adds `seedProperty` (`reset
+          +Db` and `countProperties`                                     
+      323 +    came in Phase 2).                                         
+      324    - `apps/api/test/helpers/app.ts`: `createTestApp`. Contract:
+      325      `{ db, execute, logs, close }`.
+      326    - `apps/api/test/fixtures/property.ts`: `validInput`.
+
+● Update(context/changes/property-schema/plan.md)
+  ⎿  Added 7 lines, removed 5 lines
+      329      tests.
+      330    - `apps/api/vitest.unit.config.ts`: `include` adds `test/**/
+           *.test.ts`. `*.int.test.ts`
+      331      stays excluded.
+      332 -  - `apps/api/test/integration/harness.int.test.ts`: replaces 
+          -the hand-built app in                                         
+      333 -    `smoke.int.test.ts` with `createTestApp`. It also checks t
+          -hat `seedProperty` then                                       
+      334 -    `countProperties` gives 1 and that `resetDb` gives 0.     
+      332 +  - `apps/api/test/integration/smoke.int.test.ts` (edited in p
+          +lace, not renamed): the health                                
+      333 +    case uses `createTestApp` instead of the hand-built config
+          + and app. A new case checks that                              
+      334 +    `seedProperty` then `countProperties` gives 1 and that `re
+          +setDb` gives 0. The `select 1`                                
+      335 +    and TR-25 cases stay unchanged.                           
+      336    - `context/test-plan.md`:
+      336 -    - Cookbook: helper paths and names as built. `FakeWeatherC
+          -lient` / `withBarrier` are                                    
+      337 -      marked "added in S-01".                                 
+      337 +    - Cookbook: helper paths and names as built. `FakeWeatherC
+          +lient` / `withBarrier`, the                                   
+      338 +      `createTestApp({ weather })` option (fake or `'msw'`) an
+          +d `app.weather` are marked                                    
+      339 +      "added in S-01". F-02's `createTestApp()` takes no optio
+          +ns.                                                           
+      340      - *Test data*: `seedProperty` inserts through the table, n
+           ot the repository.
+      341      - TR-05 and TR-06 rows: note the storage halves that F-02 
+           covers.
+      342    - `CLAUDE.md` *Commands*: `pnpm db:migrate`, `pnpm db:genera
+           te` (commit the output).
+
+● Update(context/changes/property-schema/plan.md)
+  ⎿  Added 1 line, removed 1 line
+       96  | Question | Answer | Why | Decided by |
+       97  |----------|--------|-----|------------|
+       98  | Id format (RQ-02) | UUID v7, `DEFAULT uuidv7()` | Time-order
+           ed, so the FR-02 tiebreak by `id` follows insertion order. Bui
+           lt into PG 18, no extension. | user |
+       99 -| DB enforcement beyond NOT NULL + unique index | CHECKs: `lat
+          -` −90…90, `long` −180…180, `zip_code ~ '^[0-9]{5}$'`, `state ~
+          - '^[A-Z]{2}$'`, `weather_data ? 'units' AND weather_data ? 'cu
+          -rrent'` | NFR-08 holds even if a bug skips zod. They are simpl
+          -er than the zod rules on purpose: the full state list stays in
+          - `packages/shared`. | user |                                  
+       99 +| DB enforcement beyond NOT NULL + unique index | CHECKs: `lat
+          +` −90…90, `long` −180…180, `zip_code ~ '^[0-9]{5}$'`, `state ~
+          + '^[A-Z]{2}$'`, `jsonb_typeof(weather_data) = 'object' AND wea
+          +ther_data ? 'units' AND weather_data ? 'current'` | NFR-08 hol
+          +ds even if a bug skips zod. They are simpler than the zod rule
+          +s on purpose: the full state list stays in `packages/shared`. 
+          +| user |                                                      
+      100  | Which helpers F-02 builds | DB and data helpers now. `FakeWe
+           atherClient` / `withBarrier` in S-01 with the port they implem
+           ent. | F-02 would otherwise have to guess the `WeatherClient` 
+           interface before S-01 designs it. | user |
+      101  | Phase split | 3 phases: shared rules, schema + migrations, h
+           elpers | Each phase is one reviewable diff. | user |
+      102  | `lat`/`long` column type | `double precision` | `pg` returns
+            `numeric` as a string, which needs parsing on every read. Wea
+           therstack gives 3 decimals, so float precision is enough. | re
+           search |
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I've updated context/changes/property-schema/plan.md with all 7 review fixes,
+  and it still passes the Prettier check.
+
+  1. Migrate command can't leak the database URL (major):
+     - migrate-cli.ts now exports runMigrateCli(env, stderr), which returns 0
+       or 1. It only runs as a command under import.meta.main, so tests can call
+       it directly.
+     - On a migration error it prints the message with the URL and password
+       replaced by [REDACTED].
+     - A new unit test file, migrate-cli.test.ts, covers two cases. An
+       unreachable URL with a sentinel password returns 1 and the sentinel never
+       appears in stderr. not-a-url returns 1 and the error names DATABASE_URL.
+  2. Phase order: resetDb and countProperties move to Phase 2, and the schema
+     test uses resetDb in beforeEach. seedProperty stays in Phase 3 because it
+     needs the fixtures built there.
+  3. smoke.int.test.ts: I chose to edit it in place rather than add
+     harness.int.test.ts. The health case switches to createTestApp and a
+     seed/count/reset case is added. The select 1 and TR-25 cases stay, so the
+     TR-25 reference in test-plan.md still holds.
+  4. weather_data CHECK: it now also requires jsonb_typeof(weather_data) = 
+     'object', and a JSON-array test case is added.
+  5. ESLint: **/db/** is now banned in adapters too. The shared
+     repositories/adapters block is split so repositories can still import it.
+     The lint tests gain two cases: an adapter import fails and a repository
+     import passes.
+  6. Missing-column tests: they go through a local insertRaw helper that runs a
+     raw parameterised INSERT on a pg.Client. The weather_data cases ({} and the
+     array) use it too, because those values don't match the column's
+     TypeScript type. Well-typed rows still use Drizzle and read the code from
+     error.cause. No any casts are needed.
+  7. Cookbook: the update now marks the createTestApp({ weather }) option and
+     app.weather as "added in S-01". F-02's createTestApp() takes no options.
+
+  I recorded the four new choices behind these fixes as rows in the plan's
+  Decisions table, credited to the plan review. The plan still needs your
+  approval before /implement.
+
+✻ Worked for 1m 17s · done 8:03 PM
+
+❯ approve                                                                       
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Noted: the F-02 plan is approved. The workflow doesn't record approval in a
+  file, and context/roadmap.md already shows F-02 as planned, so I changed
+  nothing.
+
+  To start building, run /implement property-schema. It takes the first unticked
+  phase (Phase 1: shared states and error codes) and sets the roadmap status to
+  in-progress.
+
+  When you commit, note that the working tree still has some uncommitted files.
+  The plan and review for this change are in context/changes/property-schema/.
+  context/roadmap.md has the status change to planned and the RQ-02 note. Three
+  session exports (merge-F-01.txt, mutation-F-01.txt, plan-F-02.txt) sit in the
+  repo root. /implement commits only the files it changes in each phase, so
+  these won't be committed unless you add them yourself.
+
+✻ Cogitated for 11s · done 8:04 PM

@@ -52,6 +52,18 @@ describe('expectNoSecret', () => {
     }).toThrow('argument 0');
   });
 
+  it('TR-01: fails on a custom Error field or an AggregateError inner error', () => {
+    const withUrl = Object.assign(new Error('weather failed'), {
+      url: `/current?access_key=${TEST_WEATHERSTACK_KEY}`,
+    });
+    expect(() => {
+      expectNoSecret(withUrl);
+    }).toThrow('argument 0');
+    expect(() => {
+      expectNoSecret(new AggregateError([new Error(`k=${TEST_WEATHERSTACK_KEY}`)], 'many'));
+    }).toThrow('argument 0');
+  });
+
   it('does not repeat the matched text in its failure message', () => {
     const error = failureOf(() => {
       expectNoSecret({ url: `https://example.test/?access_key=${TEST_WEATHERSTACK_KEY}` });

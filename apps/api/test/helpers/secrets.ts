@@ -4,9 +4,14 @@ import { expect } from 'vitest';
 export const TEST_WEATHERSTACK_KEY = 'TEST_WEATHERSTACK_KEY';
 
 // JSON.stringify drops an Error's own fields, which is where a leaked URL would sit.
+// Every own property counts: message, stack, cause, AggregateError's errors, custom fields.
 function revealErrors(_key: string, value: unknown): unknown {
   if (!(value instanceof Error)) return value;
-  return { name: value.name, message: value.message, stack: value.stack, cause: value.cause };
+  const fields = Object.getOwnPropertyNames(value).map((key): [string, unknown] => [
+    key,
+    Reflect.get(value, key),
+  ]);
+  return { name: value.name, ...Object.fromEntries(fields) };
 }
 
 function serialize(value: unknown): string {
