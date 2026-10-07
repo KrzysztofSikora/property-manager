@@ -1,3 +1,4 @@
+import { delay } from 'msw';
 import { http, HttpResponse } from 'msw/http';
 import type { HttpHandler } from 'msw/http';
 import { weatherstackResponse } from '../fixtures/weatherstack.ts';
@@ -10,7 +11,7 @@ const CURRENT = '*/current';
 // asserts the query and the count. Compare `access_key` to the sentinel; never print it.
 export type RecordingHandler = { handler: HttpHandler; requests: URL[] };
 
-function recording(respond: () => Response): RecordingHandler {
+function recording(respond: () => Response | Promise<Response>): RecordingHandler {
   const requests: URL[] = [];
   const handler = http.get(CURRENT, ({ request }) => {
     requests.push(new URL(request.url));
@@ -25,4 +26,12 @@ export const weatherstackHandlers = {
   status: (status: number, body: JsonObject = {}) =>
     recording(() => HttpResponse.json(body, { status })),
   networkError: () => recording(() => HttpResponse.error()),
+  // Never responds: only the client's timeout ends the request (FR-06 AC3).
+  hang: () =>
+    recording(async () => {
+      await delay('infinite');
+      return HttpResponse.error();
+    }),
+  // HTTP 200 with a body that is not JSON.
+  text: (body: string) => recording(() => HttpResponse.text(body)),
 };

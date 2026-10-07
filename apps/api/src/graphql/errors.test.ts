@@ -2,7 +2,7 @@ import { GraphQLError, Kind, locatedError, parse } from 'graphql';
 import type { FieldNode } from 'graphql';
 import { describe, expect, it } from 'vitest';
 import { captureLogs } from '../../test/helpers/logs.ts';
-import { WeatherUnavailableError } from '../domain/errors.ts';
+import { WeatherQuotaExceededError, WeatherUnavailableError } from '../domain/errors.ts';
 import { badUserInput, logUnexpectedErrors, maskError, summarizeError } from './errors.ts';
 
 const MASKED = 'Unexpected error.';
@@ -92,6 +92,31 @@ describe('maskError', () => {
     const masked = asGraphQLError(maskError(new WeatherUnavailableError(), MASKED));
 
     expect(masked.extensions).toEqual({ code: 'WEATHER_UNAVAILABLE' });
+  });
+
+  // FR-10 AC1: each create error reaches the client with its code and message.
+  it.each([
+    [
+      new WeatherUnavailableError({ cause: { status: 500 } }),
+      'WEATHER_UNAVAILABLE',
+      'Weather could not be fetched, so the property was not saved. Try again later.',
+    ],
+    [
+      new WeatherUnavailableError({ reason: 'configuration' }),
+      'WEATHER_UNAVAILABLE',
+      'Weather could not be fetched, so the property was not saved. Try again later.',
+    ],
+    [
+      new WeatherQuotaExceededError({ cause: { weatherstackError: { code: 104 } } }),
+      'WEATHER_QUOTA_EXCEEDED',
+      'The Weatherstack usage limit has been reached, so the property was not saved. Upgrade the Weatherstack plan or replace the API key.',
+    ],
+  ])('FR-10 AC1: maps %o to %s with its message', (domainError, code, message) => {
+    const masked = asGraphQLError(maskError(thrownByResolver(domainError), MASKED));
+
+    expect(masked.message).toBe(message);
+    expect(masked.extensions).toEqual({ code });
+    expect(masked.cause).toBeUndefined();
   });
 
   it('FR-10 AC2: masks a resolver-thrown Error and drops its cause', () => {

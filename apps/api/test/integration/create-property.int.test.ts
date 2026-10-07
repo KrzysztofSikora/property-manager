@@ -3,16 +3,20 @@ import { properties } from '../../src/db/schema.ts';
 import { InMemoryPropertyRepository } from '../fakes/property-repository.ts';
 import { FakeWeatherClient } from '../fakes/weather.ts';
 import { validInput } from '../fixtures/property.ts';
-import { weatherstackResponse } from '../fixtures/weatherstack.ts';
+import { weatherstackError, weatherstackResponse } from '../fixtures/weatherstack.ts';
 import { createTestApp } from '../helpers/app.ts';
 import type { ExecuteResult, TestApp, TestAppOptions } from '../helpers/app.ts';
 import { countProperties, resetDb } from '../helpers/db.ts';
 import { expectGraphQLError } from '../helpers/graphql.ts';
 import { expectNoSecret, TEST_WEATHERSTACK_KEY } from '../helpers/secrets.ts';
 import { weatherstackHandlers } from '../msw/weatherstack.ts';
+import type { RecordingHandler } from '../msw/weatherstack.ts';
 import { CREATE_PROPERTY, PROPERTY } from '../operations.ts';
 import { server } from '../setup/msw.ts';
 
+const UNAVAILABLE = 'Weather could not be fetched, so the property was not saved. Try again later.';
+const QUOTA_EXCEEDED =
+  'The Weatherstack usage limit has been reached, so the property was not saved. Upgrade the Weatherstack plan or replace the API key.';
 const QUERY = '15528 E Golden Eagle Blvd, Fountain Hills, AZ 85268, United States';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // What an unexpected error must never show the caller (FR-10 AC2).
@@ -251,20 +255,6 @@ describe('createProperty', () => {
     expect(error.extensions).toEqual({ code: 'INTERNAL_SERVER_ERROR' });
     expectNoInternals(result);
   });
-
-  it('interim (S-02 refines): a weather failure returns WEATHER_UNAVAILABLE and stores nothing', async () => {
-    const app = testApp({
-      weather: new FakeWeatherClient(weatherstackResponse({ current: { humidity: undefined } })),
-    });
-
-    const result = await app.execute(CREATE_PROPERTY, validInput());
-
-    const error = expectGraphQLError(result, 'WEATHER_UNAVAILABLE');
-    expect(error.message).toBe(
-      'Weather could not be fetched, so the property was not saved. Try again later.',
-    );
-    expect(await countProperties(app.db)).toBe(0);
-  });
 });
 
 describe('property', () => {
@@ -324,5 +314,119 @@ describe('createProperty through the real Weatherstack client (MSW)', () => {
     const operation = app.logs().find((line) => line.msg === 'graphql operation');
     expect(operation?.requestId).toMatch(UUID);
     expect(warnings[0]?.requestId).toBe(operation?.requestId);
+  });
+
+  // FR-05 AC5, FR-06 AC1/AC2/AC4/AC5/AC7, FR-10 AC1. The timeout (AC3) is an adapter test.
+  it.each<[string, () => RecordingHandler, string, string]>([
+    [
+      'body code 104',
+      () => weatherstackHandlers.ok(weatherstackError(104, 'usage_limit_reached')),
+      'WEATHER_QUOTA_EXCEEDED',
+      QUOTA_EXCEEDED,
+    ],
+    [
+      'body code 429',
+      () => weatherstackHandlers.ok(weatherstackError(429, 'too_many_requests')),
+      'WEATHER_QUOTA_EXCEEDED',
+      QUOTA_EXCEEDED,
+    ],
+    [
+      'body code 101',
+      () => weatherstackHandlers.ok(weatherstackError(101, 'unauthorized')),
+      'WEATHER_UNAVAILABLE',
+      UNAVAILABLE,
+    ],
+    [
+      'body code 105',
+      () => weatherstackHandlers.ok(weatherstackError(105, 'https_access_restricted')),
+      'WEATHER_UNAVAILABLE',
+      UNAVAILABLE,
+    ],
+    [
+      'body code 403',
+      () => weatherstackHandlers.ok(weatherstackError(403, 'forbidden')),
+      'WEATHER_UNAVAILABLE',
+      UNAVAILABLE,
+    ],
+    [
+      'body code 615',
+      () => weatherstackHandlers.ok(weatherstackError(615, 'request_failed')),
+      'WEATHER_UNAVAILABLE',
+      UNAVAILABLE,
+    ],
+    [
+      'an unknown body code',
+      () => weatherstackHandlers.ok(weatherstackError(999, 'unknown')),
+      'WEATHER_UNAVAILABLE',
+      UNAVAILABLE,
+    ],
+    [
+      'success: false without an error',
+      () => weatherstackHandlers.ok({ success: false }),
+      'WEATHER_UNAVAILABLE',
+      UNAVAILABLE,
+    ],
+    ['HTTP 500', () => weatherstackHandlers.status(500), 'WEATHER_UNAVAILABLE', UNAVAILABLE],
+    ['HTTP 503', () => weatherstackHandlers.status(503), 'WEATHER_UNAVAILABLE', UNAVAILABLE],
+    ['HTTP 429', () => weatherstackHandlers.status(429), 'WEATHER_UNAVAILABLE', UNAVAILABLE],
+    [
+      'a network error',
+      () => weatherstackHandlers.networkError(),
+      'WEATHER_UNAVAILABLE',
+      UNAVAILABLE,
+    ],
+    [
+      'a 200 that is not JSON',
+      () => weatherstackHandlers.text('<html>busy</html>'),
+      'WEATHER_UNAVAILABLE',
+      UNAVAILABLE,
+    ],
+    [
+      'a missing key field',
+      () => weatherstackHandlers.ok(weatherstackResponse({ current: { humidity: undefined } })),
+      'WEATHER_UNAVAILABLE',
+      UNAVAILABLE,
+    ],
+  ])(
+    'FR-05 AC5: %s returns %s after one request, stores nothing and leaks no key',
+    async (_case, make, code, message) => {
+      const { handler, requests } = make();
+      server.use(handler);
+      const app = mswApp();
+
+      const result = await app.execute(CREATE_PROPERTY, validInput());
+
+      const error = expectGraphQLError(result, code);
+      expect(error.message).toBe(message);
+      expect(result.data).toEqual({ createProperty: null });
+      expect(requests).toHaveLength(1);
+      expect(await countProperties(app.db)).toBe(0);
+      expectNoSecret(result, app.logs());
+      const loggedUrls = app.logs().flatMap((line) => ('url' in line ? [String(line.url)] : []));
+      expect(loggedUrls).toHaveLength(1);
+      expect(loggedUrls[0]).toContain('access_key=[REDACTED]');
+    },
+  );
+
+  it('FR-06 AC6: body code 101 writes one configuration error log line for the request, without the key', async () => {
+    server.use(
+      weatherstackHandlers.ok(
+        weatherstackError(101, 'invalid_access_key', `Invalid key ${TEST_WEATHERSTACK_KEY}`),
+      ).handler,
+    );
+    const app = mswApp();
+
+    const result = await app.execute(CREATE_PROPERTY, validInput());
+
+    expectGraphQLError(result, 'WEATHER_UNAVAILABLE');
+    const operation = app.logs().find((line) => line.msg === 'graphql operation');
+    expect(operation?.requestId).toMatch(UUID);
+    const configErrors = app
+      .logs()
+      .filter((line) => line.msg === 'Weatherstack configuration error');
+    expect(configErrors).toHaveLength(1);
+    expect(configErrors[0]).toMatchObject({ level: 50, requestId: operation?.requestId });
+    expect(String(configErrors[0]?.url)).toContain('access_key=[REDACTED]');
+    expectNoSecret(result, app.logs());
   });
 });

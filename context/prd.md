@@ -157,7 +157,8 @@ duplicates, calls Weatherstack once, checks the returned region, and stores the 
 
 ### FR-06 Weather failure handling  (Must, covers US-07, B-5, D-01, D-02, A-08 – A-10)
 
-- AC1: Given Weatherstack returns a usage-limit error (code 104), When `createProperty` runs,
+- AC1: Given Weatherstack returns a usage-limit error (body `error.code` 104 or 429; an HTTP
+  429 status is AC4), When `createProperty` runs,
   Then error code `WEATHER_QUOTA_EXCEEDED` is returned with a message telling the operator to
   upgrade the Weatherstack plan or replace the API key.
 - AC2: Given Weatherstack returns HTTP 200 with `success: false` and any other error code,
@@ -171,7 +172,8 @@ duplicates, calls Weatherstack once, checks the returned region, and stores the 
   Data model), `location.lat`, `location.lon` or `location.region`, or where `lat`/`lon` are not
   numeric, When `createProperty` runs, Then error code `WEATHER_UNAVAILABLE` is returned
   (response validated, R-04). Missing non-key fields do not fail the create.
-- AC6: Given the key is missing or invalid (codes 101), When `createProperty` runs, Then error
+- AC6: Given the key is missing or invalid, or the plan does not allow the request (body codes
+  101, 105 and 403), When `createProperty` runs, Then error
   code `WEATHER_UNAVAILABLE` is returned to the client and a server log entry records a
   configuration error; neither contains the key value (A-09).
 - AC7: Given any weather failure, When the error and server logs are inspected, Then no
@@ -399,12 +401,14 @@ non-key fields is unknown from one sample (OQ-03), so they stay optional.
 
   | Case | Detected by | Our code |
   |------|-------------|----------|
-  | Usage limit reached | `success: false`, `error.code` 104 (`usage_limit_reached`) — UNVERIFIED | `WEATHER_QUOTA_EXCEEDED` |
-  | Missing/invalid key | `error.code` 101 (`missing_access_key` / `invalid_access_key`) — UNVERIFIED | `WEATHER_UNAVAILABLE` + config log |
-  | HTTPS not allowed on plan | `error.code` 105 (`https_access_restricted`) — UNVERIFIED (R-02) | `WEATHER_UNAVAILABLE` + config log |
-  | Location not found | `error.code` 615 (`request_failed`) — UNVERIFIED | `WEATHER_UNAVAILABLE` |
+  | Usage limit reached | `success: false`, `error.code` 104 (`usage_limit_reached`) — docs | `WEATHER_QUOTA_EXCEEDED` |
+  | Monthly allowance reached | `error.code` 429 (`too_many_requests`) — docs | `WEATHER_QUOTA_EXCEEDED` |
+  | Missing/invalid key | `error.code` 101 (`unauthorized`; older docs: `missing_access_key` / `invalid_access_key`) — docs | `WEATHER_UNAVAILABLE` + config log |
+  | Plan does not support the function or HTTPS | `error.code` 403 (`forbidden`) — docs | `WEATHER_UNAVAILABLE` + config log |
+  | HTTPS not allowed on plan (legacy) | `error.code` 105 (`https_access_restricted`) — older docs only (R-02) | `WEATHER_UNAVAILABLE` + config log |
+  | Location not found | `error.code` 615 (`request_failed`) — docs | `WEATHER_UNAVAILABLE` |
   | Any other `success: false` | `error` present | `WEATHER_UNAVAILABLE` |
-  | Rate limit (calls in quick succession) | HTTP 429 (seen 2026-10-07) | `WEATHER_UNAVAILABLE` |
+  | Rate limit (calls in quick succession) | HTTP 429 status (seen 2026-10-07), whatever the body | `WEATHER_UNAVAILABLE` |
   | Timeout (> 5 s), network error, non-2xx | client | `WEATHER_UNAVAILABLE` |
   | Body fails validation | schema check | `WEATHER_UNAVAILABLE` |
   | Region ≠ submitted state | region check | `WEATHER_LOCATION_MISMATCH` |
@@ -419,6 +423,13 @@ non-key fields is unknown from one sample (OQ-03), so they stay optional.
   - HTTPS works with the project's key.
   - Two calls within about a second returned HTTP 429.
   - Response shape: `docs/samples/weatherstack-current.json` (the brief's address, imperial).
+  - Error codes (S-02 plan, from the archived `weatherstack.com/documentation`, 2024 snapshot,
+    *API Error Codes*; the live docs render only on the client): the error body is
+    `{ success: false, error: { code, type, info } }`; 101 `unauthorized`, 104
+    `usage_limit_reached`, 429 `too_many_requests` (monthly allowance), 403 `forbidden` (plan
+    or HTTPS), 615 `request_failed`. 105 is not in the current table. Classification uses only
+    `code`, never `type`, and `info` is never logged or returned. 104 and 429 are not triggered
+    for real.
   Everything else in this section marked UNVERIFIED is checked when the adapter is built.
 
 ## Non-functional requirements

@@ -1,5 +1,5 @@
 import type { Logger } from 'pino';
-import { WeatherUnavailableError } from '../../domain/errors.ts';
+import { WeatherQuotaExceededError, WeatherUnavailableError } from '../../domain/errors.ts';
 import type { WeatherClient } from '../../domain/ports.ts';
 import { redactText, redactUrl } from './redact.ts';
 import { parseWeatherstackResponse } from './response.ts';
@@ -9,9 +9,11 @@ export type WeatherstackClientOptions = {
   accessKey: string;
   logger: Logger;
   fetch?: typeof globalThis.fetch;
+  // Tests inject a short one (TR-10); production uses the default.
+  timeoutMs?: number;
 };
 
-const TIMEOUT_MS = 5000;
+export const DEFAULT_TIMEOUT_MS = 5000;
 
 type ErrorSummary = { name: string; message: string };
 
@@ -23,12 +25,13 @@ function summarize(error: unknown, accessKey: string): ErrorSummary {
   return { name: 'UnknownError', message: 'A non-Error value was thrown.' };
 }
 
-// One attempt per call, no retry: every request spends quota. S-02 classifies the failures.
+// One attempt per call, no retry: every request spends quota.
 export function createWeatherstackClient({
   baseUrl,
   accessKey,
   logger,
   fetch = globalThis.fetch,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
 }: WeatherstackClientOptions): WeatherClient {
   const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
 
@@ -47,7 +50,7 @@ export function createWeatherstackClient({
 
       let response: Response;
       try {
-        response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+        response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
       } catch (error) {
         unavailable({ error: summarize(error, accessKey) }, 'Weatherstack request failed');
       }
@@ -67,8 +70,14 @@ export function createWeatherstackClient({
       try {
         return parseWeatherstackResponse(body);
       } catch (error) {
-        if (error instanceof WeatherUnavailableError) {
-          logger.warn({ url: loggedUrl, cause: error.cause }, 'Weatherstack response rejected');
+        // Quota and configuration errors need the operator, so they log at `error` (FR-06 AC6).
+        const details = { url: loggedUrl, cause: error instanceof Error ? error.cause : undefined };
+        if (error instanceof WeatherQuotaExceededError) {
+          logger.error(details, 'Weatherstack usage limit reached');
+        } else if (error instanceof WeatherUnavailableError && error.reason === 'configuration') {
+          logger.error(details, 'Weatherstack configuration error');
+        } else if (error instanceof WeatherUnavailableError) {
+          logger.warn(details, 'Weatherstack response rejected');
         }
         throw error;
       }

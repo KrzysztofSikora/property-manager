@@ -1,7 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { weatherstackError, weatherstackResponse } from '../../../test/fixtures/weatherstack.ts';
-import { WeatherUnavailableError } from '../../domain/errors.ts';
-import { parseWeatherstackResponse } from './response.ts';
+import { WeatherQuotaExceededError, WeatherUnavailableError } from '../../domain/errors.ts';
+import { classifyWeatherstackError, parseWeatherstackResponse } from './response.ts';
+
+describe('classifyWeatherstackError', () => {
+  it.each([
+    [104, 'quota'],
+    [429, 'quota'],
+    [101, 'configuration'],
+    [105, 'configuration'],
+    [403, 'configuration'],
+    [615, 'upstream'],
+    [404, 'upstream'],
+    [0, 'upstream'],
+    [undefined, 'upstream'],
+  ])('TR-02: code %s is %s', (code, expected) => {
+    expect(classifyWeatherstackError(code)).toBe(expected);
+  });
+});
 
 describe('parseWeatherstackResponse', () => {
   it('TR-03: parses the recorded sample (contract)', () => {
@@ -29,6 +45,7 @@ describe('parseWeatherstackResponse', () => {
       const error = catchError(() => parseWeatherstackResponse(body));
 
       expect(error.cause).toEqual({ issues: [`current.${field}`] });
+      expect(error.reason).toBe('upstream');
     },
   );
 
@@ -47,6 +64,7 @@ describe('parseWeatherstackResponse', () => {
     const error = catchError(() => parseWeatherstackResponse(weatherstackResponse(overrides)));
 
     expect(error.cause).toEqual({ issues: [path] });
+    expect(error.reason).toBe('upstream');
   });
 
   it.each([
@@ -59,17 +77,54 @@ describe('parseWeatherstackResponse', () => {
     );
   });
 
+  // FR-06 AC1, AC2, AC6. The cause keeps the code and type, never `info`.
   it.each([
+    [104, 'usage_limit_reached', WeatherQuotaExceededError, { code: 'WEATHER_QUOTA_EXCEEDED' }],
+    [429, 'too_many_requests', WeatherQuotaExceededError, { code: 'WEATHER_QUOTA_EXCEEDED' }],
     [
-      'with an error',
-      weatherstackError(615, 'request_failed'),
-      { code: 615, type: 'request_failed' },
+      101,
+      'unauthorized',
+      WeatherUnavailableError,
+      { code: 'WEATHER_UNAVAILABLE', reason: 'configuration' },
     ],
-    ['without an error', { success: false }, {}],
-  ])('a success: false body %s is unavailable, with the code as cause', (_case, body, expected) => {
-    const error = catchError(() => parseWeatherstackResponse(body));
+    [
+      105,
+      'https_access_restricted',
+      WeatherUnavailableError,
+      { code: 'WEATHER_UNAVAILABLE', reason: 'configuration' },
+    ],
+    [
+      403,
+      'forbidden',
+      WeatherUnavailableError,
+      { code: 'WEATHER_UNAVAILABLE', reason: 'configuration' },
+    ],
+    [
+      615,
+      'request_failed',
+      WeatherUnavailableError,
+      { code: 'WEATHER_UNAVAILABLE', reason: 'upstream' },
+    ],
+    [999, 'unknown', WeatherUnavailableError, { code: 'WEATHER_UNAVAILABLE', reason: 'upstream' }],
+  ])(
+    'TR-02: a success: false body with code %d (%s) throws %o',
+    (code, type, errorClass, fields) => {
+      const error = thrown(() =>
+        parseWeatherstackResponse(weatherstackError(code, type, 'Info text, never kept.')),
+      );
 
-    expect(error.cause).toEqual({ weatherstackError: expected });
+      expect(error).toBeInstanceOf(errorClass);
+      expect(error).toMatchObject(fields);
+      // Equality, not a subset match: an `info` key in the cause fails here.
+      expect(error).toHaveProperty('cause', { weatherstackError: { code, type } });
+    },
+  );
+
+  it('TR-02: a success: false body without an error is unavailable (upstream), with an empty cause', () => {
+    const error = catchError(() => parseWeatherstackResponse({ success: false }));
+
+    expect(error.cause).toEqual({ weatherstackError: {} });
+    expect(error.reason).toBe('upstream');
   });
 
   // A non-object body fails at the root, whose path is empty.
@@ -91,6 +146,15 @@ describe('parseWeatherstackResponse', () => {
     expect(JSON.stringify(error.cause)).not.toContain('SECRET_BODY_VALUE');
   });
 });
+
+function thrown(fn: () => unknown): unknown {
+  try {
+    fn();
+  } catch (error) {
+    return error;
+  }
+  throw new Error('expected a throw');
+}
 
 function catchError(fn: () => unknown): WeatherUnavailableError {
   try {
