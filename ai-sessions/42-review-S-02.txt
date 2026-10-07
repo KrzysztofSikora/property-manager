@@ -1,0 +1,447 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /review create-property-guards                                                
+  ⎿  Running in the background as @review
+
+● Agent "/review create-property-guards" finished · 2m 5s
+
+● The /review create-property-guards run finished and approved the change. It
+  found no blockers and no majors, only three minor findings. Typecheck, lint
+  and the full pnpm test all passed: 413 tests across 28 files, including the
+  Testcontainers ones.
+
+  As the review skill requires, it set S-02's status in context/roadmap.md to
+  review and wrote context/changes/create-property-guards/review.md. It changed
+  no other files. The Weatherstack key appears in none of the session exports;
+  that was checked by count only.
+
+  Findings, each needing a decision (fix / defer / reject / make it a rule):
+
+  - R1: No test covers two branches in the duplicate-address error check
+    (apps/api/src/.../property.repository.ts:23-35):
+    - the check that the unique violation comes from the address index;
+    - the case where a pg.DatabaseError arrives without Drizzle's wrapper.
+
+    Stryker doesn't run on this file, so removing either check would go
+    unnoticed.
+    My recommendation: fix. Export the helper and add a small unit table with
+    constructed pg.DatabaseErrors. It's cheap and closes a real gap.
+  - R2: In context/test-plan.md, rows TR-03 and TR-12 still say planned for
+    S-02, although S-02 added the tests for its part of both.
+    My recommendation: fix. It only means updating two status cells.
+  - R3: Two tests in property.service.test.ts add nothing. Lines 180-191 only
+    exercise the in-memory fake repository, and lines 143-150 repeat the
+    region-matching table. The mutation run shows neither catches anything the
+    other tests miss.
+    My recommendation: fix by deleting both. If you want to stop this kind of
+    test coming back, also add a lessons.md rule: "service tests must assert
+    service behaviour, not the fake."
+
+  Tell me your decision for each and I'll apply the fixes and update the
+  Decision: lines in review.md.
+
+✻ Cooked for 7s · done 12:02 AM
+
+❯ fix and lesson                                                                
+
+  Searched for 1 pattern, ran 3 shell commands (ctrl+o to expand)
+
+● Bash(sed -i 's/^function isAddressUniqueViolation/export function
+      isAddressUniqueViolation/'
+      apps/api/src/repositories/property.repository.ts && grep -n "isAddressUn…)
+  ⎿  27:export function isAddressUniqueViolation(error: unknown): boolean {
+     63:          if (isAddressUniqueViolation(error))
+     2:export type MessageName = 'parseComplete' | 'bindComplete' | 'closeC
+     … +9 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/repositories/property.repository.ts (+1 -1)
+      24  
+      25  // Drizzle wraps the pg error in DrizzleQueryError (`cause`); t
+          he bare error is checked too, so a
+      26  // driver upgrade that stops wrapping still maps.
+      27 -function isAddressUniqueViolation(error: unknown): boolean {   
+      27 +export function isAddressUniqueViolation(error: unknown): boole
+         +an {                                                           
+      28    const pgError =
+      29      error instanceof Error && !(error instanceof pg.DatabaseErr
+          or) ? error.cause : error;
+      30    return (
+
+● Status: the helper is exported; now I'm writing the R1 unit table.
+
+● Write(apps/api/src/repositories/property.repository.test.ts)
+  ⎿  Wrote 36 lines to
+     apps/api/src/repositories/property.repository.test.ts
+       1 import { DrizzleQueryError } from 'drizzle-orm';
+       2 import pg from 'pg';
+       4 import { isAddressUniqueViolation } from './property.repository.
+         ts';
+       5 
+         rror {
+       7   const error = new pg.DatabaseError('constraint violated', 0, '
+         error');
+       9   error.constraint = constraint;
+      10   return error;
+     … +36 lines (ctrl+o to expand)
+
+● Now R3: removing the two service tests.
+
+● Update(apps/api/src/services/property.service.test.ts)
+  ⎿  Removed 9 lines
+      140      expect(repository.rows).toEqual([]);
+      141    });
+      142  
+      143 -  it('accepts a region that differs only in case and spacing',
+          - async () => {                                                
+      144 -    const body = weatherstackResponse({ location: { region: ' 
+          - ARIZONA ' } });                                              
+      145 -    const { service, repository } = setup(new FakeWeatherClien
+          -t(body));                                                     
+      146 -                                                              
+      147 -    const created = await service.create(address);            
+      148 -                                                              
+      149 -    expect(repository.rows).toEqual([created]);               
+      150 -  });                                                         
+      151 -                                                              
+      143    it('FR-05 AC6 (service half): a failing insert propagates an
+           d nothing is stored', async () => {
+      144      const { service, repository, weather } = setup();
+      145      const error = new Error('insert rejected');
+
+● Update(apps/api/src/services/property.service.test.ts)
+  ⎿  Removed 13 lines
+      168      expect(repository.rows).toEqual([stored]);
+      169    });
+      170  
+      171 -  it.each([                                                   
+      172 -    ['street', { street: '15529 E Golden Eagle Blvd' }],      
+      173 -    ['city', { city: 'Scottsdale' }],                         
+      174 -    ['zipCode', { zipCode: '85269' }],                        
+      175 -  ] as const)('an address with a different %s is stored', asyn
+          -c (_field, override) => {                                     
+      176 -    const { service, repository } = setup();                  
+      177 -    await service.create(address);                            
+      178 -                                                              
+      179 -    await service.create(normalizeAddress(validInput(override)
+          -));                                                           
+      180 -                                                              
+      181 -    expect(repository.rows).toHaveLength(2);                  
+      182 -  });                                                         
+      183 -                                                              
+      171    it('FR-08 AC2 (service half): a duplicate on insert after a 
+           clean pre-check propagates', async () => {
+      172      const { service, repository, weather } = setup();
+      173      const error = new PropertyAlreadyExistsError();
+
+● Next, R2 (test-plan statuses), the lesson, and the review decisions.
+
+● Bash(sed -i 's/| planned (S-01 happy path, S-02 failures) |$/| covered (S-01,
+      S-02) |/; s/| planned (S-01, S-02) |$/| covered (S-01, S-02) |/'
+      context/test-plan.md &…)
+  ⎿  cut: invalid decreasing range
+     Try 'cut --help' for more information.
+     4
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated context/test-plan.md (+3 -3)
+      27  |----|------|--------|------------|-------|---------|--------|
+      28  | TR-01 | Weatherstack key leaks into a log line, a logged URL,
+           a GraphQL error or a thrown HTTP error (NFR-01, R-05). The key
+           is a query parameter, so any `String(url)` or `error.message` 
+          from `fetch` leaks it. | H | M | U + I | U: `redactUrl` / `reda
+          ctError` helpers on URLs with `access_key` first, middle, last 
+          and URL-encoded. I: every FR-06 failure case runs with a sentin
+          el key (`TEST_WEATHERSTACK_KEY`); assert the sentinel is absent
+           from the captured pino output and the serialized GraphQL respo
+          nse, and that any logged URL contains `access_key=[REDACTED]` (
+          FR-06 AC6, AC7). Pre-commit secret scan (see *Quality gates*). 
+          | covered (S-01, S-02) |
+      29  | TR-02 | Weatherstack error payloads are misclassified: HTTP 2
+          00 with `success: false` is treated as success, or code 104 is 
+          not mapped to `WEATHER_QUOTA_EXCEEDED` (FR-06 AC1, AC2, R-01). 
+          Weatherstack reports errors in a 200 body, which is easy to mis
+          s. | H | M | U (MSW) | Adapter tests, one `it.each` table: 104,
+           body 429 → quota; 101, 105, 403 → unavailable + config log ent
+          ry; 615, unknown code → unavailable; `success: false` without `
+          error` → unavailable. Bodies follow the documented shape (OQ-04
+          , verified in the S-02 plan). | covered (S-02) |
+      30 -| TR-03 | A response with a changed or partial shape (missing `
+         -current`, a missing key field, `lat`/`lon` not numeric) is stor
+         -ed as a broken record, or crashes later on the details page (FR
+         --06 AC5, R-04, NFR-08). | H | M | U | Adapter schema tests: the
+         - recorded sample `docs/samples/weatherstack-current.json` parse
+         -s (contract test). Then each key field removed one at a time (`
+         -it.each`) → `WEATHER_UNAVAILABLE`. Non-numeric `lat` → unavaila
+         -ble. Missing `astro` / `air_quality` / non-key fields → success
+         -. | planned (S-01 happy path, S-02 failures) |                 
+      30 +| TR-03 | A response with a changed or partial shape (missing `
+         +current`, a missing key field, `lat`/`lon` not numeric) is stor
+         +ed as a broken record, or crashes later on the details page (FR
+         +-06 AC5, R-04, NFR-08). | H | M | U | Adapter schema tests: the
+         + recorded sample `docs/samples/weatherstack-current.json` parse
+         +s (contract test). Then each key field removed one at a time (`
+         +it.each`) → `WEATHER_UNAVAILABLE`. Non-numeric `lat` → unavaila
+         +ble. Missing `astro` / `air_quality` / non-key fields → success
+         +. | covered (S-01, S-02) |                                     
+      31  | TR-04 | A Weatherstack call is made where it must not be: a d
+          uplicate, invalid input, a query, a delete, or a retry (C-03, B
+          -N2, FR-01 AC6, FR-04 AC3, FR-07 AC1, FR-08 AC1, FR-09 AC3). Ev
+          ery extra call spends quota (R-01). | H | M | I | `FakeWeatherC
+          lient.calls` asserted in every resolver-level integration test:
+           exactly 1 on a successful create, 0 on validation failure, dup
+          licate, `properties`, `property` and `deleteProperty`. Adapter 
+          test: exactly one HTTP request on timeout, 5xx and 429 (no retr
+          y, FR-06 AC3). | covered for create (S-01, S-02); planned (S-03
+          ) |
+      32  | TR-05 | A failed create leaves a partial or orphan row: the s
+          ave runs before the region check, or a DB error happens mid-way
+           (FR-05 AC5, AC6, NFR-08). | H | L | I | For every failure code
+          : property count before = after. The DB rejecting the save (rep
+          ository fake that throws) → `INTERNAL_SERVER_ERROR` with no row
+          . Schema: `NOT NULL` on every required column, an insert with a
+           null is rejected, and the CHECKs reject out-of-range or malfor
+          med values (F-02, `schema.int.test.ts`). | covered (F-02, S-01,
+           S-02) |
+      33 -| TR-06 | Two concurrent creates of the same address both pass 
+         -the pre-check and both get stored (FR-08 AC2). This is a race, 
+         -so it shows up rarely and stays hidden. | M | M | I | Testconta
+         -iners: `FakeWeatherClient` holds both calls behind a barrier un
+         -til both have passed the pre-check, then releases them. `Promis
+         -e.all` of two `createProperty` calls → exactly one success, one
+         - `PROPERTY_ALREADY_EXISTS`, count 1. Repository test: the pg `2
+         -3505` error on insert maps to the domain duplicate error (Drizz
+         -le 0.45 puts the pg error on `DrizzleQueryError.cause`). Storag
+         -e half: two rows differing only in `street`/`city` case violate
+         - `properties_address_unique` (F-02, `schema.int.test.ts`). | co
+         -vered (F-02, S-02) |                                           
+      33 +| TR-06 | Two concurrent creates of the same address both pass 
+         +the pre-check and both get stored (FR-08 AC2). This is a race, 
+         +so it shows up rarely and stays hidden. | M | M | I | Testconta
+         +iners: `FakeWeatherClient` holds both calls behind a barrier un
+         +til both have passed the pre-check, then releases them. `Promis
+         +e.all` of two `createProperty` calls → exactly one success, one
+         + `PROPERTY_ALREADY_EXISTS`, count 1. Repository test: the pg `2
+         +3505` error on insert maps to the domain duplicate error (Drizz
+         +le 0.45 puts the pg error on `DrizzleQueryError.cause`); a herm
+         +etic table pins the constraint name and the bare (unwrapped) er
+         +ror. Storage half: two rows differing only in `street`/`city` c
+         +ase violate `properties_address_unique` (F-02, `schema.int.test
+         +.ts`). | covered (F-02, S-02) |                                
+      34  | TR-07 | Address normalization differs between the duplicate c
+          heck, the unique index and the stored value, so `"15528 e golde
+          n eagle  blvd"` is not caught as a duplicate, or a valid addres
+          s is wrongly blocked (FR-05 AC3, FR-08 AC1, FR-08 AC3). | M | M
+           | U + I | U: `normalizeAddress` table (trim, collapse inner wh
+          itespace, state upper-case, case kept for display). I: FR-08 AC
+          1 variant through the API; FR-08 AC3 delete-then-recreate succe
+          eds. | covered (S-01, S-02); FR-08 AC3 through `deleteProperty`
+           planned (S-03) |
+      35  | TR-08 | Input validation lets bad data through or rejects val
+          id data: ZIP+4, 4-digit zip, leading-zero zip turned into a num
+          ber, territories, full state names, blank or overlong street/ci
+          ty (FR-07 AC1 – AC5, A-01 – A-03). | M | M | U + I | U: shared 
+          address schema in `packages/shared`, `it.each` with the PRD's e
+          xact examples plus boundary lengths (200/201 street, 100/101 ci
+          ty after trimming). I: one resolver test with several invalid f
+          ields → one `BAD_USER_INPUT` listing all fields in `extensions.
+          fields`, 0 weather calls. FR-07 AC2 `"02108"` stored and return
+          ed as the string `"02108"`. | planned (S-01) |
+      36  | TR-09 | The region check gives a false result: case or whites
+          pace in `region`, DC as "District of Columbia" (R-03), or a mis
+          sing state in the code → name table, so a valid address is reje
+          cted or a mismatch is stored (FR-05 AC4). | M | M | U + I | U: 
+          `regionMatchesState` table (exact, different case, padded, DC, 
+          mismatch). U: the states table has exactly 51 entries and every
+           code maps to a name. I: FR-05 AC4 → `WEATHER_LOCATION_MISMATCH
+          ` whose message names "AZ"/"Arizona" and "California", count un
+          changed. | covered (S-02) |
+      37  | TR-10 | The timeout does not fire or a hang blocks the mutati
+          on for longer than 6 s (FR-06 AC3, NFR-03). | M | M | U (MSW) |
+           Adapter test with an MSW handler that never resolves (`delay('
+          infinite')`) and an injected short timeout (e.g. 50 ms) → `WEAT
+          HER_UNAVAILABLE`, one request. A separate check spies on `Abort
+          Signal.timeout` and asserts the client default of 5000 ms. The 
+          real 5 s wait is not run in the suite. | covered (S-02) |
+      38  | TR-11 | Network error, non-2xx status or 429 throws an unmapp
+          ed error, which becomes `INTERNAL_SERVER_ERROR` or leaks the UR
+          L (FR-06 AC4). | M | M | U (MSW) | Adapter `it.each`: `HttpResp
+          onse.error()`, 500, 503, HTTP status 429 (seen 2026-10-07; a bo
+          dy code 429 is quota, TR-02), 200 with a non-JSON body → `WEATH
+          ER_UNAVAILABLE`, key absent from the error. | covered (S-02) |
+      39 -| TR-12 | Error mapping is wrong: a domain error gets the wrong
+         - `extensions.code`, or an unexpected error exposes a stack trac
+         -e, SQL, a file path or the key (FR-10 AC1, AC2). | M | M | U + 
+         -I | U: error formatter table, one case per FR-10 code and an un
+         -known `Error` → `INTERNAL_SERVER_ERROR` with a generic message.
+         - I: a repository fake throwing an `Error` containing SQL text a
+         -nd a path → the response contains neither. | planned (S-01, S-0
+         -2) |                                                           
+      39 +| TR-12 | Error mapping is wrong: a domain error gets the wrong
+         + `extensions.code`, or an unexpected error exposes a stack trac
+         +e, SQL, a file path or the key (FR-10 AC1, AC2). | M | M | U + 
+         +I | U: error formatter table, one case per FR-10 code and an un
+         +known `Error` → `INTERNAL_SERVER_ERROR` with a generic message.
+         + I: a repository fake throwing an `Error` containing SQL text a
+         +nd a path → the response contains neither. | covered (S-01, S-0
+         +2) |                                                           
+      40  | TR-13 | Filtering is wrong: the city `ILIKE` does not escape 
+          `%` / `_`, state is not upper-cased, zip uses prefix matching, 
+          blank filters filter for `""`, or `totalCount` ignores the filt
+          er (FR-03 AC1 – AC6). | M | M | I | Testcontainers: seeded prop
+          erties, one test per FR-03 AC. Extra: `city: "%"` and `city: "_
+          "` match nothing unless the name contains them. Arg parsing (bl
+          ank → absent, upper-casing) also has a unit table. | planned (S
+          -03) |
+      41  | TR-14 | Sorting or paging is unstable: ties on `created_at` p
+          roduce duplicates or gaps across pages; `limit`/`offset` bounds
+           not enforced; no `limit` returns a default page instead of all
+           (FR-01 AC3 – AC5, FR-02 AC1 – AC3). | M | M | U + I | U: args 
+          schema (`limit` 0/1/100/101, `offset` -1/0, absent `limit`). I:
+           25 rows inserted with the same `created_at`; pages at offset 0
+           and 20 together hold all 25 ids once in both directions. No `l
+          imit` returns 25. | planned (S-03) |
+      42  | TR-15 | Lookups with an unknown or malformed id cause a serve
+          r error instead of `null` / `PROPERTY_NOT_FOUND` (FR-04 AC2, AC
+          4, FR-09 AC2). Postgres rejects a non-UUID cast with an error. 
+          | M | M | I | `property(id: "not-a-uuid")` → `null` with no `er
+          rors`. `deleteProperty` with a malformed id and with an unknown
+           UUID → `PROPERTY_NOT_FOUND`. | planned (S-03) |
+  ⎿  Updated context/lessons.md (+12 -0)
+      28  - Scope: redaction and log-summary code (`adapters/weatherstack
+          /redact.ts`, `graphql/errors.ts`,
+      29    `db/migrate-cli.ts`, `tooling/secret-scan.ts`). Add a case wh
+          ere the secret sits in the
+      30    part the filter must drop and looks like what it keeps.
+      31 +                                                               
+      32 +## A service test must be able to fail through the service, not
+         + only through a fake                                           
+      33 +- Why: a test whose outcome depends only on the in-memory fake 
+         +(or that repeats a pure-function                               
+      34 +  table through the service) passes whatever the service does, 
+         +so it adds run time and no                                     
+      35 +  protection. In S-02, "an address with a different %s is store
+         +d" could fail only if                                          
+      36 +  `InMemoryPropertyRepository.existsByAddress` changed, and the
+         + case/spacing region test repeated                             
+      37 +  the TR-09 `regionMatchesState` table; the mutation run showed
+         + neither killed a mutant the                                   
+      38 +  others missed.                                               
+      39 +- Seen in: create-property-guards, review R3                   
+      40 +- Scope: service tests with fakes (`apps/api/src/services/*.tes
+         +t.ts`). Before adding a test, name                             
+      41 +  the service line that would make it fail. Rules owned by the 
+         +repository are proved against                                  
+      42 +  PostgreSQL (`*.int.test.ts`); pure helpers are proved by thei
+         +r own table.                                                   
+  ⎿  Updated context/changes/create-property-guards/review.md (+3 -3)
+      57    `pg.DatabaseError`s: wrapped and bare `23505` on the address 
+          index (true), `23505` on another
+      58    constraint (false), `23514` on the address index (false), a n
+          on-Error value (false).
+      59  - Effort: small
+      60 -- Decision: open                                               
+      60 +- Decision: fixed. `isAddressUniqueViolation` exported; `proper
+         +ty.repository.test.ts` adds a hermetic table (wrapped and bare 
+         +`23505` on the index → true; other constraint, `23514`, look-al
+         +ike cause, no cause, non-Error → false). TR-06 notes the table.
+      61  
+      62  ### R2: Test-plan statuses for TR-03 and TR-12 still say `plann
+          ed` for S-02
+      63  - Severity: minor
+     ...
+      69  - Fix: Set TR-03 to `covered (S-01, S-02)` and TR-12 to `covere
+          d (S-01, S-02)` (or name what is
+      70    left, if anything).
+      71  - Effort: small
+      72 -- Decision: open                                               
+      72 +- Decision: fixed. TR-03 and TR-12 set to `covered (S-01, S-02)
+         +`; nothing left for either.                                    
+      73  
+      74  ### R3: Two service tests exercise only the in-memory fake or r
+          epeat the unit table
+      75  - Severity: minor
+     ...
+      82  - Fix: Drop both. Or, if the first one is meant to keep the fak
+          e in step with
+      83    `properties_address_unique`, rename it to say so and move it 
+          next to the fake.
+      84  - Effort: small
+      85 -- Decision: open                                               
+      85 +- Decision: fixed, plus a rule. Both tests dropped; `lessons.md
+         +` gains "A service test must be able to fail through the servic
+         +e, not only through a fake".                                   
+
+● Running the gates, then checking by hand that the new table catches the two
+  mutants from R1.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I fixed all three findings and added the lesson. Nothing is committed yet.
+
+  R1 (untested branches in the duplicate-address check): I exported
+  isAddressUniqueViolation from
+  apps/api/src/repositories/property.repository.ts; that export is the only
+  production change. The new hermetic test file
+  apps/api/src/repositories/property.repository.test.ts has 8 cases:
+  - Counted as a duplicate: a 23505 on properties_address_unique, both wrapped
+    in Drizzle's error and bare.
+  - Not a duplicate: a 23505 on another constraint (wrapped and bare), a 23514
+    on the address index, a wrapper whose cause only looks like a pg error, an
+    Error with no cause, and a plain object.
+
+  I also checked by hand that the table catches the two changes the review
+  described:
+  - Making the constraint-name check always pass fails 2 tests.
+  - Always reading error.cause, so a bare error no longer counts, fails 1 test.
+
+  I restored the file after each check. The TR-06 row in context/test-plan.md
+  now mentions this table.
+
+  R2 (stale test-plan statuses): TR-03 and TR-12 now read covered (S-01, S-02).
+  Nothing is left open for either: the missing-key-field tests and the tests
+  that check errors don't expose SQL or file paths are both in place.
+
+  R3 (service tests that test nothing): I removed both tests from
+  property.service.test.ts: the "different street/city/zip is stored" table and
+  the case/spacing region test.
+
+  Lesson: context/lessons.md has a new rule, "A service test must be able to
+  fail through the service, not only through a fake". Before adding a test, name
+  the service line that would make it fail. Rules the repository owns are
+  tested against PostgreSQL, and pure helpers by their own table.
+
+  All three Decision: lines in review.md are filled in. Typecheck and lint pass,
+  and pnpm test:unit ran 332 tests in 25 files with none failing. I didn't
+  re-run the Testcontainers suite, because none of these changes touch it.
+
+  Shall I commit this as one test(create-property-guards): … commit with Refs 
+  #<n>?
+
+✻ Baked for 1m 21s · done 12:05 AM
+
+❯ yes, commit                                                                   
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● I committed the review fixes as 0026ab6 test(create-property-guards): apply 
+  the review fixes, with Refs #4. The pre-commit hook passed formatting,
+  typecheck and the 332 hermetic tests.
+
+  The commit includes the code and test changes, lessons.md, test-plan.md,
+  review.md, and the roadmap status change to review.
+
+  I left the three session exports in the repo root uncommitted
+  (implement-S-02-2.txt, implement-S-02-3.txt, mutation-S-02.txt). Earlier
+  exports went into ai-sessions/ with numbered names, so I didn't guess the
+  names for these.
+
+  S-02 is still at review, and #4 is still open. Under the project rules,
+  whichever commit finishes the item, for example the one that moves these
+  exports or sets the status to done, should use Closes #4 instead of Refs #4.
+
+✻ Baked for 20s · done 12:06 AM
+
+※ recap: S-02 (create-property-guards) passed review, and I committed all three review fixes plus the new lesson as 0026ab6. Next, move the three session exports into ai-sessions/ and close #4 with the final commit. (disable recaps in /config)

@@ -1,0 +1,454 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement create-property-guards                                             
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Starting Phase 2: I'll add regionMatchesState and a
+  WeatherLocationMismatchError to reject mismatched regions after the weather
+  call but before insert, then run api-unit, api-int, typecheck, and lint
+  checks, followed by a manual createProperty test via pnpm dev.
+
+  Searched for 1 pattern, ran 2 shell commands (ctrl+o to expand)
+
+● Context gathered; only the FR-07 AC2 (MA) integration test needs a
+  Massachusetts region. Writing the failing tests now.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now the tests. Service unit tests:
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/services/property.service.test.ts'…)
+  ⎿      127|     const error: unknown = await service.create(address).catc
+     h((e: unk…
+         128|
+     … +14 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/services/property.service.test.ts (+76 -2)
+       1  import { normalizeAddress } from '@property-manager/shared';
+       2  import { describe, expect, it } from 'vitest';
+       3 -import { WeatherUnavailableError } from '../domain/errors.ts'; 
+       3 +import { WeatherLocationMismatchError, WeatherUnavailableError 
+         +} from '../domain/errors.ts';                                  
+       4  import { InMemoryPropertyRepository } from '../../test/fakes/pr
+          operty-repository.ts';
+       5  import { FakeWeatherClient } from '../../test/fakes/weather.ts'
+          ;
+       6  import { validInput } from '../../test/fixtures/property.ts';
+       7  import { weatherstackError, weatherstackResponse } from '../../
+          test/fixtures/weatherstack.ts';
+       8 -import { createPropertyService, weatherQuery } from './property
+         -.service.ts';                                                  
+       8 +import { createPropertyService, regionMatchesState, weatherQuer
+         +y } from './property.service.ts';                              
+       9  
+      10  function setup(weather = new FakeWeatherClient()) {
+      11    const repository = new InMemoryPropertyRepository();
+     ...
+      31    });
+      32  });
+      33  
+      34 +describe('regionMatchesState', () => {                         
+      35 +  it.each([                                                    
+      36 +    ['Arizona', 'AZ'],                                         
+      37 +    ['arizona', 'AZ'],                                         
+      38 +    [' Arizona ', 'AZ'],                                       
+      39 +    ['ARIZONA', 'AZ'],                                         
+      40 +    ['District of Columbia', 'DC'],                            
+      41 +    ['Massachusetts', 'MA'],                                   
+      42 +  ] as const)('TR-09: %j matches %s', (region, state) => {     
+      43 +    expect(regionMatchesState(region, state)).toBe(true);      
+      44 +  });                                                          
+      45 +                                                               
+      46 +  it.each([                                                    
+      47 +    ['California', 'AZ'],                                      
+      48 +    ['', 'AZ'],                                                
+      49 +    ['   ', 'AZ'],                                             
+      50 +    ['Arizona Territory', 'AZ'],                               
+      51 +    ['North Arizona', 'AZ'],                                   
+      52 +    ['Virginia', 'WV'],                                        
+      53 +    ['West Virginia', 'VA'],                                   
+      54 +    ['Washington', 'DC'],                                      
+      55 +  ] as const)('TR-09: %j does not match %s', (region, state) =>
+         + {                                                             
+      56 +    expect(regionMatchesState(region, state)).toBe(false);     
+      57 +  });                                                          
+     … 59 more lines (ctrl+o to expand)
+
+● Failing as expected (missing exports). Implementing:
+
+● Bash(cat >> apps/api/src/domain/errors.ts <<'EOF'…)
+  ⎿  1:export {
+     8:export { ERROR_CODES, type ErrorCode } from './errors.ts';
+     9:export { isStateCode, stateName, type StateCode, US_STATES } from '.
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/domain/errors.ts (+22 -1)
+      1 -import type { ErrorCode } from '@property-manager/shared';      
+      1 +import { stateName } from '@property-manager/shared';           
+      2 +import type { ErrorCode, StateCode } from '@property-manager/sha
+        +red';                                                           
+      3  
+      4  // An expected failure with a client-facing code. The message is
+          safe to show as it is.
+      5  export abstract class DomainError extends Error {
+     ...
+      34      );
+      35    }
+      36  }
+      37 +                                                               
+      38 +const MAX_REGION_LENGTH = 100;                                 
+      39 +                                                               
+      40 +// `region` is third-party text echoed to the client, so it is 
+         +trimmed and length-bounded.                                    
+      41 +export class WeatherLocationMismatchError extends DomainError {
+      42 +  override name = 'WeatherLocationMismatchError';              
+      43 +  readonly code = 'WEATHER_LOCATION_MISMATCH';                 
+      44 +  readonly state: StateCode;                                   
+      45 +  readonly region: string;                                     
+      46 +                                                               
+      47 +  constructor(state: StateCode, region: string, options?: Error
+         +Options) {                                                     
+      48 +    const shown = region.trim().slice(0, MAX_REGION_LENGTH);   
+      49 +    super(                                                     
+      50 +      `Weatherstack placed this address in "${shown}", not in $
+         +{state} (${stateName(state)}). The property was not saved.`,   
+      51 +      options,                                                 
+      52 +    );                                                         
+      53 +    this.state = state;                                        
+      54 +    this.region = shown;                                       
+      55 +  }                                                            
+      56 +}                                                              
+  ⎿  Updated apps/api/src/services/property.service.ts (+13 -3)
+      1 -import type { Address } from '@property-manager/shared';        
+      1 +import { stateName } from '@property-manager/shared';           
+      2 +import type { Address, StateCode } from '@property-manager/share
+        +d';                                                             
+      3 +import { WeatherLocationMismatchError } from '../domain/errors.t
+        +s';                                                             
+      4  import type { PropertyRepository, WeatherClient } from '../domai
+         n/ports.ts';
+      5  import type { Property } from '../domain/property.ts';
+      6  
+     ...
+      16    return `${address.street}, ${address.city}, ${address.state} 
+          ${address.zipCode}, United States`;
+      17  }
+      18  
+      19 +// Weatherstack geocodes the query itself; a region other than 
+         +the input state means it placed                                
+      20 +// the address elsewhere (FR-05 AC4). Exact match after trimmin
+         +g and lower-casing only.                                       
+      21 +export function regionMatchesState(region: string, state: State
+         +Code): boolean {                                               
+      22 +  return region.trim().toLowerCase() === stateName(state).toLow
+         +erCase();                                                      
+      23 +}                                                              
+      24 +                                                               
+      25  export function createPropertyService({
+      26    repository,
+      27    weather,
+      28  }: PropertyServiceDeps): PropertyService {
+      29    return {
+      22 -    // Weather first, then a single insert: a failure at either
+         - step stores nothing (NFR-08).                                 
+      23 -    // `region` is checked in S-02 (FR-05 AC4).                
+      30 +    // Weather, region check, then a single insert: a failure a
+         +t any step stores nothing (NFR-08).                            
+      31      async create(address) {
+      32        const report = await weather.current(weatherQuery(address
+          ));
+      33 +      if (!regionMatchesState(report.region, address.state)) { 
+      34 +        throw new WeatherLocationMismatchError(address.state, r
+         +eport.region);                                                 
+      35 +      }                                                        
+      36        return repository.insert({
+      37          ...address,
+      38          lat: report.lat,
+
+● Now the maskError row and the integration tests.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/graphql/errors.test.ts'…)
+  ⎿  26:export function expectNoSecret(...values: unknown[]): void {
+     27-  values.forEach((value, index) => {
+     28-    if (serialize(value).includes(TEST_WEATHERSTACK_KEY)) {
+     … +3 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/graphql/errors.test.ts (+10 -1)
+       2  import type { FieldNode } from 'graphql';
+       3  import { describe, expect, it } from 'vitest';
+       4  import { captureLogs } from '../../test/helpers/logs.ts';
+       5 -import { WeatherQuotaExceededError, WeatherUnavailableError } f
+         -rom '../domain/errors.ts';                                     
+       5 +import {                                                       
+       6 +  WeatherLocationMismatchError,                                
+       7 +  WeatherQuotaExceededError,                                   
+       8 +  WeatherUnavailableError,                                     
+       9 +} from '../domain/errors.ts';                                  
+      10  import { badUserInput, logUnexpectedErrors, maskError, summariz
+          eError } from './errors.ts';
+      11  
+      12  const MASKED = 'Unexpected error.';
+     ...
+      115        'WEATHER_QUOTA_EXCEEDED',
+      116        'The Weatherstack usage limit has been reached, so the p
+           roperty was not saved. Upgrade the Weatherstack plan or replac
+           e the API key.',
+      117      ],
+      118 +    [                                                         
+      119 +      new WeatherLocationMismatchError('AZ', 'California'),   
+      120 +      'WEATHER_LOCATION_MISMATCH',                            
+      121 +      'Weatherstack placed this address in "California", not i
+          +n AZ (Arizona). The property was not saved.',                 
+      122 +    ],                                                        
+      123    ])('FR-10 AC1: maps %o to %s with its message', (domainError
+           , code, message) => {
+      124      const masked = asGraphQLError(maskError(thrownByResolver(d
+           omainError), MASKED));
+      125  
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+23 -1)
+      138    });
+      139  
+      140    it('FR-07 AC2: keeps a leading-zero zip as a string', async 
+           () => {
+      141 -    const app = testApp();                                    
+      141 +    const app = testApp({                                     
+      142 +      weather: new FakeWeatherClient(                         
+      143 +        weatherstackResponse({ location: { region: 'Massachuse
+          +tts' } }),                                                    
+      144 +      ),                                                      
+      145 +    });                                                       
+      146  
+      147      const created = createdProperty(
+      148        await app.execute(
+     ...
+      202      expect(app.weather.calls).toEqual([]);
+      203    });
+      204  
+      205 +  it('FR-05 AC4: a region outside the input state returns WEAT
+          +HER_LOCATION_MISMATCH and stores nothing', async () => {      
+      206 +    const app = testApp({                                     
+      207 +      weather: new FakeWeatherClient(weatherstackResponse({ lo
+          +cation: { region: 'California' } })),                         
+      208 +    });                                                       
+      209 +                                                              
+      210 +    const result = await app.execute(CREATE_PROPERTY, validInp
+          +ut());                                                        
+      211 +                                                              
+      212 +    const error = expectGraphQLError(result, 'WEATHER_LOCATION
+          +_MISMATCH');                                                  
+      213 +    expect(error.message).toBe(                               
+      214 +      'Weatherstack placed this address in "California", not i
+          +n AZ (Arizona). The property was not saved.',                 
+      215 +    );                                                        
+      216 +    expect(error.extensions).toEqual({ code: 'WEATHER_LOCATION
+          +_MISMATCH' });                                                
+      217 +    expect(error.path).toEqual(['createProperty']);           
+      218 +    expect(await countProperties(app.db)).toBe(0);            
+      219 +    expect(app.weather.calls).toEqual([QUERY]);               
+      220 +    expectNoSecret(result, app.logs());                       
+      221 +  });                                                         
+      222 +                                                              
+      223    it('FR-05 AC6: a rejected save returns INTERNAL_SERVER_ERROR
+            without SQL or a path, and stores nothing', async () => {
+      224      const repository = new InMemoryPropertyRepository();
+      225      repository.failInsert(new Error(SQL_AND_PATH));
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All agent checks pass. Phase 2's human check needs one real Weatherstack call,
+  so I'll check that .env has a key (without printing it):
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Phase 2 (Region check) is built and every automated check passes. Nothing is
+  committed yet: the phase still needs your two checks below, including one real
+  Weatherstack call.
+
+  What changed
+  - apps/api/src/domain/errors.ts: new WeatherLocationMismatchError(state, 
+    region) with code WEATHER_LOCATION_MISMATCH. The region is trimmed and cut
+    to 100 characters, and it's stored that way on the error and shown that way
+    in the message.
+  - apps/api/src/services/property.service.ts: new regionMatchesState(region, 
+    state). It trims and lower-cases the region, then requires an exact match
+    with the state name. create now runs weather → region check → insert.
+  - apps/api/src/services/property.service.test.ts:
+    - TR-09 table: case and spacing variants match, and so do DC and MA.
+    - Must not match: "", all spaces, "Arizona Territory", "North Arizona",
+      Virginia/WV, West Virginia/VA, Washington/DC.
+    - Error tests: the message wording, the 100-character cut, and on a mismatch
+      exactly 1 weather call and 0 inserts.
+  - apps/api/src/graphql/errors.test.ts: one more FR-10 AC1 row for the mismatch
+    error.
+  - apps/api/test/integration/create-property.int.test.ts:
+    - New FR-05 AC4 test: it returns WEATHER_LOCATION_MISMATCH with the exact
+      message, count stays 0, 1 weather call, and the key appears nowhere.
+    - The FR-07 AC2 (MA) test now uses a fake that returns Massachusetts as the
+      region. I checked the other tests, and no other non-AZ create goes through
+      the service.
+
+  Checks
+
+  ┌─────────────────────────┬───────────────────────────────────────────────┐
+  │          Check          │                    Result                     │
+  ├─────────────────────────┼───────────────────────────────────────────────┤
+  │ pnpm vitest run         │ 208/208 pass (the new tests failed first      │
+  │ --project api-unit      │ because the exports were missing)             │
+  ├─────────────────────────┼───────────────────────────────────────────────┤
+  │ pnpm vitest run         │ 71/71 pass                                    │
+  │ --project api-int       │                                               │
+  ├─────────────────────────┼───────────────────────────────────────────────┤
+  │ pnpm typecheck          │ pass                                          │
+  ├─────────────────────────┼───────────────────────────────────────────────┤
+  │ pnpm lint               │ pass                                          │
+  └─────────────────────────┴───────────────────────────────────────────────┘
+
+  Deviations: none.
+
+  Human checks (please confirm):
+  - [ ] DC region (R-03). Start the API with docker compose up -d postgres && 
+    pnpm dev. WEATHERSTACK_KEY is set in .env; I only checked that it exists.
+    Wait at least 1 s after any other call, then send this once:
+  curl -s localhost:4000/graphql -H 'content-type: application/json' -d
+  '{"query":"mutation { createProperty(input: {street: \"1600 Pennsylvania Ave 
+  NW\", city: \"Washington\", state: \"DC\", zipCode: \"20500\"}) { id state } 
+  }"}'
+    - If it succeeds, "District of Columbia" matches.
+    - If it returns WEATHER_LOCATION_MISMATCH, paste the message and I'll add an
+      alias and a test for it.
+    - I'll record the result in context/prd.md under Verified so far.
+  - [ ] Mismatch wording. Does this read well to you: Weatherstack placed this 
+    address in "California", not in AZ (Arizona). The property was not saved.
+
+  Once both are confirmed, I'll update the PRD and propose this commit:
+
+  feat(create-property-guards): reject a weather region outside the input state
+
+  Refs #4
+
+  After that comes Phase 3, duplicate prevention. I'd suggest /clear before it.
+
+✻ Cooked for 1m 29s · done 11:44 PM
+
+※ recap: I'm implementing Phase 2 of create-property-guards, which rejects a weather region that doesn't match the input state. It's built and all checks pass. Next, you run the one real DC createProperty call and confirm the mismatch message wording, then I commit. (disable recaps in /config)
+
+❯  curl -s localhost:4000/graphql -H 'content-type: application/json' -d        
+  '{"query":"mutation { createProperty(input: {street: \"1600 Pennsylvania Ave  
+  NW\", city: \"Washington\", state: \"DC\", zipCode: \"20500\"}) { id state }  
+  }"}'                                                                          
+  {"errors":[{"message":"Unknown argument \"input\" on field                    
+  \"Mutation.createProperty\".","locations":[{"line":1,"column":27}],"extension 
+  s":{"code":"GRAPHQL_VALIDATION_FAILED"}},{"message":"Argument                 
+  \"Mutation.createProperty(street:)\" of type \"String!\" is required, but it  
+  was not provided.","locations":[{"line":1,"column":12}],"extensions":{"code": 
+  "GRAPHQL_VALIDATION_FAILED"}},{"message":"Argument                            
+  \"Mutation.createProperty(city:)\" of type \"String!\" is required, but it    
+  was not provided.","locations":[{"line":1,"column":12}],"extensions":{"code": 
+  "GRAPHQL_VALIDATION_FAILED"}},{"message":"Argument                            
+  \"Mutation.createProperty(state:)\" of type \"String!\" is required, but it   
+  was not provided.","locations":[{"line":1,"column":12}],"extensions":{"code": 
+  "GRAPHQL_VALIDATION_FAILED"}},{"message":"Argument                            
+  \"Mutation.createProperty(zipCode:)\" of type \"String!\" is required, but it 
+  was not provided.","locations":[{"line":1,"column":12}],"extensions":{"code"  
+  :"GRAPHQL_VALIDATION_FAILED"}}]}                                              
+
+● My mistake: createProperty takes the four fields as separate arguments, not an
+  input object. GraphQL rejected the query before the resolver ran, so it
+  didn't use a Weatherstack call. Here's the corrected command:
+
+  curl -s localhost:4000/graphql -H 'content-type: application/json' -d
+  '{"query":"mutation { createProperty(street: \"1600 Pennsylvania Ave NW\", 
+  city: \"Washington\", state: \"DC\", zipCode: \"20500\") { id state } }"}'
+
+  - If it returns an id with "state":"DC", "District of Columbia" matches.
+  - If it returns WEATHER_LOCATION_MISMATCH, paste the message and I'll add the
+    alias.
+
+  Please also confirm the mismatch wording when you get a chance.
+
+✻ Cooked for 3s · done 11:48 PM
+
+❯ {"data":{"createProperty":{"id":"01a11856-d6a2-73fc-a21c-57f2ba878ead","state 
+  ":"DC"}}}                                                                     
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Update(context/prd.md)
+  ⎿  Added 3 lines
+      430      or HTTPS), 615 `request_failed`. 105 is not in the current
+            table. Classification uses only
+      431      `code`, never `type`, and `info` is never logged or return
+           ed. 104 and 429 are not triggered
+      432      for real.
+      433 +  - DC region (R-03, S-02 Phase 2): a `createProperty` for `16
+          +00 Pennsylvania Ave NW`,                                      
+      434 +    `Washington`, `DC`, `20500` through `pnpm dev` succeeded, 
+          +so Weatherstack's `region` for                                
+      435 +    DC matches `"District of Columbia"`. No alias is needed.  
+      436    Everything else in this section marked UNVERIFIED is checked
+            when the adapter is built.
+      437  
+      438  ## Non-functional requirements
+
+● The DC check passed: Weatherstack's region matches "District of Columbia", so
+  no alias is needed. I recorded the result in context/prd.md under Verified so 
+  far.
+
+  The DC property you just created is still in your dev database.
+
+  One check left: please confirm the mismatch message reads well:
+  Weatherstack placed this address in "California", not in AZ (Arizona). The 
+  property was not saved.
+
+  Proposed commit, staging only these 6 files: the 5 code and test files plus
+  context/prd.md. plan.md gets the tick and hash in the next phase's commit,
+  which is how Phase 1 was done.
+
+  feat(create-property-guards): reject a weather region outside the input state
+
+  Refs #4
+
+  Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+  If you OK the wording, I'll commit with this message. You can also edit the
+  message or the wording first.
+
+✻ Brewed for 10s · done 11:49 PM
+
+❯ wording is fine, commit it                                                    
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(sed -i 's/^- \[ \] Phase 2: Region check$/- [x] Phase 2: Region check
+      (31cb664)/' context/changes/create-property-guards/plan.md && grep -n
+      "Phase 2: Region" co…)
+  ⎿  356:- [x] Phase 2: Region check (31cb664)
+  ⎿  Updated context/changes/create-property-guards/plan.md (+1 -1)
+      353  ## Progress
+      354  <!-- One line per phase. /implement ticks it and appends the c
+           ommit hash. -->
+      355  - [x] Phase 1: Weather failure classification (d64251f)
+      356 -- [ ] Phase 2: Region check                                   
+      356 +- [x] Phase 2: Region check (31cb664)                         
+      357  - [ ] Phase 3: Duplicate prevention
+      358  
+      359  ## Deviations
+
+● Phase 2 is committed as 31cb664 (feat(create-property-guards): reject a 
+  weather region outside the input state, Refs #4). The pre-commit hook passed:
+  formatting, typecheck, and 322/322 hermetic tests.
+
+  I ticked Phase 2 in plan.md with that hash. That edit isn't committed yet and
+  will go in with Phase 3, the same way Phase 1's hash was recorded.
+
+  Next: Phase 3, duplicate prevention (the address pre-check, mapping the 23505
+  unique-index error, and the concurrency test). After it, Stryker runs on
+  response.ts, client.ts and property.service.ts. Run /clear, then /implement 
+  create-property-guards.
+
+✻ Crunched for 18s · done 11:50 PM

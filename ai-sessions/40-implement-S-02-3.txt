@@ -1,0 +1,750 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement create-property-guards                                             
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Moving into Phase 3: I'll add duplicate prevention by pre-checking normalized
+  addresses before the weather call, mapping the 23505 constraint violation on
+  properties_address_unique to PROPERTY_ALREADY_EXISTS, and proving FR-08
+  AC1–AC3 including the race condition. After implementing, I'll run api-unit,
+  api-int, typecheck, and lint, then invoke the /mutation skill
+  separately—leaving plan.md's Phase 2 tick and the untracked
+  implement-S-02-2.txt file as-is.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Bash(cat >> src/domain/errors.ts <<'EOF'…)
+  ⎿  import type { AddressInput } from '@property-manager/shared';
+
+     // The PRD's canonical address. Derive other inputs through overrides:
+     … +19 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/domain/errors.ts (+10 -0)
+      54      this.region = shown;
+      55    }
+      56  }
+      57 +                                                               
+      58 +// The pre-check or the unique index (`properties_address_uniqu
+         +e`) found the same address.                                    
+      59 +export class PropertyAlreadyExistsError extends DomainError {  
+      60 +  override name = 'PropertyAlreadyExistsError';                
+      61 +  readonly code = 'PROPERTY_ALREADY_EXISTS';                   
+      62 +                                                               
+      63 +  constructor(options?: ErrorOptions) {                        
+      64 +    super('A property with this address already exists.', optio
+         +ns);                                                           
+      65 +  }                                                            
+      66 +}                                                              
+
+● Added the new error class; now writing the Phase 3 tests (service, repository,
+  integration) before the implementation.
+
+● Bash(python3 - <<'EOF'
+      import re…)
+  ⎿   apps/api/src/domain/errors.ts                  | 10 ++++++
+      apps/api/src/graphql/errors.test.ts            |  6 ++++
+      apps/api/src/services/property.service.test.ts | 46 +++++++++++++++++
+     … +3 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/services/property.service.test.ts (+45 -1)
+       1  import { normalizeAddress } from '@property-manager/shared';
+       2  import { describe, expect, it } from 'vitest';
+       3 -import { WeatherLocationMismatchError, WeatherUnavailableError 
+         -} from '../domain/errors.ts';                                  
+       3 +import {                                                       
+       4 +  PropertyAlreadyExistsError,                                  
+       5 +  WeatherLocationMismatchError,                                
+       6 +  WeatherUnavailableError,                                     
+       7 +} from '../domain/errors.ts';                                  
+       8  import { InMemoryPropertyRepository } from '../../test/fakes/pr
+          operty-repository.ts';
+       9  import { FakeWeatherClient } from '../../test/fakes/weather.ts'
+          ;
+      10  import { validInput } from '../../test/fixtures/property.ts';
+     ...
+      160    });
+      161  });
+      162  
+      163 +describe('PropertyService.create duplicates', () => {         
+      164 +  it('FR-08 AC1 (service half): a stored address makes no weat
+          +her call and inserts nothing', async () => {                  
+      165 +    const { service, repository, weather } = setup();         
+      166 +    const stored = await service.create(address);             
+      167 +    weather.calls.length = 0;                                 
+      168 +    const variant = normalizeAddress(                         
+      169 +      validInput({ street: '15528 e golden eagle  blvd', city:
+          + 'FOUNTAIN HILLS' }),                                         
+      170 +    );                                                        
+      171 +                                                              
+      172 +    const error: unknown = await service.create(variant).catch
+          +((e: unknown) => e);                                          
+      173 +                                                              
+      174 +    expect(error).toBeInstanceOf(PropertyAlreadyExistsError); 
+      175 +    expect(error).toMatchObject({ code: 'PROPERTY_ALREADY_EXIS
+          +TS' });                                                       
+      176 +    expect(weather.calls).toEqual([]);                        
+      177 +    expect(repository.rows).toEqual([stored]);                
+      178 +  });                                                         
+      179 +                                                              
+      180 +  it.each([                                                   
+      181 +    ['zipCode', { zipCode: '85269' }],                        
+      182 +    ['state', { state: 'CA' }],                               
+      183 +    ['street', { street: '15529 E Golden Eagle Blvd' }],      
+      184 +    ['city', { city: 'Scottsdale' }],                         
+      185 +  ] as const)('a different %s is not a duplicate', async (_fie
+          +ld, override) => {                                            
+      186 +    const { service, repository } = setup();                  
+      187 +    await service.create(address);                            
+      188 +                                                              
+     … 17 more lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/graphql/errors.test.ts (+6 -0)
+      3  import { describe, expect, it } from 'vitest';
+      4  import { captureLogs } from '../../test/helpers/logs.ts';
+      5  import {
+      6 +  PropertyAlreadyExistsError,                                   
+      7    WeatherLocationMismatchError,
+      8    WeatherQuotaExceededError,
+      9    WeatherUnavailableError,
+     ...
+      121        'WEATHER_LOCATION_MISMATCH',
+      122        'Weatherstack placed this address in "California", not i
+           n AZ (Arizona). The property was not saved.',
+      123      ],
+      124 +    [                                                         
+      125 +      new PropertyAlreadyExistsError({ cause: { code: '23505' 
+          +} }),                                                         
+      126 +      'PROPERTY_ALREADY_EXISTS',                              
+      127 +      'A property with this address already exists.',         
+      128 +    ],                                                        
+      129    ])('FR-10 AC1: maps %o to %s with its message', (domainError
+           , code, message) => {
+      130      const masked = asGraphQLError(maskError(thrownByResolver(d
+           omainError), MASKED));
+      131  
+
+● Bash(python3 - <<'EOF'
+      p='src/services/property.service.test.ts'…)
+  ⎿  Updated apps/api/src/services/property.service.test.ts (+5 -4)
+      178    });
+      179  
+      180    it.each([
+      181 -    ['zipCode', { zipCode: '85269' }],                        
+      182 -    ['state', { state: 'CA' }],                               
+      181      ['street', { street: '15529 E Golden Eagle Blvd' }],
+      182      ['city', { city: 'Scottsdale' }],
+      185 -  ] as const)('a different %s is not a duplicate', async (_fie
+          -ld, override) => {                                            
+      183 +    ['zipCode', { zipCode: '85269' }],                        
+      184 +  ] as const)('an address with a different %s is stored', asyn
+          +c (_field, override) => {                                     
+      185      const { service, repository } = setup();
+      186      await service.create(address);
+      187  
+      189 -    expect(await repository.existsByAddress(normalizeAddress(v
+          -alidInput(override)))).toBe(false);                           
+      188 +    await service.create(normalizeAddress(validInput(override)
+          +));                                                           
+      189 +                                                              
+      190 +    expect(repository.rows).toHaveLength(2);                  
+      191    });
+      192  
+      193    it('FR-08 AC2 (service half): a duplicate on insert after a 
+           clean pre-check propagates', async () => {
+
+● Now the integration tests (repository + create-property).
+
+● Bash(python3 - <<'EOF'
+      p='test/integration/property-repository.int.test.ts'…)
+  ⎿   RUN  v5.0.3 /home/krzysztof/projects/taskTreeCover/property-manager
+
+      ❯ |api-unit| src/services/property.service.test.ts (32 tests | 1 fail
+     … +22 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/property-repository.int.test.ts (+55
+     -0)
+      1  import { normalizeAddress } from '@property-manager/shared';
+      2 +import pg from 'pg';                                            
+      3  import { afterAll, beforeEach, describe, expect, inject, it } fr
+         om 'vitest';
+      4  import { createDb } from '../../src/db/client.ts';
+      5  import type { NewProperty } from '../../src/domain/property.ts';
+      6 +import { PropertyAlreadyExistsError } from '../../src/domain/err
+        +ors.ts';                                                        
+      7  import { createPropertyRepository } from '../../src/repositories
+         /property.repository.ts';
+      8  import { validInput } from '../fixtures/property.ts';
+      9  import { weatherstackResponse } from '../fixtures/weatherstack.t
+         s';
+     ...
+      111  
+      112      expect(await countProperties(db)).toBe(0);
+      113    });
+      114 +                                                              
+      115 +  it('insert propagates a non-unique DB rejection unchanged', 
+          +async () => {                                                 
+      116 +    const error: unknown = await repository.insert(newProperty
+          +({ lat: 999 })).catch((e: unknown) => e);                     
+      117 +                                                              
+      118 +    expect(error).not.toBeInstanceOf(PropertyAlreadyExistsErro
+          +r);                                                           
+      119 +    expect(error).toHaveProperty('cause.code', '23514');      
+      120 +    expect(error).toHaveProperty('cause.constraint', 'properti
+          +es_lat_range');                                               
+      121 +  });                                                         
+      122 +                                                              
+      123 +  it('FR-08 AC2 (storage): a second insert of the same address
+          + throws PropertyAlreadyExistsError', async () => {            
+      124 +    await repository.insert(newProperty());                   
+      125 +                                                              
+      126 +    const error: unknown = await repository                   
+      127 +      .insert(newProperty({ street: '15528 E GOLDEN EAGLE BLVD
+          +', city: 'fountain hills' }))                                 
+      128 +      .catch((e: unknown) => e);                              
+      129 +                                                              
+      130 +    expect(error).toBeInstanceOf(PropertyAlreadyExistsError); 
+      131 +    expect(error).toMatchObject({ code: 'PROPERTY_ALREADY_EXIS
+          +TS' });                                                       
+      132 +    expect(error).toHaveProperty('cause.cause', expect.any(pg.
+          +DatabaseError));                                              
+      133 +    expect(error).toHaveProperty('cause.cause.code', '23505');
+      134 +    expect(error).toHaveProperty('cause.cause.constraint', 'pr
+          +operties_address_unique');                                    
+      135 +    expect(await countProperties(db)).toBe(1);                
+      136 +  });                                                         
+      137  });
+      138 +                                                              
+      139 +describe('PropertyRepository.existsByAddress', () => {        
+      140 +  const address = normalizeAddress(validInput());             
+      141 +                                                              
+     … 26 more lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+55 -1)
+      1 +import { eq } from 'drizzle-orm';                               
+      2  import { afterEach, beforeEach, describe, expect, it, vi } from 
+         'vitest';
+      3  import { properties } from '../../src/db/schema.ts';
+      4  import { InMemoryPropertyRepository } from '../fakes/property-re
+         pository.ts';
+     ...
+       7  import { weatherstackError, weatherstackResponse } from '../fix
+          tures/weatherstack.ts';
+       8  import { createTestApp } from '../helpers/app.ts';
+       9  import type { ExecuteResult, TestApp, TestAppOptions } from '..
+          /helpers/app.ts';
+       9 -import { countProperties, resetDb } from '../helpers/db.ts';   
+      10 +import { countProperties, resetDb, seedProperty } from '../help
+         +ers/db.ts';                                                    
+      11  import { expectGraphQLError } from '../helpers/graphql.ts';
+      12  import { expectNoSecret, TEST_WEATHERSTACK_KEY } from '../helpe
+          rs/secrets.ts';
+      13  import { weatherstackHandlers } from '../msw/weatherstack.ts';
+     ...
+      18  const UNAVAILABLE = 'Weather could not be fetched, so the prope
+          rty was not saved. Try again later.';
+      19  const QUOTA_EXCEEDED =
+      20    'The Weatherstack usage limit has been reached, so the proper
+          ty was not saved. Upgrade the Weatherstack plan or replace the 
+          API key.';
+      21 +const ALREADY_EXISTS = 'A property with this address already ex
+         +ists.';                                                        
+      22  const QUERY = '15528 E Golden Eagle Blvd, Fountain Hills, AZ 85
+          268, United States';
+      23  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-
+          [0-9a-f]{12}$/;
+      24  // What an unexpected error must never show the caller (FR-10 A
+          C2).
+     ...
+      281    });
+      282  });
+      283  
+      284 +describe('createProperty duplicates', () => {                 
+      285 +  it('FR-08 AC1: a case and spacing variant of a stored addres
+          +s returns PROPERTY_ALREADY_EXISTS with no weather call', async
+          + () => {                                                      
+      286 +    const app = testApp();                                    
+      287 +    await seedProperty(app.db);                               
+      288 +                                                              
+      289 +    const result = await app.execute(                         
+      290 +      CREATE_PROPERTY,                                        
+      291 +      validInput({ street: '15528 e golden eagle  blvd', city:
+          + 'FOUNTAIN HILLS' }),                                         
+      292 +    );                                                        
+      293 +                                                              
+      294 +    const error = expectGraphQLError(result, 'PROPERTY_ALREADY
+          +_EXISTS');                                                    
+      295 +    expect(error.message).toBe(ALREADY_EXISTS);               
+      296 +    expect(error.extensions).toEqual({ code: 'PROPERTY_ALREADY
+          +_EXISTS' });                                                  
+      297 +    expect(result.data).toEqual({ createProperty: null });    
+      298 +    expect(app.weather.calls).toEqual([]);                    
+      299 +    expect(await countProperties(app.db)).toBe(1);            
+      300 +  });                                                         
+      301 +                                                              
+     … 37 more lines (ctrl+o to expand)
+
+● Fails for the right reason (no pre-check yet). Now the implementation.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/api &&
+      python3 - <<'EOF'
+      p='src/domain/ports.ts'…)
+  ⎿  36:      sql`lower(${t.street})`,
+     37:      sql`lower(${t.city})`,
+  ⎿  Updated apps/api/src/domain/ports.ts (+4 -0)
+      1 +import type { Address } from '@property-manager/shared';        
+      2  import type { NewProperty, Property } from './property.ts';
+      3  import type { WeatherReport } from './weather.ts';
+      4  
+     ...
+       8  };
+       9  
+      10  export type PropertyRepository = {
+      11 +  // True when a stored property has the same normalized addres
+         +s (FR-08 AC1).                                                 
+      12 +  existsByAddress(address: Address): Promise<boolean>;         
+      13 +  // Throws `PropertyAlreadyExistsError` when the unique addres
+         +s index rejects the row.                                       
+      14    insert(property: NewProperty): Promise<Property>;
+      15    findById(id: string): Promise<Property | null>;
+      16  };
+  ⎿  Updated apps/api/src/services/property.service.ts (+5 -2)
+      1  import { stateName } from '@property-manager/shared';
+      2  import type { Address, StateCode } from '@property-manager/share
+         d';
+      3 -import { WeatherLocationMismatchError } from '../domain/errors.t
+        -s';                                                             
+      3 +import { PropertyAlreadyExistsError, WeatherLocationMismatchErro
+        +r } from '../domain/errors.ts';                                 
+      4  import type { PropertyRepository, WeatherClient } from '../domai
+         n/ports.ts';
+      5  import type { Property } from '../domain/property.ts';
+      6  
+     ...
+      27    weather,
+      28  }: PropertyServiceDeps): PropertyService {
+      29    return {
+      30 -    // Weather, region check, then a single insert: a failure a
+         -t any step stores nothing (NFR-08).                            
+      30 +    // Duplicate pre-check, weather, region check, then a singl
+         +e insert: a failure at any step                                
+      31 +    // stores nothing (NFR-08). A duplicate costs no weather ca
+         +ll; a racing one is caught by the                              
+      32 +    // unique index on insert (FR-08 AC2).                     
+      33      async create(address) {
+      34 +      if (await repository.existsByAddress(address)) throw new 
+         +PropertyAlreadyExistsError();                                  
+      35        const report = await weather.current(weatherQuery(address
+          ));
+      36        if (!regionMatchesState(report.region, address.state)) {
+      37          throw new WeatherLocationMismatchError(address.state, r
+          eport.region);
+  ⎿  Updated apps/api/test/fakes/property-repository.ts (+11 -0)
+       1 +import type { Address } from '@property-manager/shared';       
+       2  import type { PropertyRepository } from '../../src/domain/ports
+          .ts';
+       3  import type { NewProperty, Property } from '../../src/domain/pr
+          operty.ts';
+       4  import { toCurrentWeather } from '../../src/domain/weather.ts';
+       5  
+       6 +function addressKey({ street, city, state, zipCode }: Address):
+         + string {                                                      
+       7 +  return JSON.stringify([street.toLowerCase(), city.toLowerCase
+         +(), state, zipCode]);                                          
+       8 +}                                                              
+       9 +                                                               
+      10  // The `PropertyRepository` for service tests. Maps rows the wa
+          y the Drizzle repository does,
+      11  // so a `current` without its key fields fails here too.
+      12  export class InMemoryPropertyRepository implements PropertyRepo
+          sitory {
+     ...
+      18      this.#insertError = error;
+      19    }
+      20  
+      21 +  // The same keys as `properties_address_unique`. `insert` doe
+         +s not enforce them: a race needs                               
+      22 +  // `failInsert(new PropertyAlreadyExistsError())`.           
+      23 +  existsByAddress(address: Address): Promise<boolean> {        
+      24 +    return Promise.resolve(this.rows.some((row) => addressKey(r
+         +ow) === addressKey(address)));                                 
+      25 +  }                                                            
+      26 +                                                               
+      27    insert(property: NewProperty): Promise<Property> {
+      28      if (this.#insertError !== undefined) return Promise.reject(
+          this.#insertError);
+      29      const stored: Property = {
+  ⎿  Updated apps/api/src/repositories/property.repository.ts (+42 -3)
+       1  import { isStateCode } from '@property-manager/shared';
+       2 -import { eq } from 'drizzle-orm';                              
+       2 +import { and, eq, sql } from 'drizzle-orm';                    
+       3 +import pg from 'pg';                                           
+       4  import type { Database } from '../db/client.ts';
+       5  import { properties } from '../db/schema.ts';
+       6  import type { PropertyRow } from '../db/schema.ts';
+       7 +import { PropertyAlreadyExistsError } from '../domain/errors.ts
+         +';                                                             
+       8  import type { PropertyRepository } from '../domain/ports.ts';
+       9  import type { Property } from '../domain/property.ts';
+      10  import { toCurrentWeather } from '../domain/weather.ts';
+     ...
+      20    };
+      21  }
+      22  
+      21 -// DB errors propagate unchanged; mapping 23505 to DUPLICATE_PR
+         -OPERTY is S-02.                                                
+      23 +const ADDRESS_UNIQUE = 'properties_address_unique';            
+      24 +                                                               
+      25 +// Drizzle wraps the pg error in DrizzleQueryError (`cause`); t
+         +he bare error is checked too, so a                             
+      26 +// driver upgrade that stops wrapping still maps.              
+      27 +function isAddressUniqueViolation(error: unknown): boolean {   
+      28 +  const pgError = error instanceof Error && !(error instanceof 
+         +pg.DatabaseError) ? error.cause : error;                       
+      29 +  return (                                                     
+      30 +    pgError instanceof pg.DatabaseError &&                     
+      31 +    pgError.code === '23505' &&                                
+      32 +    pgError.constraint === ADDRESS_UNIQUE                      
+      33 +  );                                                           
+      34 +}                                                              
+      35 +                                                               
+      36 +// Only a violation of the address index is mapped; every other
+         + DB error propagates unchanged.                                
+      37  export function createPropertyRepository(db: Database): Propert
+          yRepository {
+      38    return {
+      39 +    // The same expressions as `properties_address_unique`, so 
+         +the pre-check and storage agree.                               
+      40 +    async existsByAddress({ street, city, state, zipCode }) {  
+      41 +      const rows = await db                                    
+      42 +        .select({ one: sql`1` })                               
+      43 +        .from(properties)                                      
+      44 +        .where(                                                
+      45 +          and(                                                 
+      46 +            eq(sql`lower(${properties.street})`, street.toLower
+         +Case()),                                                       
+      47 +            eq(sql`lower(${properties.city})`, city.toLowerCase
+         +()),                                                           
+     … 21 more lines (ctrl+o to expand)
+
+● Using Postgres lower() on both sides (as the plan specifies), so non-ASCII
+  case folding matches the index exactly instead of relying on JS toLowerCase.
+
+● Bash(python3 - <<'EOF'
+      p='src/repositories/property.repository.ts'…)
+  ⎿  $ prettier --write .
+      Test Files  16 passed (16)
+           Tests  214 passed (214)
+     … +17 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/repositories/property.repository.ts (+6 -4)
+      25  // Drizzle wraps the pg error in DrizzleQueryError (`cause`); t
+          he bare error is checked too, so a
+      26  // driver upgrade that stops wrapping still maps.
+      27  function isAddressUniqueViolation(error: unknown): boolean {
+      28 -  const pgError = error instanceof Error && !(error instanceof 
+         -pg.DatabaseError) ? error.cause : error;                       
+      28 +  const pgError =                                              
+      29 +    error instanceof Error && !(error instanceof pg.DatabaseErr
+         +or) ? error.cause : error;                                     
+      30    return (
+      31      pgError instanceof pg.DatabaseError &&
+      32      pgError.code === '23505' &&
+     ...
+      44          .from(properties)
+      45          .where(
+      46            and(
+      46 -            eq(sql`lower(${properties.street})`, street.toLower
+         -Case()),                                                       
+      47 -            eq(sql`lower(${properties.city})`, city.toLowerCase
+         -()),                                                           
+      47 +            sql`lower(${properties.street}) = lower(${street})`
+         +,                                                              
+      48 +            sql`lower(${properties.city}) = lower(${city})`,   
+      49              eq(properties.state, state),
+      50              eq(properties.zipCode, zipCode),
+      51            ),
+     ...
+      60          .values(property)
+      61          .returning()
+      62          .catch((error: unknown) => {
+      62 -          if (isAddressUniqueViolation(error)) throw new Proper
+         -tyAlreadyExistsError({ cause: error });                        
+      63 +          if (isAddressUniqueViolation(error))                 
+      64 +            throw new PropertyAlreadyExistsError({ cause: error
+         + });                                                           
+      65            throw error;
+      66          });
+      67        if (row === undefined) throw new Error('insert returned n
+          o row');
+  ⎿  Updated apps/api/test/integration/property-repository.int.test.ts (+7 
+     -2)
+      113    });
+      114  
+      115    it('insert propagates a non-unique DB rejection unchanged', 
+           async () => {
+      116 -    const error: unknown = await repository.insert(newProperty
+          -({ lat: 999 })).catch((e: unknown) => e);                     
+      116 +    const error: unknown = await repository                   
+      117 +      .insert(newProperty({ lat: 999 }))                      
+      118 +      .catch((e: unknown) => e);                              
+      119  
+      120      expect(error).not.toBeInstanceOf(PropertyAlreadyExistsErro
+           r);
+      121      expect(error).toHaveProperty('cause.code', '23514');
+     ...
+      148    it.each([
+      149      ['the same address', validInput()],
+      150      ['a case variant', validInput({ street: '15528 e golden ea
+           gle BLVD', city: 'FOUNTAIN HILLS' })],
+      149 -    ['a spacing variant', validInput({ street: ' 15528  E Gold
+          -en Eagle Blvd', city: 'Fountain  Hills ' })],                 
+      151 +    [                                                         
+      152 +      'a spacing variant',                                    
+      153 +      validInput({ street: ' 15528  E Golden Eagle Blvd', city
+          +: 'Fountain  Hills ' }),                                      
+      154 +    ],                                                        
+      155      ['a lower-case state', validInput({ state: 'az' })],
+      156    ])('TR-07: is true for %s', async (_case, input) => {
+      157      await seedProperty(db);
+  ⎿  (timeout 6m 40s)
+
+● All green. Sanity check that the race and storage tests actually depend on the
+  23505 mapping: temporarily disable it.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Both tests catch it; file restored. Now typecheck and lint, plus the test-plan
+  status update.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/test-plan.md'…)
+  ⎿   context/test-plan.md | 10 +++++-----
+      1 file changed, 5 insertions(+), 5 deletions(-)
+  ⎿  Updated context/test-plan.md (+5 -5)
+      28  | TR-01 | Weatherstack key leaks into a log line, a logged URL,
+           a GraphQL error or a thrown HTTP error (NFR-01, R-05). The key
+           is a query parameter, so any `String(url)` or `error.message` 
+          from `fetch` leaks it. | H | M | U + I | U: `redactUrl` / `reda
+          ctError` helpers on URLs with `access_key` first, middle, last 
+          and URL-encoded. I: every FR-06 failure case runs with a sentin
+          el key (`TEST_WEATHERSTACK_KEY`); assert the sentinel is absent
+           from the captured pino output and the serialized GraphQL respo
+          nse, and that any logged URL contains `access_key=[REDACTED]` (
+          FR-06 AC6, AC7). Pre-commit secret scan (see *Quality gates*). 
+          | covered (S-01, S-02) |
+      29  | TR-02 | Weatherstack error payloads are misclassified: HTTP 2
+          00 with `success: false` is treated as success, or code 104 is 
+          not mapped to `WEATHER_QUOTA_EXCEEDED` (FR-06 AC1, AC2, R-01). 
+          Weatherstack reports errors in a 200 body, which is easy to mis
+          s. | H | M | U (MSW) | Adapter tests, one `it.each` table: 104,
+           body 429 → quota; 101, 105, 403 → unavailable + config log ent
+          ry; 615, unknown code → unavailable; `success: false` without `
+          error` → unavailable. Bodies follow the documented shape (OQ-04
+          , verified in the S-02 plan). | covered (S-02) |
+      30  | TR-03 | A response with a changed or partial shape (missing `
+          current`, a missing key field, `lat`/`lon` not numeric) is stor
+          ed as a broken record, or crashes later on the details page (FR
+          -06 AC5, R-04, NFR-08). | H | M | U | Adapter schema tests: the
+           recorded sample `docs/samples/weatherstack-current.json` parse
+          s (contract test). Then each key field removed one at a time (`
+          it.each`) → `WEATHER_UNAVAILABLE`. Non-numeric `lat` → unavaila
+          ble. Missing `astro` / `air_quality` / non-key fields → success
+          . | planned (S-01 happy path, S-02 failures) |
+      31 -| TR-04 | A Weatherstack call is made where it must not be: a d
+         -uplicate, invalid input, a query, a delete, or a retry (C-03, B
+         --N2, FR-01 AC6, FR-04 AC3, FR-07 AC1, FR-08 AC1, FR-09 AC3). Ev
+         -ery extra call spends quota (R-01). | H | M | I | `FakeWeatherC
+         -lient.calls` asserted in every resolver-level integration test:
+         - exactly 1 on a successful create, 0 on validation failure, dup
+         -licate, `properties`, `property` and `deleteProperty`. Adapter 
+         -test: exactly one HTTP request on timeout, 5xx and 429 (no retr
+         -y, FR-06 AC3). | planned (S-01 – S-03) |                       
+      32 -| TR-05 | A failed create leaves a partial or orphan row: the s
+         -ave runs before the region check, or a DB error happens mid-way
+         - (FR-05 AC5, AC6, NFR-08). | H | L | I | For every failure code
+         -: property count before = after. The DB rejecting the save (rep
+         -ository fake that throws) → `INTERNAL_SERVER_ERROR` with no row
+         -. Schema: `NOT NULL` on every required column, an insert with a
+         - null is rejected, and the CHECKs reject out-of-range or malfor
+         -med values (F-02, `schema.int.test.ts`). | schema half covered 
+         -(F-02); planned (S-01, S-02) |                                 
+      33 -| TR-06 | Two concurrent creates of the same address both pass 
+         -the pre-check and both get stored (FR-08 AC2). This is a race, 
+         -so it shows up rarely and stays hidden. | M | M | I | Testconta
+         -iners: `FakeWeatherClient` holds both calls behind a barrier un
+         -til both have passed the pre-check, then releases them. `Promis
+         -e.all` of two `createProperty` calls → exactly one success, one
+         - `PROPERTY_ALREADY_EXISTS`, count 1. Repository test: the pg `2
+         -3505` error on insert maps to the domain duplicate error (Drizz
+         -le 0.45 puts the pg error on `DrizzleQueryError.cause`). Storag
+         -e half: two rows differing only in `street`/`city` case violate
+         - `properties_address_unique` (F-02, `schema.int.test.ts`). | st
+         -orage half covered (F-02); planned (S-02) |                    
+      34 -| TR-07 | Address normalization differs between the duplicate c
+         -heck, the unique index and the stored value, so `"15528 e golde
+         -n eagle  blvd"` is not caught as a duplicate, or a valid addres
+         -s is wrongly blocked (FR-05 AC3, FR-08 AC1, FR-08 AC3). | M | M
+         - | U + I | U: `normalizeAddress` table (trim, collapse inner wh
+         -itespace, state upper-case, case kept for display). I: FR-08 AC
+         -1 variant through the API; FR-08 AC3 delete-then-recreate succe
+         -eds. | planned (S-01, S-02, S-03) |                            
+      31 +| TR-04 | A Weatherstack call is made where it must not be: a d
+         +uplicate, invalid input, a query, a delete, or a retry (C-03, B
+         +-N2, FR-01 AC6, FR-04 AC3, FR-07 AC1, FR-08 AC1, FR-09 AC3). Ev
+         +ery extra call spends quota (R-01). | H | M | I | `FakeWeatherC
+         +lient.calls` asserted in every resolver-level integration test:
+         + exactly 1 on a successful create, 0 on validation failure, dup
+         +licate, `properties`, `property` and `deleteProperty`. Adapter 
+         +test: exactly one HTTP request on timeout, 5xx and 429 (no retr
+         +y, FR-06 AC3). | covered for create (S-01, S-02); planned (S-03
+         +) |                                                            
+      32 +| TR-05 | A failed create leaves a partial or orphan row: the s
+         +ave runs before the region check, or a DB error happens mid-way
+         + (FR-05 AC5, AC6, NFR-08). | H | L | I | For every failure code
+         +: property count before = after. The DB rejecting the save (rep
+         +ository fake that throws) → `INTERNAL_SERVER_ERROR` with no row
+         +. Schema: `NOT NULL` on every required column, an insert with a
+         + null is rejected, and the CHECKs reject out-of-range or malfor
+         +med values (F-02, `schema.int.test.ts`). | covered (F-02, S-01,
+         + S-02) |                                                       
+      33 +| TR-06 | Two concurrent creates of the same address both pass 
+         +the pre-check and both get stored (FR-08 AC2). This is a race, 
+         +so it shows up rarely and stays hidden. | M | M | I | Testconta
+         +iners: `FakeWeatherClient` holds both calls behind a barrier un
+         +til both have passed the pre-check, then releases them. `Promis
+         +e.all` of two `createProperty` calls → exactly one success, one
+         + `PROPERTY_ALREADY_EXISTS`, count 1. Repository test: the pg `2
+         +3505` error on insert maps to the domain duplicate error (Drizz
+         +le 0.45 puts the pg error on `DrizzleQueryError.cause`). Storag
+         +e half: two rows differing only in `street`/`city` case violate
+         + `properties_address_unique` (F-02, `schema.int.test.ts`). | co
+         +vered (F-02, S-02) |                                           
+      34 +| TR-07 | Address normalization differs between the duplicate c
+         +heck, the unique index and the stored value, so `"15528 e golde
+         +n eagle  blvd"` is not caught as a duplicate, or a valid addres
+         +s is wrongly blocked (FR-05 AC3, FR-08 AC1, FR-08 AC3). | M | M
+         + | U + I | U: `normalizeAddress` table (trim, collapse inner wh
+         +itespace, state upper-case, case kept for display). I: FR-08 AC
+         +1 variant through the API; FR-08 AC3 delete-then-recreate succe
+         +eds. | covered (S-01, S-02); FR-08 AC3 through `deleteProperty`
+         + planned (S-03) |                                              
+      35  | TR-08 | Input validation lets bad data through or rejects val
+          id data: ZIP+4, 4-digit zip, leading-zero zip turned into a num
+          ber, territories, full state names, blank or overlong street/ci
+          ty (FR-07 AC1 – AC5, A-01 – A-03). | M | M | U + I | U: shared 
+          address schema in `packages/shared`, `it.each` with the PRD's e
+          xact examples plus boundary lengths (200/201 street, 100/101 ci
+          ty after trimming). I: one resolver test with several invalid f
+          ields → one `BAD_USER_INPUT` listing all fields in `extensions.
+          fields`, 0 weather calls. FR-07 AC2 `"02108"` stored and return
+          ed as the string `"02108"`. | planned (S-01) |
+      36 -| TR-09 | The region check gives a false result: case or whites
+         -pace in `region`, DC as "District of Columbia" (R-03), or a mis
+         -sing state in the code → name table, so a valid address is reje
+         -cted or a mismatch is stored (FR-05 AC4). | M | M | U + I | U: 
+         -`regionMatchesState` table (exact, different case, padded, DC, 
+         -mismatch). U: the states table has exactly 51 entries and every
+         - code maps to a name. I: FR-05 AC4 → `WEATHER_LOCATION_MISMATCH
+         -` whose message names "AZ"/"Arizona" and "California", count un
+         -changed. | planned (S-02) |                                    
+      36 +| TR-09 | The region check gives a false result: case or whites
+         +pace in `region`, DC as "District of Columbia" (R-03), or a mis
+         +sing state in the code → name table, so a valid address is reje
+         +cted or a mismatch is stored (FR-05 AC4). | M | M | U + I | U: 
+         +`regionMatchesState` table (exact, different case, padded, DC, 
+         +mismatch). U: the states table has exactly 51 entries and every
+         + code maps to a name. I: FR-05 AC4 → `WEATHER_LOCATION_MISMATCH
+         +` whose message names "AZ"/"Arizona" and "California", count un
+         +changed. | covered (S-02) |                                    
+      37  | TR-10 | The timeout does not fire or a hang blocks the mutati
+          on for longer than 6 s (FR-06 AC3, NFR-03). | M | M | U (MSW) |
+           Adapter test with an MSW handler that never resolves (`delay('
+          infinite')`) and an injected short timeout (e.g. 50 ms) → `WEAT
+          HER_UNAVAILABLE`, one request. A separate check spies on `Abort
+          Signal.timeout` and asserts the client default of 5000 ms. The 
+          real 5 s wait is not run in the suite. | covered (S-02) |
+      38  | TR-11 | Network error, non-2xx status or 429 throws an unmapp
+          ed error, which becomes `INTERNAL_SERVER_ERROR` or leaks the UR
+          L (FR-06 AC4). | M | M | U (MSW) | Adapter `it.each`: `HttpResp
+          onse.error()`, 500, 503, HTTP status 429 (seen 2026-10-07; a bo
+          dy code 429 is quota, TR-02), 200 with a non-JSON body → `WEATH
+          ER_UNAVAILABLE`, key absent from the error. | covered (S-02) |
+      39  | TR-12 | Error mapping is wrong: a domain error gets the wrong
+           `extensions.code`, or an unexpected error exposes a stack trac
+          e, SQL, a file path or the key (FR-10 AC1, AC2). | M | M | U + 
+          I | U: error formatter table, one case per FR-10 code and an un
+          known `Error` → `INTERNAL_SERVER_ERROR` with a generic message.
+           I: a repository fake throwing an `Error` containing SQL text a
+          nd a path → the response contains neither. | planned (S-01, S-0
+          2) |
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Phase 3 (duplicate prevention) is implemented and all automated checks pass.
+  Phase 3 has no human checks, so the only thing left is your OK on the commit
+  message below.
+
+  What changed
+  - apps/api/src/domain/errors.ts: new PropertyAlreadyExistsError (code
+    PROPERTY_ALREADY_EXISTS, message "A property with this address already
+    exists.").
+  - apps/api/src/domain/ports.ts: PropertyRepository.existsByAddress(address).
+  - apps/api/src/repositories/property.repository.ts: existsByAddress uses the
+    same four expressions as the unique index, with Postgres lower() on both
+    sides. insert now turns a 23505 on properties_address_unique into
+    PropertyAlreadyExistsError; any other DB error passes through unchanged.
+    Fixed the old "DUPLICATE_PROPERTY" comment.
+  - apps/api/src/services/property.service.ts: create checks for a duplicate
+    first, before the weather call.
+  - apps/api/test/fakes/property-repository.ts: existsByAddress only, with the
+    same matching rule. insert is unchanged, as plan-review #2 asked.
+  - apps/api/src/services/property.service.test.ts:
+    - a duplicate makes 0 weather calls and inserts nothing;
+    - addresses that differ in street, city or zip are still stored;
+    - a duplicate caught on insert (via failInsert) is passed on unchanged.
+  - apps/api/src/graphql/errors.test.ts: a FR-10 AC1 row for
+    PROPERTY_ALREADY_EXISTS.
+  - apps/api/test/integration/property-repository.int.test.ts:
+    - existsByAddress matches the same address and its case, spacing and
+      lower-case-state variants, and does not match when any one field differs;
+    - a second insert throws the duplicate error with the 23505 /
+      properties_address_unique cause;
+    - a lat-range violation passes through unchanged.
+  - apps/api/test/integration/create-property.int.test.ts: tests for FR-08 AC1
+    (the variant address, 0 weather calls, count stays 1), AC2 (the barrier
+    race: one success, one duplicate, 2 weather calls, count 1, no "unexpected
+    error" log) and AC3 (delete the row with Drizzle, then create the same
+    address again).
+  - context/test-plan.md: status updates:
+    - TR-05, TR-06 and TR-09 are now covered;
+    - TR-04 is covered for create;
+    - TR-07 is covered, except AC3 through deleteProperty (S-03).
+
+  Checks
+  - The new unit test failed first for the right reason: no pre-check yet.
+  - api-unit: 214/214 pass. api-int: 85/85 pass.
+  - I turned off the 23505 mapping temporarily, and both the race test and the
+    repository duplicate test failed. The file is restored.
+  - pnpm typecheck, pnpm lint and pnpm format:check all pass.
+  - Not run yet: /mutation create-property-guards (response.ts, client.ts,
+    property.service.ts, --concurrency 4). The plan lists it as an agent check,
+    but project skills run only when you invoke them.
+
+  Deviations: none.
+
+  Proposed commit. It stages these 10 files by path: the 9 above (all under
+  apps/api) plus context/test-plan.md. It also stages
+  context/changes/create-property-guards/plan.md, which already had the Phase 2
+  tick. implement-S-02-2.txt stays out.
+  feat(create-property-guards): reject duplicate addresses before the weather 
+  call
+
+  Refs #4
+  It uses Refs because the final docs(create-property-guards): close plan commit
+  will carry Closes #4. Should I commit with this message?
+
+  Next: /mutation create-property-guards, then /review create-property-guards.
+
+✻ Sautéed for 2m 27s · done 11:53 PM
