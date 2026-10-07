@@ -11,7 +11,7 @@ export) proportionate to a small app.
 |----|-------|-----------|------|--------|------------|------|--------|
 | F-01 | #1 | repo-skeleton | foundation | FR-14 AC3, NFR-04, NFR-06 | - | M | done |
 | F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08 groundwork) | F-01 | S | done |
-| S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1–AC3, AC6), FR-07, FR-10 | F-02 | M | todo |
+| S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1–AC3, AC6), FR-07, FR-10 | F-02 | M | in-progress |
 | S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5), FR-06, FR-08, FR-10 | S-01 | M | todo |
 | S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-02, FR-03, FR-04, FR-09, FR-10 | S-01 | M | todo |
 | S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs), FR-12 (AC1–AC5) | S-03 | M | todo |
@@ -107,6 +107,8 @@ Commits reference their issue with `Refs #<n>`; the last commit of an item uses 
   `AbortSignal.timeout(5000)`, zod-parsed response with key fields required, `units=f`, URL
   redaction) plus a fake for service/resolver tests; mapping the stored `current` to the typed
   key fields (snake_case → camelCase).
+  Also a minimal `property(id)` (repository `findById`, malformed id → `null`) so FR-05 AC1's
+  re-read is proven through the API (decided in the S-01 plan).
 - Depends on: F-02
 - Acceptance: FR-05 AC1, AC2, AC3, AC6; FR-07 AC1–AC5; FR-10 AC2.
 - Unknowns: JSON scalar for `raw` (`graphql-scalars` vs a small custom scalar) and its codegen
@@ -147,7 +149,7 @@ Commits reference their issue with `Refs #<n>`; the last commit of an item uses 
   (`limit` optional, 1–100 when given; `offset` ≥ 0, default 0; blank filters dropped, state
   upper-cased); repository query with `ILIKE` contains on city (escaping `%`/`_`), exact
   state/zip, ordering by `created_at` then `id`, `count(*)` with the same filter; invalid id
-  format → `null`. `deleteProperty(id): ID!` through service and repository; unknown or
+  format → `null` (the minimal `property(id)` path lands in S-01; S-03 adds the FR-04 AC tests). `deleteProperty(id): ID!` through service and repository; unknown or
   malformed id → `PROPERTY_NOT_FOUND`.
 - Depends on: S-01 (stored properties; tests seed through the repository)
 - Acceptance: FR-01 AC1–AC6, FR-02 AC1–AC3, FR-03 AC1–AC6, FR-04 AC1–AC4, FR-09 AC1–AC3;
