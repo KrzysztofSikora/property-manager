@@ -31,26 +31,54 @@ describe('runMigrateCli', () => {
     expect(stderr.join('\n')).not.toContain(SENTINEL);
   });
 
-  it('redacts the URL and its password when an error message contains them', async () => {
-    const url = `postgres://u:${SENTINEL}@db.example:5432/x`;
-    vi.mocked(runMigrations).mockRejectedValueOnce(
-      new Error(`cannot reach ${url}; auth failed for password ${SENTINEL}`),
-    );
+  it.each([
+    {
+      case: 'the URL and its password',
+      url: `postgres://u:${SENTINEL}@db.example:5432/x`,
+      message: `cannot reach postgres://u:${SENTINEL}@db.example:5432/x; auth failed for password ${SENTINEL}`,
+      expected: 'cannot reach [REDACTED]; auth failed for password [REDACTED]',
+    },
+    {
+      case: 'the decoded form of a percent-encoded password',
+      url: `postgres://u:${SENTINEL}%2F1@db.example/x`,
+      message: `bad password ${SENTINEL}/1`,
+      expected: 'bad password [REDACTED]',
+    },
+    {
+      case: 'the raw password when its percent-encoding is malformed',
+      url: `postgres://u:${SENTINEL}%ZZ@db.example/x`,
+      message: `bad password ${SENTINEL}%ZZ`,
+      expected: 'bad password [REDACTED]',
+    },
+    {
+      case: 'nothing else when the URL has no password',
+      url: 'postgres://u@db.example/x',
+      message: 'role "u" does not exist',
+      expected: 'role "u" does not exist',
+    },
+  ])('redacts $case', async ({ url, message, expected }) => {
+    vi.mocked(runMigrations).mockRejectedValueOnce(new Error(message));
 
     const { code, stderr } = await run({ DATABASE_URL: url });
 
     expect(code).toBe(1);
-    expect(stderr).toEqual([
-      'Migration failed: cannot reach [REDACTED]; auth failed for password [REDACTED]',
-    ]);
+    expect(stderr).toEqual([`Migration failed: ${expected}`]);
   });
 
-  it('redacts the decoded form of a percent-encoded password', async () => {
-    vi.mocked(runMigrations).mockRejectedValueOnce(new Error(`bad password ${SENTINEL}/1`));
+  it.each([
+    { case: 'a non-Error rejection', error: 'socket closed', expected: 'socket closed' },
+    {
+      // A refused connection to several addresses (localhost -> ::1 and 127.0.0.1).
+      case: 'an AggregateError with an empty message',
+      error: new AggregateError([new Error('ECONNREFUSED')], ''),
+      expected: 'AggregateError',
+    },
+  ])('reports $case with a non-empty reason', async ({ error, expected }) => {
+    vi.mocked(runMigrations).mockRejectedValueOnce(error);
 
-    const { stderr } = await run({ DATABASE_URL: `postgres://u:${SENTINEL}%2F1@db.example/x` });
+    const { stderr } = await run({ DATABASE_URL: 'postgres://u:p@db.example/x' });
 
-    expect(stderr).toEqual(['Migration failed: bad password [REDACTED]']);
+    expect(stderr).toEqual([`Migration failed: ${expected}`]);
   });
 
   it('returns 1 naming DATABASE_URL and never migrates when the URL is invalid', async () => {

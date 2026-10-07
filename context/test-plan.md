@@ -114,7 +114,8 @@ per container start is too slow, and the integration tests in TR-06, TR-13 and T
 | `apps/api/src/adapters/weatherstack/redact.ts` (URL / error redaction) | One wrong regex leaks the key (TR-01). Small module, so every mutant should die. | 100% (equivalents excepted) | Not in CI. Local `break` at 100% of non-equivalent mutants. |
 | `apps/api/src/services/property.service.ts` create flow and `regionMatchesState` | The order validate → duplicate → weather → region → save, and the region comparison, are business rules where a swapped step costs quota or stores bad records (TR-04, TR-05, TR-09). Tested with `FakeWeatherClient` and an in-memory repository fake. | 80% | Not in CI. Local `break` at 75% after the baseline. |
 | `apps/api/src/graphql/errors.ts` (domain error → `extensions.code`, masking) and the `properties` args schema | Error mapping and query argument rules (bounds, blank filters, upper-casing) are tables; a mutant in a table entry is a wrong code or a wrong bound (TR-12, TR-14). | 90% | Not in CI. Local `break` at 85% after the baseline. |
-| `apps/api/src/config/env.ts` (env schema, missing vs invalid messages) | A bad bound or anchor starts the API on a wrong port or URL; a wrong message hides which variable is wrong or echoes a secret (TR-18). | 85% | Not in CI. Baseline 83.0% (F-01); all 8 survivors equivalent or accepted. |
+| `apps/api/src/config/env.ts` (env schema, missing vs invalid messages) | A bad bound or anchor starts the API on a wrong port or URL; a wrong message hides which variable is wrong or echoes a secret (TR-18). | 85% | Not in CI. Baseline 83.0% (F-01), 84.6% after F-02's `loadDatabaseConfig`; all 8 survivors equivalent or accepted. |
+| `apps/api/src/db/migrate-cli.ts` (DB URL / password redaction in `pnpm db:migrate` output) | One wrong check prints the database password or garbles the failure reason (F-02). | 100% of non-equivalent | Not in CI. Baseline 76.3% (F-02) = 100% of non-equivalent; the 9 survivors are the entry-point block and unreachable fallbacks. |
 | `tooling/secret-scan.ts` (pre-commit key-leak scan) | One wrong hunk regex or line count lets the key into a commit or blocks clean commits (TR-01). | 100% (equivalents excepted) | Not in CI. Baseline 93.6% (F-01) = 100% of non-equivalent. |
 | `apps/web/src/lib/execute.ts` (GraphQL/HTTP response → `GraphQLRequestError`) | A weakened check shows an error or empty payload as success in every page (FR-12, FR-13). | 90% | Not in CI. Baseline 97.4% (F-01). |
 
@@ -255,6 +256,9 @@ records decisions in `context/changes/<id>/mutation.md`.
 1. Make sure the change's hermetic tests pass: `pnpm --filter <package> test:unit`.
 2. Run Stryker on the touched target files only:
    `pnpm --filter <package> test:mutation --mutate "src/adapters/weatherstack/classify.ts"`
+   (several files: one comma-separated `--mutate "a.ts,b.ts"`; a second `--mutate` flag
+   replaces the first. In `apps/api` add `--concurrency 4`: the default runner count makes
+   mutants time out under load, and Stryker counts timeouts as killed.)
    (tooling: `pnpm test:mutation:tooling --mutate tooling/secret-scan.ts`).
    Narrow with a line range (`file.ts:10-80`) for large files.
 3. Read the report in `reports/mutation/` (HTML for browsing, JSON for triage).
