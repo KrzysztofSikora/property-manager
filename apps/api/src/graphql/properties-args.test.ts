@@ -45,11 +45,8 @@ describe('propertiesArgsSchema', () => {
     ]);
   });
 
-  it('FR-02 AC2: CREATED_AT_ASC is kept', () => {
-    expect(propertiesArgsSchema.parse({ sort: 'CREATED_AT_ASC' })).toStrictEqual({
-      ...DEFAULTS,
-      sort: 'CREATED_AT_ASC',
-    });
+  it.each(['CREATED_AT_DESC', 'CREATED_AT_ASC'])('FR-02 AC1, AC2: sort %s is kept', (sort) => {
+    expect(propertiesArgsSchema.parse({ sort })).toStrictEqual({ ...DEFAULTS, sort });
   });
 
   it('FR-03: filter values are normalized', () => {
