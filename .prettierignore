@@ -7,3 +7,4 @@ pnpm-lock.yaml
 **/generated/
 apps/web/src/graphql/
 reports/
+apps/api/drizzle/

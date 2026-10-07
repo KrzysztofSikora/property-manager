@@ -13,11 +13,13 @@ const REASONS = {
 
 type EnvName = keyof typeof REASONS;
 
+const databaseUrl = z.url().default('postgres://postgres:postgres@localhost:5432/property_manager');
+
 const envSchema = z
   .object({
     WEATHERSTACK_KEY: z.string().min(1),
     WEATHERSTACK_BASE_URL: z.url().default('https://api.weatherstack.com'),
-    DATABASE_URL: z.url().default('postgres://postgres:postgres@localhost:5432/property_manager'),
+    DATABASE_URL: databaseUrl,
     PORT: z
       .string()
       .regex(/^\d+$/)
@@ -34,7 +36,14 @@ const envSchema = z
     logLevel: env.LOG_LEVEL,
   }));
 
+// For `pnpm db:migrate`, which must run without the Weatherstack key.
+const databaseEnvSchema = z
+  .object({ DATABASE_URL: databaseUrl })
+  .transform((env) => ({ databaseUrl: env.DATABASE_URL }));
+
 export type Config = Readonly<z.output<typeof envSchema>>;
+
+export type DatabaseConfig = Readonly<z.output<typeof databaseEnvSchema>>;
 
 export type LogLevel = Config['logLevel'];
 
@@ -46,7 +55,10 @@ function isEnvName(value: unknown): value is EnvName {
   return typeof value === 'string' && Object.hasOwn(REASONS, value);
 }
 
-export function loadConfig(env: Record<string, string | undefined>): Config {
+function parseEnv<T>(
+  schema: z.ZodType<T, Partial<Record<EnvName, string>>>,
+  env: Record<string, string | undefined>,
+): T {
   // An empty value (as shipped in .env.example) counts as unset.
   const input: Partial<Record<EnvName, string>> = {};
   for (const name of Object.keys(REASONS)) {
@@ -54,7 +66,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     if (isEnvName(name) && value !== undefined && value !== '') input[name] = value;
   }
 
-  const result = envSchema.safeParse(input);
+  const result = schema.safeParse(input);
   if (!result.success) {
     const names = new Set(result.error.issues.map((issue) => issue.path[0]).filter(isEnvName));
     const lines = [...names].map((name) =>
@@ -65,4 +77,12 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     throw new ConfigError(lines.join('\n'));
   }
   return result.data;
+}
+
+export function loadConfig(env: Record<string, string | undefined>): Config {
+  return parseEnv(envSchema, env);
+}
+
+export function loadDatabaseConfig(env: Record<string, string | undefined>): DatabaseConfig {
+  return parseEnv(databaseEnvSchema, env);
 }

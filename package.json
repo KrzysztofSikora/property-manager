@@ -16,6 +16,8 @@
     "test": "vitest run",
     "prepare": "git config core.hooksPath .githooks",
     "codegen": "graphql-codegen",
+    "db:generate": "pnpm --filter @property-manager/api db:generate",
+    "db:migrate": "pnpm --filter @property-manager/api db:migrate",
     "test:mutation:tooling": "stryker run tooling/stryker.config.json"
   },
   "devDependencies": {

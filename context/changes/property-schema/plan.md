@@ -379,9 +379,18 @@ them into exit 1. The `DrizzleQueryError.cause` finding is recorded for S-02.
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [ ] Phase 1: Shared states and error codes
+- [x] Phase 1: Shared states and error codes (578325a)
 - [ ] Phase 2: Schema, migration and migrate command
 - [ ] Phase 3: Test helpers and documentation
 
 ## Deviations
-<filled during implementation>
+
+- Phase 2, `pnpm-workspace.yaml`: plan says nothing about it. pnpm refused drizzle-kit's
+  esbuild build scripts (`ERR_PNPM_IGNORED_BUILDS`). esbuild loads its binary from an optional
+  platform package, so `allowBuilds` gets `esbuild: false`, like the other entries.
+- Phase 2, `client.ts`: the plan's `{ db; close(): Promise<void> }` became the named type
+  `DbHandle` with `close` as a function property. The method form fails
+  `@typescript-eslint/unbound-method` when callers destructure `close`.
+- Phase 2, extra tests beyond the plan: the migrate CLI also checks that a URL or password in
+  an error message is redacted (raw and percent-decoded) and that success returns 0. The
+  guardrails gain `adapter → service`, since the repositories/adapters block was split.

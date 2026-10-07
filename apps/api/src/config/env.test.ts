@@ -1,16 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, loadConfig } from './env.ts';
+import { ConfigError, loadConfig, loadDatabaseConfig } from './env.ts';
 
 const KEY = 'TEST_WEATHERSTACK_KEY';
 
-function errorOf(env: Record<string, string | undefined>): ConfigError {
+function errorOf(
+  env: Record<string, string | undefined>,
+  load: (env: Record<string, string | undefined>) => unknown = loadConfig,
+): ConfigError {
   try {
-    loadConfig(env);
+    load(env);
   } catch (error) {
     if (error instanceof ConfigError) return error;
     throw error;
   }
-  throw new Error('expected loadConfig to throw');
+  throw new Error('expected the config loader to throw');
 }
 
 describe('loadConfig', () => {
@@ -86,5 +89,27 @@ describe('loadConfig', () => {
       'Missing required environment variable: WEATHERSTACK_KEY',
       'Invalid environment variable: PORT (expected an integer from 1 to 65535)',
     ]);
+  });
+});
+
+describe('loadDatabaseConfig', () => {
+  it('does not need WEATHERSTACK_KEY', () => {
+    expect(loadDatabaseConfig({ DATABASE_URL: 'postgres://u:p@db:5432/x' })).toEqual({
+      databaseUrl: 'postgres://u:p@db:5432/x',
+    });
+  });
+
+  it.each([
+    ['unset', undefined],
+    ['empty', ''],
+  ])('uses the default when DATABASE_URL is %s', (_label, value) => {
+    expect(loadDatabaseConfig({ DATABASE_URL: value })).toEqual({
+      databaseUrl: 'postgres://postgres:postgres@localhost:5432/property_manager',
+    });
+  });
+
+  it('names DATABASE_URL without echoing an invalid value', () => {
+    const error = errorOf({ DATABASE_URL: 'not-a-url' }, loadDatabaseConfig);
+    expect(error.message).toBe('Invalid environment variable: DATABASE_URL (expected a URL)');
   });
 });

@@ -40,6 +40,16 @@ jobs:
             exit 1
           fi
 
+      - name: Migration drift
+        run: |
+          pnpm db:generate
+          drift="$(git status --porcelain -- apps/api/drizzle)"
+          if [ -n "$drift" ]; then
+            echo "apps/api/drizzle is out of step with src/db/schema.ts. Run pnpm db:generate:"
+            echo "$drift"
+            exit 1
+          fi
+
       - name: Test (unit + integration)
         run: pnpm test
         env:
