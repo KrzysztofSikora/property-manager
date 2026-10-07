@@ -60,8 +60,10 @@ Conventions used by the acceptance criteria:
 
 ### FR-01 List properties  (Must, covers US-01, B-1)
 
-The `properties` query returns a page of properties plus the total number of matching
-properties: `{ items, totalCount }` (D-10).
+The `properties` query returns the matching properties plus their total number:
+`{ items, totalCount }`. Without `limit` it returns **all** matching properties (brief B-1:
+"query all the properties"). `limit` and `offset` are optional; `limit` must be 1–100 when given,
+`offset` must be ≥ 0 and defaults to 0. This narrows D-10, which had a default page size of 20.
 
 - AC1: Given 3 stored properties, When `properties` is queried with no arguments, Then
   `items` has 3 entries and `totalCount` is 3, and each item exposes `id`, `street`, `city`,
@@ -69,11 +71,13 @@ properties: `{ items, totalCount }` (D-10).
 - AC2: Given no stored properties, When `properties` is queried, Then `items` is `[]` and
   `totalCount` is 0 (no error).
 - AC3: Given 25 stored properties, When `properties` is queried with no `limit`, Then `items`
-  has 20 entries and `totalCount` is 25.
+  has all 25 entries and `totalCount` is 25.
 - AC4: Given 25 stored properties, When queried with `limit: 10, offset: 20`, Then `items` has
   5 entries and `totalCount` is 25.
 - AC5: Given any data, When queried with `limit: 0`, `limit: 101` or `offset: -1`, Then the
-  response has error code `BAD_USER_INPUT` and no `items`.
+  response has error code `BAD_USER_INPUT` and no `items`; When queried with `limit: 100` or
+  with `offset` and no `limit`, Then no error is returned (the latter returns every match after
+  the offset).
 - AC6: Given any data, When `properties` is queried, Then the weather adapter is called 0
   times.
 
@@ -132,9 +136,10 @@ duplicates, calls Weatherstack once, checks the returned region, and stores the 
 
 - AC1: Given a valid input, When `createProperty` runs, Then it returns the new property with a
   generated `id`, the normalized address fields, `lat`/`long` as numbers from
-  `location.lat`/`location.lon`, `weatherData` equal to the response's `current` object plus
-  `units: IMPERIAL`, and `createdAt` set by the server; and a following `property(id)` returns
-  the same data.
+  `location.lat`/`location.lon`, `weatherData` = `{ units: IMPERIAL, current }` where
+  `current.raw` equals the response's `current` object and the typed key fields of `current`
+  (see Data model) equal the matching response values, and `createdAt` set by the server; and a
+  following `property(id)` returns the same data.
 - AC2: Given a valid input, When `createProperty` runs, Then the weather adapter is called
   exactly once, with query = the full normalized address
   `"<street>, <city>, <state> <zipCode>, United States"` (D-03) and imperial units (D-08).
@@ -162,9 +167,10 @@ duplicates, calls Weatherstack once, checks the returned region, and stores the 
   one HTTP request (no retries).
 - AC4: Given a network error or a non-2xx HTTP status, When `createProperty` runs, Then error
   code `WEATHER_UNAVAILABLE` is returned.
-- AC5: Given a 200 response that lacks `current`, `location.lat`, `location.lon` or
-  `location.region`, or where `lat`/`lon` are not numeric, When `createProperty` runs, Then
-  error code `WEATHER_UNAVAILABLE` is returned (response validated, R-04).
+- AC5: Given a 200 response that lacks `current`, any required (key) field of `current` (see
+  Data model), `location.lat`, `location.lon` or `location.region`, or where `lat`/`lon` are not
+  numeric, When `createProperty` runs, Then error code `WEATHER_UNAVAILABLE` is returned
+  (response validated, R-04). Missing non-key fields do not fail the create.
 - AC6: Given the key is missing or invalid (codes 101), When `createProperty` runs, Then error
   code `WEATHER_UNAVAILABLE` is returned to the client and a server log entry records a
   configuration error; neither contains the key value (A-09).
@@ -236,17 +242,19 @@ traces or internal details.
 
 ### FR-11 Web UI: property list  (Must, covers US-01 – US-03, US-06, D-12)
 
-Route `/`.
+Route `/`. Must ACs: AC1, AC2, AC3, AC5, AC6, AC7. Should ACs: AC3a, AC4. Without AC4 the
+page fetches all matching properties (FR-01, no `limit`).
 
 - AC1: Given stored properties, When the page loads, Then a table/list shows street, city,
   state, zip code and creation date for each, newest first.
 - AC2: Given the sort control, When the user switches to "oldest first", Then the list is
   re-fetched with `CREATED_AT_ASC` and re-ordered.
 - AC3: Given filter inputs for city, state and zip, When the user enters values, Then the list
-  shows only matching properties and the URL query string reflects the filters, so a reload
+  shows only matching properties.
+- AC3a (Should): Given filters are set, Then the URL query string reflects them, so a reload
   keeps them.
-- AC4: Given more than 20 matches, When the page loads, Then pagination controls show the
-  current page and the total, and moving to the next page shows the next 20.
+- AC4 (Should): Given more than 20 matches, When the page loads, Then pagination controls show
+  the current page and the total, and moving to the next page shows the next 20.
 - AC5: Given the user clicks delete on a row, When they confirm in a dialog, Then the property
   is deleted and disappears from the list; When they cancel, Then nothing is deleted.
 - AC6: Given no properties (or no matches), Then an empty state is shown with a link to the
@@ -259,9 +267,8 @@ Route `/`.
 Route `/properties/:id`.
 
 - AC1: Given a stored property, When the page opens, Then it shows the full address, `lat` and
-  `long`, creation date, and the weather snapshot: observation time, description and icon,
-  temperature and feels-like (°F), wind speed (mph) and direction, humidity (%), pressure,
-  precipitation (in), cloud cover (%), UV index and visibility.
+  `long`, creation date, and the key weather fields: temperature and feels-like (°F),
+  description and icon, wind speed (mph) and direction, humidity (%).
 - AC2: Given the page, Then it states that coordinates are those of the town Weatherstack
   resolved the address to, not of the building (D-05), and that weather is as of creation time.
 - AC3: Given an unknown id, When the page opens, Then a "property not found" state is shown
@@ -270,6 +277,9 @@ Route `/properties/:id`.
   to the list.
 - AC5: Given optional weather fields missing from the stored snapshot (e.g. `astro`,
   `air_quality`), Then the page renders without errors and omits them.
+- AC6 (Should): Given a stored property, When the page opens, Then it also shows observation
+  time, pressure, precipitation (in), cloud cover (%), UV index, visibility, and the `astro` and
+  `airQuality` values when present.
 
 ### FR-13 Web UI: create property  (Must, covers US-05, US-07, D-12)
 
@@ -325,32 +335,38 @@ Route `/properties/new`.
 | `zipCode` | string, 5 digits | `^[0-9]{5}$`; stored as text | argument |
 | `lat` | decimal number | −90…90; from `location.lat` | Weatherstack |
 | `long` | decimal number | −180…180; from `location.lon` | Weatherstack |
-| `weatherData` | WeatherData | Required; whole `current` object as received, plus `units` | Weatherstack (D-09) |
+| `weatherData` | WeatherData | Required; `{ units, current }`, `current` stored whole as received | Weatherstack (D-09, B-7f) |
 | `createdAt` | timestamp, UTC, ISO 8601 in the API | Set by backend at save | backend (A-07) |
 
 Uniqueness: normalized address (lower-cased street + city + state + zip) is unique (D-07).
 Properties are immutable after creation (A-04).
 
-**WeatherData** (typed in the API; the stored snapshot keeps every field received)
+**WeatherData** — follows the brief literally (B-7f: "object containing 'current' property"):
+`weatherData { units, current { ... } }`. The stored snapshot is `{ units, current }` with
+`current` exactly as Weatherstack returned it.
 
-| Field | Type | Required |
-|-------|------|----------|
-| `units` | enum `IMPERIAL` (°F, mph, in) | yes (D-08) |
-| `observationTime` | string, e.g. "12:11 PM" | yes |
-| `temperature`, `feelsLike` | integer | yes |
-| `weatherCode` | integer | yes |
-| `weatherIcons`, `weatherDescriptions` | list of strings | yes |
-| `windSpeed`, `windDegree` | integer | yes |
-| `windDir` | string | yes |
-| `pressure`, `humidity`, `cloudCover`, `uvIndex`, `visibility` | integer | yes |
-| `precip` | number | yes |
-| `isDay` | boolean (from "yes"/"no") | yes |
-| `astro` | sunrise, sunset, moonrise, moonset, moonPhase, moonIllumination | no |
-| `airQuality` | co, no2, o3, so2, pm2_5, pm10, usEpaIndex, gbDefraIndex | no |
+| Field | Type | Required | Priority |
+|-------|------|----------|----------|
+| `units` | enum `IMPERIAL` (°F, mph, in) | yes (D-08) | Must |
+| `current` | CurrentWeather | yes | Must |
 
-"Required" means a create fails with `WEATHER_UNAVAILABLE` if the field is missing. Exact
-nullability of the required set is confirmed against a real `units=f` response (see Open
-questions).
+**CurrentWeather** (fields from Weatherstack `current`, camelCased in the API)
+
+| Field | Type | Required | Priority |
+|-------|------|----------|----------|
+| `raw` | JSON scalar: the whole `current` object as received | yes | Must |
+| `temperature`, `feelsLike` | integer | yes | Must |
+| `weatherDescriptions`, `weatherIcons` | list of strings | yes | Must |
+| `windSpeed` | integer | yes | Must |
+| `windDir` | string | yes | Must |
+| `humidity` | integer | yes | Must |
+| `observationTime`, `weatherCode`, `windDegree`, `pressure`, `precip`, `cloudCover`, `uvIndex`, `visibility`, `isDay` | as in Weatherstack (`isDay` boolean from "yes"/"no") | no | Should (typed fields); always available in `raw` |
+| `astro` | sunrise, sunset, moonrise, moonset, moonPhase, moonIllumination | no | Should (typed object); available in `raw` |
+| `airQuality` | co, no2, o3, so2, pm2_5, pm10, usEpaIndex, gbDefraIndex | no | Should (typed object); available in `raw` |
+
+"Required" means a create fails with `WEATHER_UNAVAILABLE` if the field is missing (FR-06 AC5).
+The Must key fields are the ones the details page must show (FR-12 AC1). Exact nullability of
+non-key fields is unknown from one sample (OQ-03), so they stay optional.
 
 ## External integrations
 
@@ -372,7 +388,8 @@ questions).
     `"33.609"`, `"-111.729"`); parsed to numbers → `lat`, `long`.
   - `location.region` – full state name (sample: `"Arizona"`); compared with the name of the
     submitted state code (D-04, A-12), case-insensitive, trimmed.
-  - `current` – stored whole as `weatherData` (shape: `docs/samples/weatherstack-current.json`).
+  - `current` – stored whole as `weatherData.current` next to `units` (B-7f); key fields are
+    validated and typed (shape: `docs/samples/weatherstack-current.json`).
   - `success`, `error.code`, `error.type`, `error.info` – failure detection (A-10).
 - **Error cases:**
 
@@ -444,16 +461,20 @@ The scope is complete when a reviewer can:
 
 1. Clone the repo, add a key to `.env`, run the one documented command and reach the UI
    (FR-14).
-2. Create a property from a Zillow address and see its weather, `lat` and `long` on the
-   details page (FR-05, FR-12).
-3. List, sort both ways, filter by city/state/zip, page through, view and delete properties
-   in the UI and through the GraphQL API (FR-01 – FR-04, FR-09, FR-11).
+2. Create a property from a Zillow address and see its key weather fields, `lat` and `long`
+   on the details page (FR-05, FR-12 AC1).
+3. List all, sort both ways, filter by city/state/zip, view and delete properties in the UI and
+   through the GraphQL API, and page with `limit`/`offset` through the API (FR-01 – FR-04,
+   FR-09, FR-11 Must ACs).
 4. Trigger a validation error, a duplicate and (with a fake or exhausted key) a weather error
    and see the specific messages (FR-06 – FR-08, FR-10, FR-13).
 5. Run lint, type check and the test suite with all passing and no real Weatherstack calls
    (NFR-02, NFR-04, NFR-07).
 6. Find the AI setup, `context/` artifacts and session exports in the repo (FR-15).
 7. Every Must FR has passing automated tests that map to its acceptance criteria.
+
+Should items (FR-11 AC3a and AC4, FR-12 AC6, typed non-key `current` fields including `astro`
+and `airQuality`) are not needed for completion; they are tracked in the roadmap's *Later*.
 
 ## Traceability
 
@@ -465,7 +486,7 @@ Brief IDs: `B-1`…`B-7h` follow the brief's numbered user stories; `B-O*` objec
 | B-O1 | Full-stack app managing properties | US-01 – US-06 | FR-01 – FR-13 | |
 | B-O2 | GraphQL API | all | FR-01 – FR-10 | C-02 |
 | B-O3 | Weatherstack `/current` on create; AI-first | US-05, US-09 | FR-05, FR-06, FR-15 | C-03 |
-| B-1 | Query all properties | US-01 | FR-01, FR-11 | Pagination D-10 |
+| B-1 | Query all properties | US-01 | FR-01, FR-11 | All matches by default; optional `limit`/`offset` (narrows D-10) |
 | B-2 | Sort by creation date | US-02 | FR-02, FR-11 | D-11, A-07 |
 | B-3 | Filter by city, zip, state | US-03 | FR-03, FR-11 | D-06 |
 | B-4 | Query details of any property | US-04 | FR-04, FR-12 | A-06 |
@@ -476,7 +497,7 @@ Brief IDs: `B-1`…`B-7h` follow the brief's numbered user stories; `B-O*` objec
 | B-7c | `street` mutation argument | US-05 | FR-05, FR-07 | A-03 |
 | B-7d | `state` abbreviation | US-05 | FR-05, FR-07 | A-01 |
 | B-7e | `zipCode` 5 digits | US-05 | FR-05, FR-07 | A-02 |
-| B-7f | `weatherData` = `current` | US-04, US-05 | FR-05, FR-12, Data model | D-08, D-09 |
+| B-7f | `weatherData` contains `current` | US-04, US-05 | FR-05, FR-06 AC5, FR-12, Data model | `weatherData { units, current }`; D-08, D-09 |
 | B-7g | `lat` from response | US-04, US-05 | FR-05, FR-12 | D-05 |
 | B-7h | `long` from response | US-04, US-05 | FR-05, FR-12 | D-05 |
 | B-N1 | Running app + README | US-08 | FR-14 | D-14 |
