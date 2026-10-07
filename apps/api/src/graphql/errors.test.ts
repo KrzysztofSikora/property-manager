@@ -3,6 +3,7 @@ import type { FieldNode } from 'graphql';
 import { describe, expect, it } from 'vitest';
 import { captureLogs } from '../../test/helpers/logs.ts';
 import {
+  PropertyAlreadyExistsError,
   WeatherLocationMismatchError,
   WeatherQuotaExceededError,
   WeatherUnavailableError,
@@ -119,6 +120,11 @@ describe('maskError', () => {
       new WeatherLocationMismatchError('AZ', 'California'),
       'WEATHER_LOCATION_MISMATCH',
       'Weatherstack placed this address in "California", not in AZ (Arizona). The property was not saved.',
+    ],
+    [
+      new PropertyAlreadyExistsError({ cause: { code: '23505' } }),
+      'PROPERTY_ALREADY_EXISTS',
+      'A property with this address already exists.',
     ],
   ])('FR-10 AC1: maps %o to %s with its message', (domainError, code, message) => {
     const masked = asGraphQLError(maskError(thrownByResolver(domainError), MASKED));

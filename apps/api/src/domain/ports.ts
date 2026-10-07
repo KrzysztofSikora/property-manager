@@ -1,3 +1,4 @@
+import type { Address } from '@property-manager/shared';
 import type { NewProperty, Property } from './property.ts';
 import type { WeatherReport } from './weather.ts';
 
@@ -7,6 +8,9 @@ export type WeatherClient = {
 };
 
 export type PropertyRepository = {
+  // True when a stored property has the same normalized address (FR-08 AC1).
+  existsByAddress(address: Address): Promise<boolean>;
+  // Throws `PropertyAlreadyExistsError` when the unique address index rejects the row.
   insert(property: NewProperty): Promise<Property>;
   findById(id: string): Promise<Property | null>;
 };

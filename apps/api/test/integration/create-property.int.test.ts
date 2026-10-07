@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { properties } from '../../src/db/schema.ts';
 import { InMemoryPropertyRepository } from '../fakes/property-repository.ts';
@@ -6,7 +7,7 @@ import { validInput } from '../fixtures/property.ts';
 import { weatherstackError, weatherstackResponse } from '../fixtures/weatherstack.ts';
 import { createTestApp } from '../helpers/app.ts';
 import type { ExecuteResult, TestApp, TestAppOptions } from '../helpers/app.ts';
-import { countProperties, resetDb } from '../helpers/db.ts';
+import { countProperties, resetDb, seedProperty } from '../helpers/db.ts';
 import { expectGraphQLError } from '../helpers/graphql.ts';
 import { expectNoSecret, TEST_WEATHERSTACK_KEY } from '../helpers/secrets.ts';
 import { weatherstackHandlers } from '../msw/weatherstack.ts';
@@ -17,6 +18,7 @@ import { server } from '../setup/msw.ts';
 const UNAVAILABLE = 'Weather could not be fetched, so the property was not saved. Try again later.';
 const QUOTA_EXCEEDED =
   'The Weatherstack usage limit has been reached, so the property was not saved. Upgrade the Weatherstack plan or replace the API key.';
+const ALREADY_EXISTS = 'A property with this address already exists.';
 const QUERY = '15528 E Golden Eagle Blvd, Fountain Hills, AZ 85268, United States';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // What an unexpected error must never show the caller (FR-10 AC2).
@@ -276,6 +278,58 @@ describe('createProperty', () => {
     const error = expectGraphQLError(result, 'INTERNAL_SERVER_ERROR');
     expect(error.extensions).toEqual({ code: 'INTERNAL_SERVER_ERROR' });
     expectNoInternals(result);
+  });
+});
+
+describe('createProperty duplicates', () => {
+  it('FR-08 AC1: a case and spacing variant of a stored address returns PROPERTY_ALREADY_EXISTS with no weather call', async () => {
+    const app = testApp();
+    await seedProperty(app.db);
+
+    const result = await app.execute(
+      CREATE_PROPERTY,
+      validInput({ street: '15528 e golden eagle  blvd', city: 'FOUNTAIN HILLS' }),
+    );
+
+    const error = expectGraphQLError(result, 'PROPERTY_ALREADY_EXISTS');
+    expect(error.message).toBe(ALREADY_EXISTS);
+    expect(error.extensions).toEqual({ code: 'PROPERTY_ALREADY_EXISTS' });
+    expect(result.data).toEqual({ createProperty: null });
+    expect(app.weather.calls).toEqual([]);
+    expect(await countProperties(app.db)).toBe(1);
+  });
+
+  it('FR-08 AC2: of two concurrent creates of a new address, exactly one is stored', async () => {
+    const app = testApp({ weather: FakeWeatherClient.withBarrier(2) });
+
+    const results = await Promise.all([
+      app.execute(CREATE_PROPERTY, validInput()),
+      app.execute(CREATE_PROPERTY, validInput({ street: '15528 E GOLDEN EAGLE BLVD' })),
+    ]);
+
+    const failed = results.filter((result) => result.errors !== undefined);
+    const succeeded = results.filter((result) => result.errors === undefined);
+    expect(succeeded).toHaveLength(1);
+    expect(failed).toHaveLength(1);
+    const [lost] = failed;
+    if (lost === undefined) return expect.fail('no failed create');
+    const error = expectGraphQLError(lost, 'PROPERTY_ALREADY_EXISTS');
+    expect(error.message).toBe(ALREADY_EXISTS);
+    // Both passed the pre-check, so the unique index decided.
+    expect(app.weather.calls).toHaveLength(2);
+    expect(await countProperties(app.db)).toBe(1);
+    expect(app.logs()).not.toContainEqual(expect.objectContaining({ msg: 'unexpected error' }));
+  });
+
+  it('FR-08 AC3: once the row is deleted, the same address can be created again', async () => {
+    const app = testApp();
+    const first = createdProperty(await app.execute(CREATE_PROPERTY, validInput()));
+    await app.db.delete(properties).where(eq(properties.id, String(first.id)));
+
+    const second = createdProperty(await app.execute(CREATE_PROPERTY, validInput()));
+
+    expect(second.id).not.toBe(first.id);
+    expect(await countProperties(app.db)).toBe(1);
   });
 });
 

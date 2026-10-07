@@ -54,3 +54,13 @@ export class WeatherLocationMismatchError extends DomainError {
     this.region = shown;
   }
 }
+
+// The pre-check or the unique index (`properties_address_unique`) found the same address.
+export class PropertyAlreadyExistsError extends DomainError {
+  override name = 'PropertyAlreadyExistsError';
+  readonly code = 'PROPERTY_ALREADY_EXISTS';
+
+  constructor(options?: ErrorOptions) {
+    super('A property with this address already exists.', options);
+  }
+}

@@ -1,7 +1,9 @@
 import { normalizeAddress } from '@property-manager/shared';
+import pg from 'pg';
 import { afterAll, beforeEach, describe, expect, inject, it } from 'vitest';
 import { createDb } from '../../src/db/client.ts';
 import type { NewProperty } from '../../src/domain/property.ts';
+import { PropertyAlreadyExistsError } from '../../src/domain/errors.ts';
 import { createPropertyRepository } from '../../src/repositories/property.repository.ts';
 import { validInput } from '../fixtures/property.ts';
 import { weatherstackResponse } from '../fixtures/weatherstack.ts';
@@ -108,5 +110,63 @@ describe('PropertyRepository', () => {
     await expect(repository.insert(newProperty({ lat: 999 }))).rejects.toThrow();
 
     expect(await countProperties(db)).toBe(0);
+  });
+
+  it('insert propagates a non-unique DB rejection unchanged', async () => {
+    const error: unknown = await repository
+      .insert(newProperty({ lat: 999 }))
+      .catch((e: unknown) => e);
+
+    expect(error).not.toBeInstanceOf(PropertyAlreadyExistsError);
+    expect(error).toHaveProperty('cause.code', '23514');
+    expect(error).toHaveProperty('cause.constraint', 'properties_lat_range');
+  });
+
+  it('FR-08 AC2 (storage): a second insert of the same address throws PropertyAlreadyExistsError', async () => {
+    await repository.insert(newProperty());
+
+    const error: unknown = await repository
+      .insert(newProperty({ street: '15528 E GOLDEN EAGLE BLVD', city: 'fountain hills' }))
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(PropertyAlreadyExistsError);
+    expect(error).toMatchObject({ code: 'PROPERTY_ALREADY_EXISTS' });
+    expect(error).toHaveProperty('cause.cause', expect.any(pg.DatabaseError));
+    expect(error).toHaveProperty('cause.cause.code', '23505');
+    expect(error).toHaveProperty('cause.cause.constraint', 'properties_address_unique');
+    expect(await countProperties(db)).toBe(1);
+  });
+});
+
+describe('PropertyRepository.existsByAddress', () => {
+  const address = normalizeAddress(validInput());
+
+  it('is false on an empty table', async () => {
+    expect(await repository.existsByAddress(address)).toBe(false);
+  });
+
+  it.each([
+    ['the same address', validInput()],
+    ['a case variant', validInput({ street: '15528 e golden eagle BLVD', city: 'FOUNTAIN HILLS' })],
+    [
+      'a spacing variant',
+      validInput({ street: ' 15528  E Golden Eagle Blvd', city: 'Fountain  Hills ' }),
+    ],
+    ['a lower-case state', validInput({ state: 'az' })],
+  ])('TR-07: is true for %s', async (_case, input) => {
+    await seedProperty(db);
+
+    expect(await repository.existsByAddress(normalizeAddress(input))).toBe(true);
+  });
+
+  it.each([
+    ['street', { street: '15529 E Golden Eagle Blvd' }],
+    ['city', { city: 'Scottsdale' }],
+    ['state', { state: 'CA' }],
+    ['zipCode', { zipCode: '85269' }],
+  ] as const)('is false when only %s differs', async (_field, override) => {
+    await seedProperty(db);
+
+    expect(await repository.existsByAddress(normalizeAddress(validInput(override)))).toBe(false);
   });
 });

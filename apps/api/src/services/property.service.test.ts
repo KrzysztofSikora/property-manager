@@ -1,6 +1,10 @@
 import { normalizeAddress } from '@property-manager/shared';
 import { describe, expect, it } from 'vitest';
-import { WeatherLocationMismatchError, WeatherUnavailableError } from '../domain/errors.ts';
+import {
+  PropertyAlreadyExistsError,
+  WeatherLocationMismatchError,
+  WeatherUnavailableError,
+} from '../domain/errors.ts';
 import { InMemoryPropertyRepository } from '../../test/fakes/property-repository.ts';
 import { FakeWeatherClient } from '../../test/fakes/weather.ts';
 import { validInput } from '../../test/fixtures/property.ts';
@@ -153,6 +157,47 @@ describe('PropertyService.create', () => {
     await expect(service.create(address)).rejects.toBe(error);
     expect(repository.rows).toEqual([]);
     expect(weather.calls).toHaveLength(1);
+  });
+});
+
+describe('PropertyService.create duplicates', () => {
+  it('FR-08 AC1 (service half): a stored address makes no weather call and inserts nothing', async () => {
+    const { service, repository, weather } = setup();
+    const stored = await service.create(address);
+    weather.calls.length = 0;
+    const variant = normalizeAddress(
+      validInput({ street: '15528 e golden eagle  blvd', city: 'FOUNTAIN HILLS' }),
+    );
+
+    const error: unknown = await service.create(variant).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(PropertyAlreadyExistsError);
+    expect(error).toMatchObject({ code: 'PROPERTY_ALREADY_EXISTS' });
+    expect(weather.calls).toEqual([]);
+    expect(repository.rows).toEqual([stored]);
+  });
+
+  it.each([
+    ['street', { street: '15529 E Golden Eagle Blvd' }],
+    ['city', { city: 'Scottsdale' }],
+    ['zipCode', { zipCode: '85269' }],
+  ] as const)('an address with a different %s is stored', async (_field, override) => {
+    const { service, repository } = setup();
+    await service.create(address);
+
+    await service.create(normalizeAddress(validInput(override)));
+
+    expect(repository.rows).toHaveLength(2);
+  });
+
+  it('FR-08 AC2 (service half): a duplicate on insert after a clean pre-check propagates', async () => {
+    const { service, repository, weather } = setup();
+    const error = new PropertyAlreadyExistsError();
+    repository.failInsert(error);
+
+    await expect(service.create(address)).rejects.toBe(error);
+    expect(weather.calls).toHaveLength(1);
+    expect(repository.rows).toEqual([]);
   });
 });
 

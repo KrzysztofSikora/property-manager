@@ -1,6 +1,11 @@
+import type { Address } from '@property-manager/shared';
 import type { PropertyRepository } from '../../src/domain/ports.ts';
 import type { NewProperty, Property } from '../../src/domain/property.ts';
 import { toCurrentWeather } from '../../src/domain/weather.ts';
+
+function addressKey({ street, city, state, zipCode }: Address): string {
+  return JSON.stringify([street.toLowerCase(), city.toLowerCase(), state, zipCode]);
+}
 
 // The `PropertyRepository` for service tests. Maps rows the way the Drizzle repository does,
 // so a `current` without its key fields fails here too.
@@ -11,6 +16,12 @@ export class InMemoryPropertyRepository implements PropertyRepository {
   // Every later `insert` rejects with `error` and stores nothing (FR-05 AC6).
   failInsert(error: Error): void {
     this.#insertError = error;
+  }
+
+  // The same keys as `properties_address_unique`. `insert` does not enforce them: a race needs
+  // `failInsert(new PropertyAlreadyExistsError())`.
+  existsByAddress(address: Address): Promise<boolean> {
+    return Promise.resolve(this.rows.some((row) => addressKey(row) === addressKey(address)));
   }
 
   insert(property: NewProperty): Promise<Property> {

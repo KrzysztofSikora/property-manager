@@ -1,6 +1,6 @@
 import { stateName } from '@property-manager/shared';
 import type { Address, StateCode } from '@property-manager/shared';
-import { WeatherLocationMismatchError } from '../domain/errors.ts';
+import { PropertyAlreadyExistsError, WeatherLocationMismatchError } from '../domain/errors.ts';
 import type { PropertyRepository, WeatherClient } from '../domain/ports.ts';
 import type { Property } from '../domain/property.ts';
 
@@ -27,8 +27,11 @@ export function createPropertyService({
   weather,
 }: PropertyServiceDeps): PropertyService {
   return {
-    // Weather, region check, then a single insert: a failure at any step stores nothing (NFR-08).
+    // Duplicate pre-check, weather, region check, then a single insert: a failure at any step
+    // stores nothing (NFR-08). A duplicate costs no weather call; a racing one is caught by the
+    // unique index on insert (FR-08 AC2).
     async create(address) {
+      if (await repository.existsByAddress(address)) throw new PropertyAlreadyExistsError();
       const report = await weather.current(weatherQuery(address));
       if (!regionMatchesState(report.region, address.state)) {
         throw new WeatherLocationMismatchError(address.state, report.region);

@@ -353,7 +353,7 @@ statement (NFR-08).
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: Weather failure classification (d64251f)
-- [ ] Phase 2: Region check
+- [x] Phase 2: Region check (31cb664)
 - [ ] Phase 3: Duplicate prevention
 
 ## Deviations
