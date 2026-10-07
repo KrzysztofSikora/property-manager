@@ -157,8 +157,30 @@ describe('summarizeError', () => {
       cause: { name: 'DatabaseError', code: '23514', constraint: 'properties_lat_range' },
     });
     expect(summary).not.toHaveProperty('code');
+    expect(summary.cause).not.toHaveProperty('cause');
     expect(summary.frames?.[0]).toMatch(/^at /);
     expect(JSON.stringify(summary)).not.toMatch(/Golden Eagle|insert into|params|detail|Failed/);
+  });
+
+  it('keeps only stack lines that start with "at", not a message that contains " at "', () => {
+    const summary = summarizeError(new Error('Failing row at 15528 E Golden Eagle Blvd'));
+
+    expect(summary.frames?.length).toBeGreaterThan(0);
+    expect(JSON.stringify(summary)).not.toContain('Golden Eagle');
+  });
+
+  it.each([
+    ['without a stack', Object.assign(new TypeError('boom'), { stack: undefined })],
+    [
+      'with a non-string code or constraint',
+      Object.assign(new Error('boom'), {
+        stack: undefined,
+        code: 23514,
+        constraint: { row: '15528 E Golden Eagle Blvd' },
+      }),
+    ],
+  ])('summarizes an error %s by its name alone', (_case, error) => {
+    expect(summarizeError(error)).toEqual({ name: error.name });
   });
 
   it('stops after five causes', () => {

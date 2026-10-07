@@ -17,6 +17,14 @@ Score (killed / survived / no coverage / timeout):
 | `errors.ts` | 97.9% (45 / 1 / 0 / 1) | 100% (46 / 0 / 0 / 1) |
 | api total | 77.6% (117 / 34 / 0 / 1) | 96.1% (145 / 6 / 0 / 1) |
 
+Re-run after the review fixes (43d47e5), which added `summarizeError` / `logUnexpectedErrors`
+to `errors.ts` (R1). `client.ts` and `response.ts` changed only in their tests and kept their
+scores (39 / 6 / 0 / 0 and 31 / 0 / 0 / 0, same six survivors):
+
+| Module | Before | After |
+|--------|--------|-------|
+| `errors.ts` (after R1) | 91.5% (107 / 10 / 0 / 1) | 97.5% (114 / 3 / 0 / 1) |
+
 Every target is 100% of its non-equivalent, non-accepted mutants. The one timeout
 (`errors.ts:31`, empty `while` body) is a real infinite loop, not load: it stayed a timeout at
 concurrency 4.
@@ -46,6 +54,12 @@ concurrency 4.
 | `client.ts:70` | Conditional | `instanceof WeatherUnavailableError` → `true` | equivalent | `parseWeatherstackResponse` throws only `WeatherUnavailableError`. |
 | `errors.ts:16` | StringLiteral | `join('.')` → `join('')` | strengthen | No caller has nested paths yet, but `fields[].field` is part of the `BAD_USER_INPUT` contract (FR-07 AC5). Added "names a nested field by its dotted path". |
 | `errors.ts:31` | BlockStatement | empty `while` body | (timeout) | Infinite loop, counted as killed. |
+| `errors.ts:89` | Conditional | `typeof value === 'string'` → `true` | strengthen | A non-string `code` / `constraint` (an object can carry row data) would be logged as it is. New `it.each` row: numeric code and object constraint give `{ name }` alone. |
+| `errors.ts:101` | Conditional | `constraint !== undefined` → `true` | equivalent | Adds `constraint: undefined`, which JSON drops from the log line. |
+| `errors.ts:102:18`, `103:7` (×2) | OptionalChaining / Conditional / LogicalOperator | `stack` check dropped | strengthen | An error without a stack would throw a `TypeError` while it is being logged. New row: a stackless `TypeError` gives `{ name: 'TypeError' }`. |
+| `errors.ts:102:60` | Regex | `^` anchor dropped | strengthen | The first stack line is `Name: message`, so a message containing " at " would be logged as a frame and leak the row. New test with `'Failing row at 15528 E Golden Eagle Blvd'`. |
+| `errors.ts:103:31` (×2) | Conditional / EqualityOperator | `frames.length > 0` → `true` / `>= 0` | accept | Logs `frames: []` instead of omitting the key. Only the shape changes, and nothing leaks. |
+| `errors.ts:104` | Conditional | `error.cause !== undefined` → `true` | strengthen | Every summary would end in a fake `cause: { name: 'undefined' }`. The database-error test now asserts that the pg error has no `cause`. |
 | `property.service.ts:30` | StringLiteral | `units: ''` | strengthen | `InMemoryPropertyRepository` hard-coded `'IMPERIAL'`, so the existing assertion could not fail. The fake now stores the given `units`, as the Drizzle repository does (`property.repository.ts:17`). |
 
 ## Dead-weight tests
