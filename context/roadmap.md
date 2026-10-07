@@ -183,7 +183,10 @@ that every item has its exports and links them from the README.
   served statically); Playwright e2e smoke (create → list → details → delete) against the
   Compose stack with `WEATHERSTACK_BASE_URL` pointed at a stub server; e2e job in CI; README
   (prerequisites, setup, start command, dev workflow, tests, env variables, no-auth statement,
-  coordinate-precision note, quota/HTTPS notes, links to the AI setup and `ai-sessions/`).
+  coordinate-precision note, quota/HTTPS notes, a "Decisions beyond the brief" section with the
+  rationale for duplicate blocking (FR-08), the region vs. state check (FR-05 AC4), 50 states +
+  DC only (NG-05), imperial units (D-08) and optional `limit`/`offset` defaulting to all
+  (FR-01), links to the AI setup and `ai-sessions/`).
 - Depends on: S-05
 - Acceptance: FR-14 AC1, AC2; FR-15 AC1, AC2; PRD success criteria 1–7 walk-through.
 - Unknowns: pnpm workspace install inside the API image (symlinked `packages/shared` under type

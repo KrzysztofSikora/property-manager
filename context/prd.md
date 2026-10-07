@@ -304,7 +304,11 @@ Route `/properties/new`.
   reachable at the URL the README gives.
 - AC2: Given the README, Then it contains: prerequisites, setup, the start command, a local
   development workflow, how to run tests, the list of env variables, the no-auth statement
-  (D-13), the coordinate-precision note (D-05), and the Weatherstack quota/HTTPS notes.
+  (D-13), the coordinate-precision note (D-05), the Weatherstack quota/HTTPS notes, and a
+  "Decisions beyond the brief" section that states and justifies: duplicate-address blocking
+  (FR-08), the Weatherstack region vs. submitted state check (FR-05 AC4), accepting only the 50
+  states + DC without territories (NG-05), imperial units (D-08), and optional `limit`/`offset`
+  with "all" as the default (FR-01).
 - AC3: Given `WEATHERSTACK_KEY` is not set, When the API starts, Then it fails fast with a
   message naming the missing variable (not its value).
 
