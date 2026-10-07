@@ -1,0 +1,203 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /test-plan                                                                    
+
+  Read 1 file, listed 1 directory, ran 2 shell commands (ctrl+o to expand)
+
+● Inputs read (PRD, tech stack, roadmap, risks). No code exists yet, so the plan
+  uses intended paths that F-01 will confirm. Writing context/test-plan.md now.
+
+● Write(context/test-plan.md)
+  ⎿  Wrote 234 lines to context/test-plan.md
+       1 # Test plan
+       3 Sources: `context/prd.md` (FR-, NFR-, AC IDs), `context/tech-sta
+         ck.md`, `context/roadmap.md`
+       4 (item IDs), `context/shape-notes.md` (R- IDs). Written 2026-10-0
+       5 exists yet. File paths and helper names below are the intended l
+         ayout. F-01 and F-02 create
+       7 
+       8 Principles:
+       9 
+         undary: a GraphQL response,
+     … +534 lines (ctrl+o to expand)
+
+● I wrote the test plan to context/test-plan.md. I haven't committed it.
+
+  What's in it
+  - Risk register: 25 risks, ranked by impact × likelihood. The top ones are:
+    - the Weatherstack key leaking into logs, URLs or errors;
+    - Weatherstack errors sent as HTTP 200 with success: false being treated as
+      success;
+    - responses with a changed or partial shape getting stored;
+    - Weatherstack calls that shouldn't happen (wasted quota);
+    - failed creates leaving a partial row.
+
+    Each risk has a test level (unit, integration or e2e) and the tests that
+    cover it.
+  - Test names: every test starts with its AC ID (e.g. FR-07 AC1: …), so you can
+    check with grep that every Must AC has a test (success criterion 7).
+  - Not tested: real Weatherstack calls, the real 5-second timeout,
+    Weatherstack's geocoding accuracy, the libraries themselves, styling, load,
+    migration rollback, the README and AI deliverables (checked by checklist),
+    and the Should/Could items.
+  - Mutation targets: six modules, with target scores from 80% to 100%:
+    - the shared address schema;
+    - the Weatherstack adapter's response parsing and error mapping;
+    - the key-redaction helper (100%);
+    - the create flow and region check in the service;
+    - GraphQL error mapping and the properties query arguments;
+    - the web's mapping of API errors to UI messages.
+
+    Stryker stays out of CI, as the roadmap decided. The fail threshold stays
+    off until the first run records a baseline. The repository's SQL isn't a
+    target, because only database tests cover it and running those once per
+    mutant would be too slow.
+  - Cookbook: step-by-step recipes for unit, integration, e2e and mutation
+    tests, with file locations and helper names.
+
+  New decisions to confirm. These aren't in the tech stack or roadmap yet:
+  1. Pre-commit hook: a plain .githooks/pre-commit script, turned on through
+     core.hooksPath, with no husky or lefthook dependency. It runs lint,
+     typecheck, the unit tests and a scan for the key in staged changes (it
+     never prints the key).
+  2. Editor hook: a Claude Code PostToolUse hook that runs Prettier and ESLint
+     on each edited file.
+  3. Test layout: integration tests are named *.int.test.ts, so the Stryker
+     config can leave them out. The database tests use one Testcontainers
+     PostgreSQL container per run and run one file at a time.
+  4. Timeout test: the adapter gets an injectable timeout, so the test can use a
+     short one and doesn't wait 5 seconds.
+  5. Codegen check in CI: CI regenerates the GraphQL types and fails if they
+     differ from the committed files.
+
+  Items 1–3 and 5 belong in the F-01 scope, and item 4 in S-02's. The helper
+  names (createTestApp, FakeWeatherClient.withBarrier, expectNoSecret, …) are
+  what I intend; no code exists yet. The F-01, F-02 and S-01 plans should update
+  this file if any name or path changes.
+
+  Next step: /plan repo-skeleton.
+
+✻ Sautéed for 2m 34s · done 4:07 PM
+
+❯ /export 08-test-plan                                                          
+  ⎿  Conversation exported to:
+     /home/krzysztof/projects/taskTreeCover/property-manager/08-test-plan.txt
+
+❯ Small fixes before committing the test plan:                                  
+  1. Remove apps/web/src/lib/graphql-errors.ts from Mutation targets (S-05 has  
+  no                                                                            
+     /mutation step, see issue #7). Keep TR-19's unit table as its guard; note  
+  in                                                                            
+     "Not tested" that UI error mapping is guarded by the table test, not       
+  mutation.                                                                     
+  2. Roadmap F-01 scope: add the test tooling this plan assumes:                
+  vitest.unit.config.ts                                                         
+     (hermetic) and an integration config (*.int.test.ts, Testcontainers        
+  globalSetup,                                                                  
+     fileParallelism false); test:unit / test / test:mutation scripts; MSW      
+  setup with                                                                    
+     onUnhandledRequest 'error'; .githooks/pre-commit with the secret scan; the 
+  CI codegen                                                                    
+     drift check; the editor hook (Prettier + ESLint on the edited file).       
+  3. Roadmap F-02 scope: add the test helpers (createTestApp, resetDb,          
+  seedProperty,                                                                 
+     FakeWeatherClient incl. withBarrier,                                       
+  weatherstackResponse/weatherstackError fixtures,                              
+     captureLogs, expectNoSecret) and "update the test-plan Cookbook if names   
+  change".                                                                      
+     Update issues #1 and #2 bodies to match.                                   
+  4. Commit context/test-plan.md and context/roadmap.md:                        
+     docs: add risk-based test plan. Push after my approval.                    
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Now the roadmap scopes.
+
+● Update(context/roadmap.md)
+  ⎿  Added 8 lines, removed 1 line
+      56      routes as placeholders and the typed `execute()` wrapper.
+      57    - GraphQL Code Generator for server resolver types and web cl
+          ient preset.
+      58    - Vitest in both apps; `docker-compose.yml` with `postgres` o
+          nly; `.env.example`.
+      59 -  - GitHub Actions CI (lint, typecheck, test).                 
+      59 +  - Test tooling assumed by `context/test-plan.md`: `vitest.uni
+         +t.config.ts` (hermetic only) and                               
+      60 +    an integration config (`*.int.test.ts`, Testcontainers `glo
+         +balSetup`,                                                     
+      61 +    `fileParallelism: false`); `test:unit`, `test` and `test:mu
+         +tation` scripts; MSW setup with                                
+      62 +    `onUnhandledRequest: 'error'`.                             
+      63 +  - `.githooks/pre-commit` (enabled through `core.hooksPath`) w
+         +ith format, lint, typecheck,                                   
+      64 +    unit tests and the staged-diff secret scan; Claude Code edi
+         +tor hook running Prettier +                                    
+      65 +    ESLint on the edited file.                                 
+      66 +  - GitHub Actions CI (lint, typecheck, codegen drift check, te
+         +st).                                                           
+      67    - Fill the *Commands* section of CLAUDE.md.
+      68  - Depends on: -
+      69  - Acceptance: FR-14 AC3; NFR-04; a deliberate resolver → reposi
+          tory import and a `./x.js` import
+
+● Update(context/roadmap.md)
+  ⎿  Added 4 lines, removed 1 line
+      81    `{ units, current }`, `created_at timestamptz`), unique index
+           on
+      82    `lower(street) + lower(city) + state + zip`, drizzle-kit migr
+          ation and a migrate command;
+      83    Testcontainers PostgreSQL harness for integration tests; `pac
+          kages/shared` with the 50 states
+      84 -  + DC table (code → name) and the error-code list.            
+      84 +  + DC table (code → name) and the error-code list; test helper
+         +s from the test-plan Cookbook                                  
+      85 +  (`createTestApp`, `resetDb`, `seedProperty`, `FakeWeatherClie
+         +nt` incl. `withBarrier`,                                       
+      86 +  `weatherstackResponse` / `weatherstackError` fixtures, `captu
+         +reLogs`, `expectNoSecret`);                                    
+      87 +  update the test-plan Cookbook if names change.               
+      88  - Depends on: F-01
+      89  - Acceptance: migration applies to an empty Testcontainers data
+          base; inserting two rows whose
+      90    addresses differ only in case/whitespace (already normalized)
+           violates the unique index; a row
+
+● Now syncing issue bodies #1 and #2 from the updated roadmap sections.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Diffs are exactly the roadmap changes. Updating the issues and committing.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● I made all four fixes and committed them as bc5dd3b docs: add risk-based test 
+  plan on main. It's 1 commit ahead of origin/main and not pushed.
+
+  1. Test plan: I removed apps/web/src/lib/graphql-errors.ts from the mutation
+     targets. "Not tested" now says the UI error mapping is guarded by TR-19's
+     table test instead of mutation testing, since S-05 has no /mutation step
+     (#7).
+  2. Roadmap F-01: the scope now includes:
+     - the unit and integration test configs, the test:unit / test /
+       test:mutation scripts and the MSW setup;
+     - .githooks/pre-commit with the secret scan, and the editor hook;
+     - the codegen check in CI.
+  3. Roadmap F-02: the scope now lists the test helpers and the note to update
+     the test-plan Cookbook if names change.
+  4. Issues #1 and #2: I rebuilt their bodies from the updated roadmap sections,
+     and checked first that the only differences were the lines above. Both are
+     updated on GitHub.
+
+  The commit contains only context/test-plan.md and context/roadmap.md. The
+  session exports 06-…, 07-… and 08-test-plan.txt are still untracked in the
+  repo root. You'll probably want to move them to ai-sessions/ with the
+  NN-<change-id>-<step>.txt names.
+
+  Shall I push to origin/main?
+
+✻ Baked for 40s · done 4:09 PM

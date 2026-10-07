@@ -1,0 +1,790 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /roadmap                                                                      
+
+  Read 2 files, listed 2 directories (ctrl+o to expand)
+
+● Write(context/roadmap.md)
+  ⎿  Wrote 224 lines to context/roadmap.md
+       1 # Roadmap
+       2 
+         ch-stack.md`,
+       4 `context/shape-notes.md` (R- IDs). Every Must FR maps to at leas
+         t one item below.
+       6 ## Overview
+       7 
+       8 | ID | change-id | Type | Covers | Depends on | Size | Status |
+      10 | F-01 | repo-skeleton | foundation | FR-14 AC3, NFR-04, NFR-06 
+         | - | M | todo |
+     … +335 lines (ctrl+o to expand)
+
+● I've written context/roadmap.md: 2 foundations and 9 slices, all with status
+  todo. Every Must FR (FR-01 to FR-15) is assigned to an item.
+
+  ID: F-01
+  change-id: repo-skeleton
+  Covers: Workspace, TypeScript, ESLint layer rules, startup config check (FR-14
+
+  AC3), CI
+  Size: M
+  ────────────────────────────────────────
+  ID: F-02
+  change-id: property-schema
+  Covers: Table, migration, unique index on the normalized address,
+  Testcontainers setup, shared list of states and error codes
+  Size: S
+  ────────────────────────────────────────
+  ID: S-01
+  change-id: create-property-with-weather
+  Covers: FR-05 happy path, FR-07, base of FR-10
+  Size: M
+  ────────────────────────────────────────
+  ID: S-02
+  change-id: weather-failure-handling
+  Covers: FR-06, FR-05 AC4/AC5 (state mismatch, failures), checks the key never
+  leaks
+  Size: M
+  ────────────────────────────────────────
+  ID: S-03
+  change-id: prevent-duplicate-properties
+  Covers: FR-08, including two creates at the same time
+  Size: S
+  ────────────────────────────────────────
+  ID: S-04
+  change-id: query-properties
+  Covers: FR-01 to FR-04
+  Size: M
+  ────────────────────────────────────────
+  ID: S-05
+  change-id: delete-property
+  Covers: FR-09
+  Size: S
+  ────────────────────────────────────────
+  ID: S-06 / S-07 / S-08
+  change-id: the list, details and create pages
+  Covers: FR-11 / FR-12 / FR-13
+  Size: M / S / M
+  ────────────────────────────────────────
+  ID: S-09
+  change-id: run-and-document
+  Covers: FR-14 AC1/AC2 (one-command start, README), FR-15, Playwright e2e
+  Size: M
+
+  Decisions recorded in the file:
+  - Order follows risk. Tooling and schema come first, then Weatherstack (S-02
+    is where its unconfirmed error codes, OQ-04, get checked), then duplicate
+    prevention, then the UI.
+  - The GraphQL API is built before the UI pages. This is partly a
+    layer-by-layer order, which the skill asks me to justify. Each API slice
+    still runs all the way from the GraphQL handler to the database. Each slice
+    can be checked in GraphiQL, and the UI gets generated types from a schema
+    that has stopped changing.
+  - CI (resolves OQ-06): GitHub Actions is set up in F-01 to run lint, typecheck
+    and tests. The e2e job is added in S-09. Stryker runs per change, not in
+    CI.
+  - FR-15 (AI sessions): each item's session is exported when that item is done.
+    S-09 checks every item has one and links them from the README.
+  - Later: FR-16 (demo seed data, a Could) waits until the core works, because
+    it uses real API quota.
+
+  Questions to answer before F-01 and F-02:
+  - RQ-01: GitHub or GitLab? The CI choice assumes GitHub.
+  - RQ-02: I propose UUID v7 ids, which PostgreSQL 18 generates natively and
+    which sort by creation time. S-04's sort tiebreak depends on this choice.
+  - RQ-03: Which format and folder for session exports?
+  - RQ-04: How many real Weatherstack calls can S-02 spend checking error codes?
+
+  Nothing is committed yet. Once these are settled, the next step is /test-plan.
+
+✻ Cooked for 2m 13s · done 3:42 PM
+
+❯ Poprawki PRD i roadmapy przed startem implementacji:                          
+                                                                                
+  PRD (context/prd.md):                                                         
+  1. FR-01: bez argumentu limit zapytanie properties zwraca WSZYSTKIE pasujące  
+  rekordy                                                                       
+     (brief B-1: "query all the properties"). limit/offset są opcjonalne (limit 
+  1–100, gdy                                                                    
+     podany). Popraw AC3 i AC5, FR-11 i Traceability B-1.                       
+  2. weatherData zgodnie z dosłownym briefem B-7f ("object containing 'current' 
+  property"):                                                                   
+     weatherData { current { ... } }, units obok current. Popraw FR-05 AC1,     
+  FR-06 AC5,                                                                    
+     FR-12, model danych, External integrations i Traceability B-7f.            
+  3. Priorytet Should (nie Must): FR-11 AC3 (filtry w URL), FR-11 AC4           
+  (paginacja w UI),                                                             
+     w FR-12 AC1 pełna lista pól pogody poza: temperatura, feels-like, opis +   
+  ikona, wiatr,                                                                 
+     wilgotność (te zostają Must); w modelu danych pełne typowanie astro i      
+  airQuality                                                                    
+     (Must: kluczowe pola typowane + surowy current jako JSON). Zaktualizuj     
+  Success                                                                       
+     criteria.                                                                  
+                                                                                
+  Roadmapa (context/roadmap.md):                                                
+  4. Połącz elementy, żeby zmniejszyć narzut procesu (8 zamiast 11):            
+     S-01 create-property-with-weather (bez zmian),                             
+     S-02 create-property-guards = dawne S-02 + S-03,                           
+     S-03 query-and-delete-properties = dawne S-04 + S-05,                      
+     S-04 list-and-details-pages = dawne S-06 + S-07,                           
+     S-05 create-property-page = dawne S-08,                                    
+     S-06 run-and-document = dawne S-09.                                        
+     Zaktualizuj Overview, zależności, Covers i Acceptance zgodnie z            
+  poprawionym PRD;                                                              
+     rzeczy przeniesione do Should wpisz w sekcję Later.                        
+  5. Zamknij RQ-01: GitHub (remote: KrzysztofSikora/property-manager), CI w     
+  GitHub Actions.                                                               
+     Zamknij RQ-03: eksporty w ai-sessions/ jako NN-<change-id>-<krok>.txt (już 
+  używane).                                                                     
+  6. Pokaż diff obu plików i zaproponuj commit:                                 
+     docs: align PRD with brief and consolidate roadmap. Commituj po mojej      
+  akceptacji.                                                                   
+
+● Updating the PRD and roadmap with your corrections. First I'll check the
+  session-export folder and the Weatherstack sample.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Now editing the PRD. FR-01 first:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now the weatherData shape (FR-05, FR-06, FR-12):
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Next, FR-11 (URL filters and UI pagination become Should):
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now the data model and external integrations:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Last PRD block: success criteria and traceability.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Checking for leftover references to the old defaults and shape:
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● PRD done. Now rewriting the roadmap with the merged items:
+
+● Write(context/roadmap.md)
+  ⎿  Added 111 lines, removed 111 lines
+      1  # Roadmap
+      2  
+      3  Sources: `context/prd.md` (FR-, NFR-, OQ-, US- IDs), `context/te
+         ch-stack.md`,
+      4 -`context/shape-notes.md` (R- IDs). Every Must FR maps to at leas
+        -t one item below.                                               
+      4 +`context/shape-notes.md` (R- IDs). Every Must FR maps to at leas
+        +t one item below. Items are                                     
+      5 +deliberately few (8) to keep the per-item process overhead (plan
+        +, review, mutation, session                                     
+      6 +export) proportionate to a small app.                           
+      7  
+      8  ## Overview
+      9  
+     ...
+      12  | F-01 | repo-skeleton | foundation | FR-14 AC3, NFR-04, NFR-06
+           | - | M | todo |
+      13  | F-02 | property-schema | foundation | (FR-08 AC2, NFR-08 grou
+          ndwork) | F-01 | S | todo |
+      14  | S-01 | create-property-with-weather | slice | FR-05 (AC1–AC3,
+           AC6), FR-07, FR-10 | F-02 | M | todo |
+      13 -| S-02 | weather-failure-handling | slice | FR-05 (AC4, AC5), F
+         -R-06, FR-10 | S-01 | M | todo |                                
+      14 -| S-03 | prevent-duplicate-properties | slice | FR-08, FR-10 | 
+         -S-01 | S | todo |                                              
+      15 -| S-04 | query-properties | slice | FR-01, FR-02, FR-03, FR-04 
+         -| S-01 | M | todo |                                            
+      16 -| S-05 | delete-property | slice | FR-09, FR-10 | S-04 | S | to
+         -do |                                                           
+      17 -| S-06 | property-list-page | slice | FR-11 | S-04, S-05 | M | 
+         -todo |                                                         
+      18 -| S-07 | property-details-page | slice | FR-12 | S-06 | S | tod
+         -o |                                                            
+      19 -| S-08 | create-property-page | slice | FR-13 | S-02, S-03, S-0
+         -7 | M | todo |                                                 
+      20 -| S-09 | run-and-document | slice | FR-14 (AC1, AC2), FR-15 | S
+         --08 | M | todo |                                               
+      15 +| S-02 | create-property-guards | slice | FR-05 (AC4, AC5), FR-
+         +06, FR-08, FR-10 | S-01 | M | todo |                           
+      16 +| S-03 | query-and-delete-properties | slice | FR-01, FR-02, FR
+         +-03, FR-04, FR-09, FR-10 | S-01 | M | todo |                   
+      17 +| S-04 | list-and-details-pages | slice | FR-11 (Must ACs), FR-
+         +12 (AC1–AC5) | S-03 | M | todo |                               
+      18 +| S-05 | create-property-page | slice | FR-13 | S-02, S-04 | M 
+         +| todo |                                                       
+      19 +| S-06 | run-and-document | slice | FR-14 (AC1, AC2), FR-15 | S
+         +-05 | M | todo |                                               
+      20  
+      21  Order follows risk: tooling and schema first, then the Weathers
+          tack integration (the only
+      23 -third-party unknown, R-01 – R-05), then the concurrency-sensiti
+         -ve duplicate rule, then the                                    
+      22 +third-party unknown, R-01 – R-05) and the concurrency-sensitive
+         + duplicate rule, then the                                      
+      23  read/delete API, then the UI, then packaging.
+      24  
+      26 -**Why API slices before UI slices.** S-01 – S-05 are vertical t
+         -hrough resolver → service →                                    
+      25 +**Why API slices before UI slices.** S-01 – S-03 are vertical t
+         +hrough resolver → service →                                    
+      26  repository/adapter → PostgreSQL and are demonstrable in GraphiQ
+          L, which is the brief's core
+      28 -deliverable (B-O2). The UI slices (S-06 – S-08) are each vertic
+         -al through one route on top of a                               
+      27 +deliverable (B-O2). The UI slices (S-04, S-05) are vertical thr
+         +ough their routes on top of a                                  
+      28  finished API. Building the API first lets the UI consume genera
+          ted types from a stable schema
+      29  instead of chasing it, and keeps each session focused on one la
+          yer's test tooling (Testcontainers
+      30  + fake adapter vs. MSW + Testing Library).
+      31  
+      33 -**CI (resolves OQ-06 / Q-06).** GitHub Actions, added in F-01: 
+         -install, lint, typecheck and                                   
+      34 -`pnpm test` (Testcontainers runs on `ubuntu-latest` Docker). S-
+         -09 adds the Playwright e2e job.                                
+      35 -Stryker is not in CI; it runs per change on test-plan targets. 
+      32 +**Hosting and CI (resolves OQ-06 / Q-06).** GitHub, remote     
+      33 +`KrzysztofSikora/property-manager`. GitHub Actions is added in 
+         +F-01: install, lint, typecheck                                 
+      34 +and `pnpm test` (Testcontainers runs on `ubuntu-latest` Docker)
+         +. S-06 adds the Playwright e2e                                 
+      35 +job. Stryker is not in CI; it runs per change on test-plan targ
+         +ets.                                                           
+      36  
+      37 -**AI sessions (FR-15).** Delivered incrementally: every item's 
+         -session is exported when the item                              
+      38 -reaches `done`. S-09 checks that every item has one and links t
+         -hem from the README.                                           
+      37 +**AI sessions (FR-15).** Delivered incrementally: every skill r
+         +un is exported to `ai-sessions/`                               
+      38 +as `NN-<change-id>-<step>.txt` (running number `NN`, as already
+         + used for `00`–`06`). S-06 checks                              
+      39 +that every item has its exports and links them from the README.
+      40  
+      41  ## Items
+      42  
+     ...
+      69    `jsonb` snapshot and the normalized-address unique index are 
+          expensive to change later.
+      70  - Covers: groundwork for FR-08 AC2 (storage-enforced uniqueness
+          ) and NFR-08 (all required
+      71    columns `NOT NULL`); no FR is complete on its own.
+      71 -- Scope: Drizzle schema (`id`, address fields, `lat`, `long`, `
+         -weather_data jsonb`,                                           
+      72 -  `created_at timestamptz`), unique index on `lower(street) + l
+         -ower(city) + state + zip`,                                     
+      73 -  drizzle-kit migration and a migrate command; Testcontainers P
+         -ostgreSQL harness for integration                              
+      74 -  tests; `packages/shared` with the 50 states + DC table (code 
+         -→ name) and the error-code list.                               
+      72 +- Scope: Drizzle schema (`id`, address fields, `lat`, `long`, `
+         +weather_data jsonb` holding                                    
+      73 +  `{ units, current }`, `created_at timestamptz`), unique index
+         + on                                                            
+      74 +  `lower(street) + lower(city) + state + zip`, drizzle-kit migr
+         +ation and a migrate command;                                   
+      75 +  Testcontainers PostgreSQL harness for integration tests; `pac
+         +kages/shared` with the 50 states                               
+      76 +  + DC table (code → name) and the error-code list.            
+      77  - Depends on: F-01
+      78  - Acceptance: migration applies to an empty Testcontainers data
+          base; inserting two rows whose
+      79    addresses differ only in case/whitespace (already normalized)
+           violates the unique index; a row
+     ...
+       89  - Covers: FR-05 AC1–AC3, AC6; FR-07 (shared zod address schema
+            used at the resolver boundary);
+       90    FR-10 base (error formatter: `BAD_USER_INPUT` with `extensio
+           ns.fields`, masked
+       91    `INTERNAL_SERVER_ERROR`); NFR-05, NFR-07, NFR-08.
+       90 -- Scope: SDL for `Property`, `WeatherData`, `createProperty`; 
+          -resolver → `PropertyService`                                  
+       91 -  (validate → weather → save) → `PropertyRepository.insert` / 
+          -`WeatherClient`; real                                         
+       92 -  `WeatherClient` happy path (`fetch`, `AbortSignal.timeout(50
+          -00)`, zod-parsed response,                                    
+       93 -  `units=f`, URL redaction) plus a fake for service/resolver t
+          -ests; mapping `current` →                                     
+       94 -  `WeatherData` (snake_case → camelCase, `is_day` → boolean, `
+          -units: IMPERIAL`).                                            
+       92 +- Scope: SDL for `Property`, `WeatherData { units, current }`,
+          + `CurrentWeather` (Must key fields                            
+       93 +  + `raw: JSON`), `createProperty`; resolver → `PropertyServic
+          +e` (validate → weather → save) →                              
+       94 +  `PropertyRepository.insert` / `WeatherClient`; real `Weather
+          +Client` happy path (`fetch`,                                  
+       95 +  `AbortSignal.timeout(5000)`, zod-parsed response with key fi
+          +elds required, `units=f`, URL                                 
+       96 +  redaction) plus a fake for service/resolver tests; mapping t
+          +he stored `current` to the typed                              
+       97 +  key fields (snake_case → camelCase).                        
+       98  - Depends on: F-02
+       99  - Acceptance: FR-05 AC1, AC2, AC3, AC6; FR-07 AC1–AC5; FR-10 A
+           C2.
+       97 -- Unknowns: which `current` fields can be null (OQ-03) — requi
+          -red set per PRD data model,                                   
+       98 -  re-checked against `docs/samples/weatherstack-current.json`;
+          - storing the raw `current`                                    
+       99 -  snapshot vs. the mapped shape in `jsonb` (PRD: "keeps every 
+          -field received").                                             
+      100 +- Unknowns: JSON scalar for `raw` (`graphql-scalars` vs a smal
+          +l custom scalar) and its codegen                              
+      101 +  type (`unknown`, not `any`); nullability of non-key `current
+          +` fields (OQ-03) stays optional.                              
+      102  - Size: M
+      103  
+      102 -### S-02 Weather failure handling (`weather-failure-handling`)
+      103 -- Goal: every way Weatherstack can fail yields a specific, saf
+          -e error and saves nothing; the key                            
+      104 -  never leaks.                                                
+      105 -- Covers: FR-05 AC4 (region mismatch) and AC5; FR-06 AC1–AC7; 
+          -FR-10 rows                                                    
+      106 -  `WEATHER_QUOTA_EXCEEDED`, `WEATHER_UNAVAILABLE`, `WEATHER_LO
+          -CATION_MISMATCH`; NFR-01, NFR-02,                             
+      107 -  NFR-03.                                                     
+      108 -- Scope: adapter error classification (MSW at HTTP level: code
+          -s 104, 101, 105, 615, other                                   
+      109 -  `success: false`, HTTP 429, non-2xx, network error, timeout,
+          - invalid body); region check in the                           
+      110 -  service using the shared states table; configuration-error l
+          -og entry; tests that capture logs                             
+      111 -  and responses and assert the key string is absent.          
+      104 +### S-02 Create property guards (`create-property-guards`)    
+      105 +- Goal: every way a create can be refused — Weatherstack failu
+          +re, region mismatch, duplicate                                
+      106 +  address — yields a specific, safe error, saves nothing, and 
+          +leaks no key; duplicates cost no                              
+      107 +  Weatherstack call, even under concurrent creates.           
+      108 +- Covers: FR-05 AC4 (region mismatch) and AC5; FR-06 AC1–AC7; 
+          +FR-08 AC1–AC3; FR-10 rows                                     
+      109 +  `WEATHER_QUOTA_EXCEEDED`, `WEATHER_UNAVAILABLE`, `WEATHER_LO
+          +CATION_MISMATCH`,                                             
+      110 +  `PROPERTY_ALREADY_EXISTS`; NFR-01, NFR-02, NFR-03.          
+      111 +- Scope:                                                      
+      112 +  - Adapter error classification, tested with MSW at HTTP leve
+          +l: codes 104, 101, 105, 615, other                            
+      113 +    `success: false`, HTTP 429, non-2xx, network error, timeou
+          +t, body missing key fields.                                   
+      114 +  - Region check in the service using the shared states table;
+          + configuration-error log entry;                               
+      115 +    tests that capture logs and responses and assert the key s
+          +tring is absent.                                              
+      116 +  - Duplicate pre-check (`existsByNormalizedAddress`) before t
+          +he weather call; mapping the                                  
+      117 +    unique-index violation (pg `23505`) on insert to `PROPERTY
+          +_ALREADY_EXISTS`; concurrency                                 
+      118 +    test against Testcontainers.                              
+      119  - Depends on: S-01
+      113 -- Acceptance: FR-05 AC4, AC5; FR-06 AC1–AC7; FR-10 AC1 for the
+          - three weather codes.                                         
+      120 +- Acceptance: FR-05 AC4, AC5; FR-06 AC1–AC7; FR-08 AC1, AC2 (A
+          +C3 through a repository-level                                 
+      121 +  delete here, end to end in S-03); FR-10 AC1 for the four cod
+          +es above.                                                     
+      122  - Unknowns: OQ-04 — Weatherstack error codes and quota are UNV
+           ERIFIED; confirm against current
+      115 -  Weatherstack docs while planning (no extra real calls beyond
+          - what the plan justifies, R-01);                              
+      116 -  body shape of the HTTP 429 response; whether `region` for DC
+          - is "District of Columbia" (R-03).                            
+      117 -- Size: M                                                     
+      123 +  Weatherstack docs while planning (see RQ-04); body shape of 
+          +the HTTP 429 response; whether                                
+      124 +  `region` for DC is "District of Columbia" (R-03); how Drizzl
+          +e 0.45 surfaces the `pg` error                                
+      125 +  (wrapped `cause` vs. direct `code`); making the concurrent t
+          +est deterministic.                                            
+      126 +- Size: M (upper end; the plan may split it into two phases/co
+          +mmits)                                                        
+      127  
+      119 -### S-03 Prevent duplicate properties (`prevent-duplicate-prop
+          -erties`)                                                      
+      120 -- Goal: the same address can't be stored twice, even under con
+          -current creates, and a duplicate                              
+      121 -  costs no Weatherstack call.                                 
+      122 -- Covers: FR-08 AC1–AC3; FR-10 row `PROPERTY_ALREADY_EXISTS`. 
+      123 -- Scope: repository `existsByNormalizedAddress` pre-check befo
+          -re the weather call; mapping the                              
+      124 -  unique-index violation (pg `23505`) on insert to `PROPERTY_A
+          -LREADY_EXISTS`; concurrency test                              
+      125 -  against Testcontainers.                                     
+      126 -- Depends on: S-01 (FR-08 AC3 additionally needs delete; cover
+          -ed by a repository-level delete in                            
+      127 -  the test or re-verified in S-05)                            
+      128 -- Acceptance: FR-08 AC1, AC2, AC3; FR-10 AC1 for `PROPERTY_ALR
+          -EADY_EXISTS`.                                                 
+      129 -- Unknowns: how Drizzle 0.45 surfaces the `pg` error (wrapped 
+          -`cause` vs. direct `code`); making                            
+      130 -  the concurrent test deterministic (two creates racing past t
+          -he pre-check with the fake adapter).                          
+      131 -- Size: S                                                     
+      132 -                                                              
+      133 -### S-04 Query properties (`query-properties`)                
+      134 -- Goal: list, sort, filter, page and fetch single properties t
+          -hrough GraphQL, with zero weather                             
+      135 -  calls.                                                      
+      136 -- Covers: FR-01 AC1–AC6; FR-02 AC1–AC3; FR-03 AC1–AC6; FR-04 A
+          -C1–AC4.                                                       
+      128 +### S-03 Query and delete properties (`query-and-delete-proper
+          +ties`)                                                        
+      129 +- Goal: list (all by default), sort, filter, optionally page, 
+          +fetch single properties and delete                            
+      130 +  them through GraphQL, with zero weather calls.              
+      131 +- Covers: FR-01 AC1–AC6; FR-02 AC1–AC3; FR-03 AC1–AC6; FR-04 A
+          +C1–AC4; FR-09 AC1–AC3; FR-10                                  
+      132 +  row `PROPERTY_NOT_FOUND`; re-verifies FR-08 AC3 through the 
+          +API.                                                          
+      133  - Scope: `properties(filter, sort, limit, offset): PropertyPag
+           e` and `property(id)`; zod args
+      138 -  (limits 1–100, default 20, offset ≥ 0, blank filters dropped
+          -, state upper-cased); repository                              
+      139 -  query with `ILIKE` contains on city (escaping `%`/`_`), exac
+          -t state/zip, ordering by                                      
+      140 -  `created_at` then `id`, `count(*)` with the same filter; inv
+          -alid id format → `null`.                                      
+      141 -- Depends on: S-01 (needs stored properties; tests seed throug
+          -h the repository)                                             
+      142 -- Acceptance: FR-01 AC1–AC6, FR-02 AC1–AC3, FR-03 AC1–AC6, FR-
+          -04 AC1–AC4.                                                   
+      143 -- Unknowns: count + page in one round trip vs. two queries; ti
+          -e-breaking direction when ids are                             
+      144 -  UUID v4 (only stable, not chronological) — depends on the F-
+          -02 id decision.                                               
+      134 +  (`limit` optional, 1–100 when given; `offset` ≥ 0, default 0
+          +; blank filters dropped, state                                
+      135 +  upper-cased); repository query with `ILIKE` contains on city
+          + (escaping `%`/`_`), exact                                    
+      136 +  state/zip, ordering by `created_at` then `id`, `count(*)` wi
+          +th the same filter; invalid id                                
+      137 +  format → `null`. `deleteProperty(id): ID!` through service a
+          +nd repository; unknown or                                     
+      138 +  malformed id → `PROPERTY_NOT_FOUND`.                        
+      139 +- Depends on: S-01 (stored properties; tests seed through the 
+          +repository)                                                   
+      140 +- Acceptance: FR-01 AC1–AC6, FR-02 AC1–AC3, FR-03 AC1–AC6, FR-
+          +04 AC1–AC4, FR-09 AC1–AC3;                                    
+      141 +  FR-10 AC1 for `PROPERTY_NOT_FOUND`; FR-08 AC3 end to end.   
+      142 +- Unknowns: count + rows in one round trip vs. two queries; ti
+          +e-breaking semantics depend on the                            
+      143 +  F-02 id decision (RQ-02).                                   
+      144  - Size: M
+      145  
+      147 -### S-05 Delete property (`delete-property`)                  
+      148 -- Goal: permanently delete a property by id.                  
+      149 -- Covers: FR-09 AC1–AC3; FR-10 row `PROPERTY_NOT_FOUND`; re-ve
+          -rifies FR-08 AC3 through the API.                             
+      150 -- Scope: `deleteProperty(id): ID!` through service and reposit
+          -ory; unknown or malformed id →                                
+      151 -  `PROPERTY_NOT_FOUND`.                                       
+      152 -- Depends on: S-04 (AC1 checks `property(id)` and `totalCount`
+          -)                                                             
+      153 -- Acceptance: FR-09 AC1–AC3; FR-10 AC1 for `PROPERTY_NOT_FOUND
+          -`; FR-08 AC3 end to end.                                      
+      154 -- Unknowns: none significant.                                 
+      155 -- Size: S                                                     
+      156 -                                                              
+      157 -### S-06 Property list page (`property-list-page`)            
+      158 -- Goal: the `/` route lists properties with sort, filters in t
+          -he URL, pagination and delete.                                
+      159 -- Covers: FR-11 AC1–AC7; NFR-09 for this view.                
+      160 -- Scope: list table, sort control, city/state/zip filters boun
+          -d to `useSearchParams` (zod-parsed),                          
+      161 -  pagination, native `<dialog>` delete confirmation with `inva
+          -lidateQueries(['properties'])`,                               
+      162 -  loading / empty / error-with-retry states, row link to detai
+          -ls; MSW GraphQL handlers in tests.                            
+      163 -- Depends on: S-04, S-05                                      
+      164 -- Acceptance: FR-11 AC1–AC7.                                  
+      146 +### S-04 List and details pages (`list-and-details-pages`)    
+      147 +- Goal: the `/` route lists all properties with sort, filters 
+          +and delete; the                                               
+      148 +  `/properties/:id` route shows the full record and the key we
+          +ather fields.                                                 
+      149 +- Covers: FR-11 AC1, AC2, AC3, AC5, AC6, AC7; FR-12 AC1–AC5; N
+          +FR-09 for both views.                                         
+      150 +- Scope:                                                      
+      151 +  - List: table of all matches (no `limit`), sort control, cit
+          +y/state/zip filter inputs in                                  
+      152 +    component state, native `<dialog>` delete confirmation wit
+          +h                                                             
+      153 +    `invalidateQueries(['properties'])`, loading / empty / err
+          +or-with-retry states, row link to                             
+      154 +    details.                                                  
+      155 +  - Details: address, coordinates with the city-level precisio
+          +n note, creation date, key                                    
+      156 +    weather fields with units (temperature, feels-like, descri
+          +ption + icon, wind speed and                                  
+      157 +    direction, humidity), not-found state, delete with return 
+          +to the list, missing optional                                 
+      158 +    fields omitted.                                           
+      159 +  - MSW GraphQL handlers and Testing Library in tests.        
+      160 +- Depends on: S-03                                            
+      161 +- Acceptance: FR-11 AC1, AC2, AC3, AC5, AC6, AC7; FR-12 AC1–AC
+          +5.                                                            
+      162  - Unknowns: debouncing filter input vs. submit-on-enter; testi
+           ng native `<dialog>` in jsdom
+      163    (`showModal` support).
+      164  - Size: M
+      165  
+      169 -### S-07 Property details page (`property-details-page`)      
+      170 -- Goal: the `/properties/:id` route shows the full record and 
+          -weather snapshot.                                             
+      171 -- Covers: FR-12 AC1–AC5; NFR-09 for this view.                
+      172 -- Scope: details layout (address, coordinates with the city-le
+          -vel precision note, creation                                  
+      173 -  date, weather fields with units), not-found state, delete wi
+          -th return to the list, optional                               
+      174 -  `astro`/`airQuality` omitted when absent.                   
+      175 -- Depends on: S-06 (shared delete dialog, navigation)         
+      176 -- Acceptance: FR-12 AC1–AC5.                                  
+      177 -- Unknowns: none significant.                                 
+      178 -- Size: S                                                     
+      179 -                                                              
+      180 -### S-08 Create property page (`create-property-page`)        
+      166 +### S-05 Create property page (`create-property-page`)        
+      167  - Goal: the `/properties/new` route creates a property and lan
+           ds on its details page, with a
+      168    dedicated message for every create error.
+      169  - Covers: FR-13 AC1–AC4; NFR-09 (every FR-10 code has a UI mes
+           sage).
+      170  - Scope: four-field form validated with the shared zod schema,
+            pending state, success redirect,
+      171    mapping of `BAD_USER_INPUT` `extensions.fields` to field mes
+           sages and of the other codes to
+      172    form-level messages, values kept on error.
+      187 -- Depends on: S-02, S-03 (error codes exist), S-07 (redirect t
+          -arget)                                                        
+      173 +- Depends on: S-02 (error codes exist), S-04 (redirect target)
+      174  - Acceptance: FR-13 AC1–AC4.
+      175  - Unknowns: none significant.
+      176  - Size: M
+      177  
+      192 -### S-09 Run and document (`run-and-document`)                
+      178 +### S-06 Run and document (`run-and-document`)                
+      179  - Goal: a fresh clone starts with one command, is documented, 
+           and the AI deliverables are
+      180    complete and linked.
+      181  - Covers: FR-14 AC1, AC2; FR-15 AC1, AC2; NFR-10.
+     ...
+      183    served statically); Playwright e2e smoke (create → list → de
+           tails → delete) against the
+      184    Compose stack with `WEATHERSTACK_BASE_URL` pointed at a stub
+            server; e2e job in CI; README
+      185    (prerequisites, setup, start command, dev workflow, tests, e
+           nv variables, no-auth statement,
+      200 -  coordinate-precision note, quota/HTTPS notes, links to AI se
+          -tup and session exports).                                     
+      201 -- Depends on: S-08                                            
+      186 +  coordinate-precision note, quota/HTTPS notes, links to the A
+          +I setup and `ai-sessions/`).                                  
+      187 +- Depends on: S-05                                            
+      188  - Acceptance: FR-14 AC1, AC2; FR-15 AC1, AC2; PRD success crit
+           eria 1–7 walk-through.
+      189  - Unknowns: pnpm workspace install inside the API image (symli
+           nked `packages/shared` under type
+      190    stripping was tested, the Dockerfile layering is not); servi
+           ng the SPA with client-side routes
+     ...
+      193  
+      194  ## Later
+      195  
+      210 -- FR-16 Demo seed data (Could, Q-04): a documented, never-auto
+          -matic seed command that creates a                             
+      211 -  few real Zillow addresses through `createProperty`. Uses rea
+          -l quota (R-01), so it waits until                             
+      212 -  the core is done.                                           
+      213 -- Any further Should/Could ideas raised during reviews go here
+          -, not into in-flight items.                                   
+      196 +Should items from the PRD, picked up only after S-06 is `done`
+          +:                                                             
+      197  
+      198 +- FR-11 AC3a: list filters reflected in the URL query string (
+          +`useSearchParams`, zod-parsed),                               
+      199 +  so a reload keeps them.                                     
+      200 +- FR-11 AC4: UI pagination (20 per page, page indicator and to
+          +tal) using the API's                                          
+      201 +  `limit`/`offset`.                                           
+      202 +- FR-12 AC6: details page shows observation time, pressure, pr
+          +ecipitation, cloud cover, UV                                  
+      203 +  index, visibility, and `astro` / `airQuality` when present. 
+      204 +- Data model: typed non-key `CurrentWeather` fields, including
+          + the `astro` and `airQuality`                                 
+      205 +  objects (until then they are available only in `current.raw`
+          +).                                                            
+      206 +                                                              
+      207 +Could:                                                        
+      208 +                                                              
+      209 +- FR-16 Demo seed data (Q-04): a documented, never-automatic s
+          +eed command that creates a few                                
+      210 +  real Zillow addresses through `createProperty`. Uses real qu
+          +ota (R-01).                                                   
+      211 +                                                              
+      212  ## Open roadmap questions
+      213  
+      217 -- RQ-01 Hosting: the brief allows GitHub or GitLab (B-D1). The
+          - CI choice above assumes GitHub                               
+      218 -  Actions; confirm before F-01.                               
+      214 +- RQ-01 — Resolved 2026-10-07: GitHub (`KrzysztofSikora/proper
+          +ty-manager`), CI in GitHub                                    
+      215 +  Actions.                                                    
+      216  - RQ-02 Id format (F-02): UUID v7 (`uuidv7()`, built into Post
+           greSQL 18, time-ordered) is the
+      220 -  default proposal; confirm in the F-02 plan, since S-04's tie
+          -break depends on it.                                          
+      221 -- RQ-03 Session exports (FR-15 AC2): agree the export format a
+          -nd folder (e.g.                                               
+      222 -  `docs/sessions/<change-id>/`) before the first item is done,
+          - so every item follows it.                                    
+      217 +  default proposal; confirm in the F-02 plan, since S-03's tie
+          +break depends on it.                                          
+      218 +- RQ-03 — Resolved 2026-10-07: session exports go to `ai-sessi
+          +ons/` as                                                      
+      219 +  `NN-<change-id>-<step>.txt`.                                
+      220  - RQ-04 Real Weatherstack calls during S-02 planning (OQ-04): 
+           how many manual calls the quota
+      221    allows for verifying error codes (104 can't be triggered saf
+           ely; rely on docs).
+      222 +- RQ-05 `context/shape-notes.md` D-09 and D-10 still describe 
+          +the old `weatherData` shape and                               
+      223 +  the default page size of 20; the PRD now narrows both. Updat
+          +e the shape notes or leave them as                            
+      224 +  the historical record (the PRD notes the change).           
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I've applied all six corrections to context/prd.md and context/roadmap.md.
+  Nothing is committed yet; I'll commit once you accept.
+
+  PRD diff: shown in full above (+66 / −45). Points 1–3:
+  - FR-01: with no limit, properties returns all matches. AC3 now expects 25
+    of 25. AC5 now also states that limit: 100, and offset without limit, give
+    no error. FR-11 and Traceability B-1 are updated to match.
+  - weatherData: the shape is now { units, current }. FR-05 AC1, FR-06 AC5,
+    FR-12, the data model, External integrations and Traceability B-7f are
+    updated.
+  - Should: FR-11 AC3 is split. Filtering stays Must, and keeping the filters in
+    the URL is the new AC3a (Should). FR-11 AC4 is Should. The extra weather
+    fields on the details page are the new FR-12 AC6 (Should). Success criteria
+    2 and 3 are updated, with a note that Should items are not needed to finish.
+
+  Roadmap diff: context/roadmap.md has never been committed (??), so git diff
+  shows the whole file as new. Changes from the previous version:
+  - 8 items with the IDs and change-ids you gave: F-01, F-02, S-01 to S-06.
+    Covers, Depends on and Acceptance are adjusted to the corrected PRD.
+  - S-02 create-property-guards combines weather failures, the state check and
+    duplicates. It is the largest item, so I noted that its plan may split it
+    into two phases.
+  - S-03: limit is optional; deleteProperty is now part of this item.
+  - S-04: covers only the Must ACs of FR-11 and AC1–AC5 of FR-12. It loads the
+    whole list, and filters live in component state.
+  - Later: FR-11 AC3a, FR-11 AC4, FR-12 AC6, the typed extra fields including
+    astro/airQuality, and FR-16 (Could).
+  - RQ-01 and RQ-03 are closed: GitHub KrzysztofSikora/property-manager with CI
+    in GitHub Actions, and session exports in
+    ai-sessions/NN-<change-id>-<step>.txt.
+
+  Decisions for you to confirm:
+  1. Which fields of current are typed (Must): temperature, feelsLike,
+     weatherDescriptions, weatherIcons, windSpeed, windDir and humidity. These
+     are exactly the fields the details page must show. On top of those,
+     current.raw holds the whole object as JSON. Typing the remaining simple
+     fields (observationTime, pressure, etc.), not just astro/airQuality, is
+     Should, because they are only needed by the Should part of the details
+     page. A response missing one of the Must fields gives WEATHER_UNAVAILABLE;
+     a missing optional field does not.
+  2. Shape notes now disagree with the PRD. D-09 and D-10 in
+     context/shape-notes.md still describe the old shape and the default page
+     size of 20. I didn't edit that file because you didn't ask me to. The PRD
+     says it narrows D-10, and the conflict is recorded as RQ-05. Should I also
+     update shape-notes.md, or leave it as history?
+
+  Proposed commit:
+
+  docs: align PRD with brief and consolidate roadmap
+
+  Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+  It includes context/prd.md (modified) and context/roadmap.md (new file).
+  Should I commit?
+
+✻ Crunched for 2m 10s · done 3:47 PM
+
+❯ Odpowiedź do wklejenia:                                                       
+                                                                                
+  1. Akceptuję typowane pola Must: temperature, feelsLike, weatherDescriptions, 
+     weatherIcons, windSpeed, windDir, humidity + current.raw (cały obiekt jako 
+  JSON).                                                                        
+     Pozostałe pola typowane jako Should.                                       
+  2. Zaktualizuj shape-notes.md bez przepisywania historii: przy D-09 i D-10    
+  dodaj                                                                         
+     "Superseded 2026-10-07 by PRD (FR-01, data model): <nowa decyzja w jednym  
+  zdaniu>",                                                                     
+     stary tekst zostaw. Zamknij RQ-05 w roadmapie.                             
+  3. Potem commit wszystkich trzech plików (prd.md, roadmap.md, shape-notes.md) 
+     z zaproponowanym komunikatem.                                              
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Checking the branch before committing:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● I committed the three files to main as a7c5bc3 docs: align PRD with brief and 
+  consolidate roadmap. Nothing is left uncommitted.
+
+  - shape-notes.md: D-09 and D-10 keep their original text, with a note added to
+    each: "Superseded 2026-10-07 by PRD (FR-01, data model): …".
+    - D-09: weatherData is now { units, current }, with the seven typed fields
+      plus current.raw.
+    - D-10: with no limit, the query returns all matching properties; limit
+      (1–100) and offset stay optional.
+  - roadmap.md: RQ-05 is marked resolved.
+  - prd.md: unchanged since the last diff. Your answer matches what was already
+    in the file: seven typed Must fields plus current.raw, with the rest typed
+    as Should.
+
+  The commit is local; I haven't pushed it. The next step in the workflow is
+  /test-plan.
+
+✻ Worked for 18s · done 3:49 PM
+
+❯ Drobna poprawka PRD przed /test-plan:                                         
+  FR-14 AC2: README ma też zawierać sekcję "Decisions beyond the brief" z       
+  uzasadnieniem:                                                                
+  blokada duplikatów adresów (FR-08), sprawdzenie regionu Weatherstack vs state 
+  (FR-05 AC4),                                                                  
+  tylko 50 stanów + DC, bez terytoriów (NG-05), jednostki imperialne (D-08),    
+  opcjonalne limit/offset przy domyślnym "wszystkie" (FR-01).                   
+  Zaktualizuj też Scope w S-06 w roadmapie. Commit: docs(prd): list decisions   
+  beyond the brief in README scope.                                             
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● FR-14 AC2 now requires a "Decisions beyond the brief" section in the README,
+  and S-06's scope in the roadmap lists the same section. The diff is shown
+  above.
+
+  The README section must state and justify five decisions:
+  - Blocking duplicate addresses (FR-08).
+  - Checking the region Weatherstack returns against the submitted state (FR-05
+    AC4).
+  - Accepting only the 50 states plus DC, with no territories (NG-05).
+  - Imperial units (D-08).
+  - Optional limit/offset, returning all properties by default (FR-01).
+
+  I committed both files to main as 1744054 docs(prd): list decisions beyond the
+  brief in README scope. The working tree is clean and nothing is pushed. You
+  can run /test-plan next.
+✻ Cooked for 12s · done 3:52 PM
