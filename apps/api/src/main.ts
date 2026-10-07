@@ -27,11 +27,12 @@ const { yoga } = createApp({
   config,
   logger,
   repository: createPropertyRepository(db),
-  weather: createWeatherstackClient({
-    baseUrl: config.weatherstackBaseUrl,
-    accessKey: config.weatherstackKey,
-    logger,
-  }),
+  weather: (requestLogger) =>
+    createWeatherstackClient({
+      baseUrl: config.weatherstackBaseUrl,
+      accessKey: config.weatherstackKey,
+      logger: requestLogger,
+    }),
 });
 const server = createServer((request, response) => {
   // Yoga handles its own errors, so the returned promise is not awaited.

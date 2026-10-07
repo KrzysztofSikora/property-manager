@@ -8,19 +8,20 @@ import type { Logger } from 'pino';
 import type { Config } from './config/env.ts';
 import type { PropertyRepository, WeatherClient } from './domain/ports.ts';
 import type { GraphQLContext } from './graphql/context.ts';
-import { createMaskError } from './graphql/errors.ts';
+import { logUnexpectedErrors, maskError } from './graphql/errors.ts';
 import { resolvers } from './graphql/resolvers.ts';
 import { createPropertyService } from './services/property.service.ts';
 
 const typeDefs = readFileSync(new URL('../schema.graphql', import.meta.url), 'utf8');
 
 // Ports, not concrete adapters: `main.ts` passes the Drizzle repository and the Weatherstack
-// client, tests pass fakes.
+// client, tests pass fakes. `weather` is built per request from the request's logger, so the
+// adapter's log lines carry the `requestId`.
 export type AppDeps = {
   config: Config;
   logger: Logger;
   repository: PropertyRepository;
-  weather: WeatherClient;
+  weather: (logger: Logger) => WeatherClient;
 };
 
 export type App = {
@@ -32,6 +33,11 @@ function isDocumentNode(value: unknown): value is DocumentNode {
   return (
     typeof value === 'object' && value !== null && 'kind' in value && value.kind === Kind.DOCUMENT
   );
+}
+
+function errorsOf(result: unknown): readonly unknown[] {
+  if (typeof result !== 'object' || result === null || !('errors' in result)) return [];
+  return Array.isArray(result.errors) ? result.errors : [];
 }
 
 function operationNameOf(document: unknown, requested: unknown): string | null {
@@ -65,7 +71,9 @@ function operationLogging(logger: Logger): Plugin<GraphQLContext> {
     onExecute({ args }) {
       const start = performance.now();
       return {
-        onExecuteDone() {
+        // Runs before Yoga's masking plugin, so `result.errors` still hold their causes.
+        onExecuteDone({ result }) {
+          logUnexpectedErrors(args.contextValue.logger, errorsOf(result));
           args.contextValue.logger.info(
             {
               operationName: operationNameOf(args.document, args.operationName),
@@ -80,17 +88,19 @@ function operationLogging(logger: Logger): Plugin<GraphQLContext> {
   };
 }
 
-// Composition root: services are built here from the ports.
+// Composition root: services are built here from the ports, per request (plain objects, cheap)
+// so everything below the resolver logs through the request's child logger.
 export function createApp({ logger, repository, weather }: AppDeps): App {
-  const services = { property: createPropertyService({ repository, weather }) };
   const yoga = createYoga<object, GraphQLContext>({
     schema: createSchema<GraphQLContext>({ typeDefs, resolvers }),
     context: () => {
       const requestId = randomUUID();
-      return { requestId, logger: logger.child({ requestId }), services };
+      const requestLogger = logger.child({ requestId });
+      const property = createPropertyService({ repository, weather: weather(requestLogger) });
+      return { requestId, logger: requestLogger, services: { property } };
     },
     plugins: [operationLogging(logger)],
-    maskedErrors: { maskError: createMaskError(logger) },
+    maskedErrors: { maskError },
     logging: false,
   });
   return { yoga };

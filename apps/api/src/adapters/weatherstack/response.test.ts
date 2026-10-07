@@ -26,25 +26,27 @@ describe('parseWeatherstackResponse', () => {
     (field) => {
       const body = weatherstackResponse({ current: { [field]: undefined } });
 
-      expect(() => parseWeatherstackResponse(body)).toThrow(WeatherUnavailableError);
+      const error = catchError(() => parseWeatherstackResponse(body));
+
+      expect(error.cause).toEqual({ issues: [`current.${field}`] });
     },
   );
 
   it.each([
-    ['lat not numeric', { location: { lat: 'north' } }],
-    ['lat empty', { location: { lat: '' } }],
-    ['lat a number', { location: { lat: 33.609 } }],
-    ['lat with a leading letter', { location: { lat: 'N33.6' } }],
-    ['lat with a trailing letter', { location: { lat: '33.6N' } }],
-    ['lon missing', { location: { lon: undefined } }],
-    ['region empty', { location: { region: '' } }],
-    ['region missing', { location: { region: undefined } }],
-    ['location missing', { location: undefined }],
-    ['current missing', { current: undefined }],
-  ])('TR-03: %s is unavailable', (_case, overrides) => {
-    expect(() => parseWeatherstackResponse(weatherstackResponse(overrides))).toThrow(
-      WeatherUnavailableError,
-    );
+    ['lat not numeric', { location: { lat: 'north' } }, 'location.lat'],
+    ['lat empty', { location: { lat: '' } }, 'location.lat'],
+    ['lat a number', { location: { lat: 33.609 } }, 'location.lat'],
+    ['lat with a leading letter', { location: { lat: 'N33.6' } }, 'location.lat'],
+    ['lat with a trailing letter', { location: { lat: '33.6N' } }, 'location.lat'],
+    ['lon missing', { location: { lon: undefined } }, 'location.lon'],
+    ['region empty', { location: { region: '' } }, 'location.region'],
+    ['region missing', { location: { region: undefined } }, 'location.region'],
+    ['location missing', { location: undefined }, 'location'],
+    ['current missing', { current: undefined }, 'current'],
+  ])('TR-03: %s is unavailable, naming the path', (_case, overrides, path) => {
+    const error = catchError(() => parseWeatherstackResponse(weatherstackResponse(overrides)));
+
+    expect(error.cause).toEqual({ issues: [path] });
   });
 
   it.each([
@@ -70,8 +72,11 @@ describe('parseWeatherstackResponse', () => {
     expect(error.cause).toEqual({ weatherstackError: expected });
   });
 
+  // A non-object body fails at the root, whose path is empty.
   it.each([null, 'ok', []])('a body of %j is unavailable', (body) => {
-    expect(() => parseWeatherstackResponse(body)).toThrow(WeatherUnavailableError);
+    const error = catchError(() => parseWeatherstackResponse(body));
+
+    expect(error.cause).toEqual({ issues: [''] });
   });
 
   it('the error cause names the failing paths, not the body', () => {

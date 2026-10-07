@@ -463,7 +463,7 @@ is a single statement, so a failure at any step stores nothing (NFR-08).
 - [x] Phase 1: Shared address schema (3f63dd6)
 - [x] Phase 2: Domain and Weatherstack adapter (a964edb)
 - [x] Phase 3: Repository and service (44ff45b)
-- [ ] Phase 4: GraphQL wiring and end-to-end create
+- [x] Phase 4: GraphQL wiring and end-to-end create (dd0abe1)
 
 ## Deviations
 
@@ -492,3 +492,11 @@ is a single statement, so a failure at any step stores nothing (NFR-08).
   new `scalars` config types `createdAt` as `string` and `raw` as `unknown` for S-04.
 - Phase 4: `test/integration/smoke.int.test.ts` is unchanged: `createTestApp()` without options
   keeps working. The Cookbook also documents the `repository` option and the handler names.
+- Review fixes (R1, R3): `createMaskError(logger)` became a plain `maskError` that only maps
+  codes. Unexpected errors are logged by `logUnexpectedErrors` from the operation plugin's
+  `onExecuteDone` (it runs before Yoga's masking plugin), with the request's child logger and as
+  a `summarizeError` summary: name, pg `code` / `constraint` and stack frames down the `cause`
+  chain, never the message, `query`, `params` or `detail`. `AppDeps.weather` is now
+  `(logger) => WeatherClient`, and the context factory builds the service per request, so the
+  Weatherstack warnings carry the `requestId` too. Errors raised outside execution (none today)
+  are still masked but no longer logged.

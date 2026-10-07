@@ -208,9 +208,16 @@ describe('createProperty', () => {
     expect(repository.rows).toEqual([]);
     expect(await countProperties(app.db)).toBe(0);
     expect(app.weather.calls).toEqual([QUERY]);
+    const operation = app.logs().find((line) => line.msg === 'graphql operation');
+    expect(operation?.requestId).toMatch(UUID);
     expect(app.logs()).toContainEqual(
-      expect.objectContaining({ level: 50, msg: 'unexpected error' }),
+      expect.objectContaining({
+        level: 50,
+        msg: 'unexpected error',
+        requestId: operation?.requestId,
+      }),
     );
+    expect(JSON.stringify(app.logs())).not.toContain('insert into');
   });
 
   it('FR-05 AC6: a save the database rejects (lat out of range) returns INTERNAL_SERVER_ERROR and stores nothing', async () => {
@@ -225,6 +232,11 @@ describe('createProperty', () => {
     expect(text).not.toContain('properties_lat_range');
     expect(text).not.toContain('insert into');
     expect(await countProperties(app.db)).toBe(0);
+    // R1: the log names the constraint, but not the insert, the address or the weather.
+    const logged = app.logs().filter((line) => line.msg === 'unexpected error');
+    expect(logged).toHaveLength(1);
+    expect(JSON.stringify(logged[0])).toContain('properties_lat_range');
+    expect(JSON.stringify(app.logs())).not.toMatch(/Golden Eagle|insert into|worldweatheronline/);
   });
 
   it('FR-10 AC2: adds no originalError or stack when NODE_ENV is development', async () => {
@@ -309,5 +321,8 @@ describe('createProperty through the real Weatherstack client (MSW)', () => {
     const warnings = app.logs().filter((line) => line.level === 40);
     expect(warnings).toHaveLength(1);
     expect(String(warnings[0]?.url)).toContain('access_key=[REDACTED]');
+    const operation = app.logs().find((line) => line.msg === 'graphql operation');
+    expect(operation?.requestId).toMatch(UUID);
+    expect(warnings[0]?.requestId).toBe(operation?.requestId);
   });
 });

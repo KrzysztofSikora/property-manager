@@ -1,3 +1,4 @@
+import type { Logger } from 'pino';
 import { inject } from 'vitest';
 import { createWeatherstackClient } from '../../src/adapters/weatherstack/client.ts';
 import { createApp } from '../../src/app.ts';
@@ -50,19 +51,21 @@ export function createTestApp({
   });
   const { logger, lines } = captureLogs();
   const { db, close } = createDb(config.databaseUrl);
-  const weather =
-    weatherOption === 'msw'
-      ? createWeatherstackClient({
-          baseUrl: config.weatherstackBaseUrl,
-          accessKey: config.weatherstackKey,
-          logger,
-        })
-      : (weatherOption ?? new FakeWeatherClient());
+  // The real client is built per request, as in `main.ts`; a fake is one shared instance, so
+  // tests can read its `calls`.
+  const fake = weatherOption === 'msw' ? undefined : (weatherOption ?? new FakeWeatherClient());
+  const weatherFor = (requestLogger: Logger): WeatherClient =>
+    fake ??
+    createWeatherstackClient({
+      baseUrl: config.weatherstackBaseUrl,
+      accessKey: config.weatherstackKey,
+      logger: requestLogger,
+    });
   const { yoga } = createApp({
     config,
     logger,
     repository: repository ?? createPropertyRepository(db),
-    weather,
+    weather: weatherFor,
   });
 
   async function execute(
@@ -79,5 +82,5 @@ export function createTestApp({
     return body;
   }
 
-  return { db, weather, execute, logs: lines, close };
+  return { db, weather: fake ?? weatherFor(logger), execute, logs: lines, close };
 }

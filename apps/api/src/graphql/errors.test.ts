@@ -3,7 +3,7 @@ import type { FieldNode } from 'graphql';
 import { describe, expect, it } from 'vitest';
 import { captureLogs } from '../../test/helpers/logs.ts';
 import { WeatherUnavailableError } from '../domain/errors.ts';
-import { badUserInput, createMaskError } from './errors.ts';
+import { badUserInput, logUnexpectedErrors, maskError, summarizeError } from './errors.ts';
 
 const MASKED = 'Unexpected error.';
 const PATH = ['createProperty'];
@@ -19,11 +19,6 @@ function fieldNode(): FieldNode {
 // What graphql 17 hands Yoga when a resolver throws `error`.
 function thrownByResolver(error: unknown): GraphQLError {
   return locatedError(error, fieldNode(), PATH);
-}
-
-function setup() {
-  const { logger, lines } = captureLogs();
-  return { maskError: createMaskError(logger), lines };
 }
 
 function asGraphQLError(error: Error): GraphQLError {
@@ -60,9 +55,8 @@ describe('badUserInput', () => {
   });
 });
 
-describe('createMaskError', () => {
+describe('maskError', () => {
   it('TR-12: passes a resolver-thrown BAD_USER_INPUT through with its fields', () => {
-    const { maskError, lines } = setup();
     const error = thrownByResolver(
       badUserInput([{ path: ['zipCode'], message: 'must be 5 digits' }]),
     );
@@ -74,18 +68,15 @@ describe('createMaskError', () => {
       code: 'BAD_USER_INPUT',
       fields: [{ field: 'zipCode', message: 'must be 5 digits' }],
     });
-    expect(lines()).toEqual([]);
   });
 
   it('passes a GraphQLError without a cause (parse, validation) through', () => {
-    const { maskError } = setup();
     const error = new GraphQLError('Syntax Error: Expected Name, found <EOF>.');
 
     expect(maskError(error, MASKED)).toBe(error);
   });
 
   it('TR-12: maps a resolver-thrown DomainError to its code, keeping message, path and locations', () => {
-    const { maskError, lines } = setup();
     const domainError = new WeatherUnavailableError({ cause: { status: 500 } });
 
     const masked = asGraphQLError(maskError(thrownByResolver(domainError), MASKED));
@@ -95,19 +86,15 @@ describe('createMaskError', () => {
     expect(masked.path).toEqual(PATH);
     expect(masked.locations).toEqual([{ line: 2, column: 3 }]);
     expect(masked.cause).toBeUndefined();
-    expect(lines()).toEqual([]);
   });
 
   it('TR-12: maps a bare DomainError (no GraphQL wrapper) to its code', () => {
-    const { maskError } = setup();
-
     const masked = asGraphQLError(maskError(new WeatherUnavailableError(), MASKED));
 
     expect(masked.extensions).toEqual({ code: 'WEATHER_UNAVAILABLE' });
   });
 
-  it('FR-10 AC2: masks a resolver-thrown Error, drops its cause and logs it', () => {
-    const { maskError, lines } = setup();
+  it('FR-10 AC2: masks a resolver-thrown Error and drops its cause', () => {
     const error = new Error('insert into "properties" failed at /srv/app/src/db/client.ts:12');
 
     const masked = asGraphQLError(maskError(thrownByResolver(error), MASKED));
@@ -118,17 +105,9 @@ describe('createMaskError', () => {
     expect(masked.locations).toEqual([{ line: 2, column: 3 }]);
     expect(masked.cause).toBeUndefined();
     expect(JSON.stringify(masked.toJSON())).not.toMatch(/insert into|\/srv\/app|stack/);
-    expect(lines()).toHaveLength(1);
-    expect(lines()[0]).toMatchObject({
-      level: 50,
-      msg: 'unexpected error',
-      err: { message: error.message },
-    });
   });
 
   it('FR-10 AC2: never adds originalError, even when told it runs in development', () => {
-    const { maskError } = setup();
-
     const masked = asGraphQLError(maskError(thrownByResolver(new Error('boom')), MASKED, true));
 
     expect(masked.extensions).not.toHaveProperty('originalError');
@@ -139,11 +118,96 @@ describe('createMaskError', () => {
     ['a string', 'boom'],
     ['null', null],
   ])('masks a thrown non-Error value: %s', (_case, value) => {
-    const { maskError } = setup();
-
     const masked = asGraphQLError(maskError(value, MASKED));
 
     expect(masked.message).toBe(MASKED);
     expect(masked.extensions).toEqual({ code: 'INTERNAL_SERVER_ERROR' });
+  });
+});
+
+// The shape of a Drizzle query error over a pg rejection: both quote the insert.
+function databaseError(): Error {
+  const pgError = Object.assign(
+    new Error('new row violates check constraint "properties_lat_range"'),
+    {
+      name: 'DatabaseError',
+      code: '23514',
+      constraint: 'properties_lat_range',
+      detail: 'Failing row contains (15528 E Golden Eagle Blvd, ...).',
+    },
+  );
+  return Object.assign(
+    new Error('Failed query: insert into "properties" params: 15528 E Golden Eagle Blvd', {
+      cause: pgError,
+    }),
+    {
+      name: 'DrizzleQueryError',
+      query: 'insert into "properties"',
+      params: ['15528 E Golden Eagle Blvd'],
+    },
+  );
+}
+
+describe('summarizeError', () => {
+  it('keeps name, code, constraint and frames down the cause chain, and nothing user-supplied', () => {
+    const summary = summarizeError(databaseError());
+
+    expect(summary).toMatchObject({
+      name: 'DrizzleQueryError',
+      cause: { name: 'DatabaseError', code: '23514', constraint: 'properties_lat_range' },
+    });
+    expect(summary).not.toHaveProperty('code');
+    expect(summary.frames?.[0]).toMatch(/^at /);
+    expect(JSON.stringify(summary)).not.toMatch(/Golden Eagle|insert into|params|detail|Failed/);
+  });
+
+  it('stops after five causes', () => {
+    let error = new Error('innermost');
+    for (let level = 0; level < 10; level += 1)
+      error = new Error(`level ${String(level)}`, { cause: error });
+
+    let depth = 0;
+    for (let summary = summarizeError(error).cause; summary; summary = summary.cause) depth += 1;
+
+    expect(depth).toBe(5);
+  });
+
+  it.each([
+    ['a string', 'boom', 'string'],
+    ['null', null, 'null'],
+    ['undefined', undefined, 'undefined'],
+  ])('names a thrown non-Error value by its type: %s', (_case, value, name) => {
+    expect(summarizeError(value)).toEqual({ name });
+  });
+});
+
+describe('logUnexpectedErrors', () => {
+  it('R1: logs an unexpected resolver error as a summary, without the insert or its params', () => {
+    const { logger, lines } = captureLogs();
+
+    logUnexpectedErrors(logger, [thrownByResolver(databaseError())]);
+
+    expect(lines()).toHaveLength(1);
+    expect(lines()[0]).toMatchObject({
+      level: 50,
+      msg: 'unexpected error',
+      error: {
+        name: 'DrizzleQueryError',
+        cause: { code: '23514', constraint: 'properties_lat_range' },
+      },
+    });
+    expect(JSON.stringify(lines())).not.toMatch(/Golden Eagle|insert into/);
+  });
+
+  it('logs nothing for errors maskError maps to a code', () => {
+    const { logger, lines } = captureLogs();
+
+    logUnexpectedErrors(logger, [
+      new GraphQLError('Syntax Error: Expected Name, found <EOF>.'),
+      thrownByResolver(badUserInput([{ path: ['zipCode'], message: 'must be 5 digits' }])),
+      thrownByResolver(new WeatherUnavailableError({ cause: { status: 500 } })),
+    ]);
+
+    expect(lines()).toEqual([]);
   });
 });

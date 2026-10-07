@@ -19,7 +19,7 @@ function setup() {
     config,
     logger,
     repository: new InMemoryPropertyRepository(),
-    weather: new FakeWeatherClient(),
+    weather: () => new FakeWeatherClient(),
   });
   const operationLines = () =>
     lines.filter(

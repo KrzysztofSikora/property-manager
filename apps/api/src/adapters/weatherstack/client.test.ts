@@ -100,29 +100,47 @@ describe('createWeatherstackClient', () => {
     expect(signals[0]).toBeInstanceOf(AbortSignal);
   });
 
+  // `cause` is what the error carries; `logged` is what the warning line adds next to the URL.
   it.each([
-    ['HTTP 500', () => weatherstackHandlers.status(500, { message: 'boom' })],
-    ['HTTP 404', () => weatherstackHandlers.status(404)],
-    ['a network error', () => weatherstackHandlers.networkError()],
-    ['success: false', () => weatherstackHandlers.ok(weatherstackError(615, 'request_failed'))],
+    [
+      'HTTP 500',
+      () => weatherstackHandlers.status(500, { message: 'boom' }),
+      { status: 500 },
+      { status: 500 },
+    ],
+    ['HTTP 404', () => weatherstackHandlers.status(404), { status: 404 }, { status: 404 }],
+    [
+      'a network error',
+      () => weatherstackHandlers.networkError(),
+      { error: { name: 'TypeError' } },
+      { error: { name: 'TypeError' } },
+    ],
+    [
+      'success: false',
+      () => weatherstackHandlers.ok(weatherstackError(615, 'request_failed')),
+      { weatherstackError: { code: 615, type: 'request_failed' } },
+      { cause: { weatherstackError: { code: 615, type: 'request_failed' } } },
+    ],
     [
       'a missing key field',
       () => weatherstackHandlers.ok(weatherstackResponse({ current: { temperature: undefined } })),
+      { issues: ['current.temperature'] },
+      { cause: { issues: ['current.temperature'] } },
     ],
   ])(
-    'TR-01: %s gives WeatherUnavailableError after one request, with no key leaked',
-    async (_case, make) => {
+    'TR-01: %s gives WeatherUnavailableError after one request, with its cause and no key leaked',
+    async (_case, make, cause, logged) => {
       const { handler, requests } = make();
       server.use(handler);
       const { client, logs } = setup();
 
-      const error = await rejection(client.current(QUERY));
+      const error = await unavailable(client.current(QUERY));
 
-      expect(error).toBeInstanceOf(WeatherUnavailableError);
+      expect(error.cause).toMatchObject(cause);
       expect(requests).toHaveLength(1);
-      const warnings = logs().filter((line) => line.level === 40);
-      expect(warnings).toHaveLength(1);
-      expect(warnings[0]?.url).toContain('access_key=[REDACTED]');
+      expect(warnings(logs())).toHaveLength(1);
+      expect(warnings(logs())[0]).toMatchObject(logged);
+      expect(warnings(logs())[0]?.url).toContain('access_key=[REDACTED]');
       expectNoSecret(error, logs());
     },
   );
