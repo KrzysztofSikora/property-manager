@@ -1,6 +1,6 @@
 import type { Address } from '@property-manager/shared';
 import type { PropertyRepository } from '../../src/domain/ports.ts';
-import type { NewProperty, Property } from '../../src/domain/property.ts';
+import type { NewProperty, Property, PropertyPage } from '../../src/domain/property.ts';
 import { toCurrentWeather } from '../../src/domain/weather.ts';
 
 function addressKey({ street, city, state, zipCode }: Address): string {
@@ -41,5 +41,11 @@ export class InMemoryPropertyRepository implements PropertyRepository {
 
   findById(id: string): Promise<Property | null> {
     return Promise.resolve(this.rows.find((row) => row.id === id) ?? null);
+  }
+
+  // Filtering and order are proved against PostgreSQL; a second implementation here would only
+  // be tested against itself.
+  list(): Promise<PropertyPage> {
+    return Promise.reject(new Error('list is not supported by the in-memory fake'));
   }
 }

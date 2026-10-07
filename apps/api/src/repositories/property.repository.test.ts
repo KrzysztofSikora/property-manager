@@ -1,7 +1,7 @@
 import { DrizzleQueryError } from 'drizzle-orm';
 import pg from 'pg';
 import { describe, expect, it } from 'vitest';
-import { isAddressUniqueViolation } from './property.repository.ts';
+import { escapeLike, isAddressUniqueViolation } from './property.repository.ts';
 
 function pgError(code: string, constraint: string): pg.DatabaseError {
   const error = new pg.DatabaseError('constraint violated', 0, 'error');
@@ -40,5 +40,17 @@ describe('isAddressUniqueViolation', () => {
     ['a non-Error value', { code: '23505', constraint: 'properties_address_unique' }],
   ])('%s is not a duplicate', (_case, error) => {
     expect(isAddressUniqueViolation(error)).toBe(false);
+  });
+});
+
+describe('escapeLike', () => {
+  it.each([
+    ['plain text', 'Fountain Hills', 'Fountain Hills'],
+    ['%', '100% Town', '100\\% Town'],
+    ['_', 'St_Paul', 'St\\_Paul'],
+    ['\\', 'a\\b', 'a\\\\b'],
+    ['a mix', '\\%_%', '\\\\\\%\\_\\%'],
+  ])('TR-13: %s', (_case, value, escaped) => {
+    expect(escapeLike(value)).toBe(escaped);
   });
 });

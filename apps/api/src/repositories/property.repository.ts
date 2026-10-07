@@ -1,12 +1,12 @@
 import { isStateCode } from '@property-manager/shared';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, sql } from 'drizzle-orm';
 import pg from 'pg';
 import type { Database } from '../db/client.ts';
 import { properties } from '../db/schema.ts';
 import type { PropertyRow } from '../db/schema.ts';
 import { PropertyAlreadyExistsError } from '../domain/errors.ts';
 import type { PropertyRepository } from '../domain/ports.ts';
-import type { Property } from '../domain/property.ts';
+import type { Property, PropertyFilter } from '../domain/property.ts';
 import { toCurrentWeather } from '../domain/weather.ts';
 
 // A row that breaks these rules was not written through the service: fail loudly.
@@ -31,6 +31,21 @@ export function isAddressUniqueViolation(error: unknown): boolean {
     pgError instanceof pg.DatabaseError &&
     pgError.code === '23505' &&
     pgError.constraint === ADDRESS_UNIQUE
+  );
+}
+
+// `\` is PostgreSQL's default LIKE escape, so `%`, `_` and `\` in a search match themselves
+// (TR-13). The pattern is a bind parameter, so `standard_conforming_strings` does not apply.
+export function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
+// FR-03: city contains (case-insensitive), state and zip exact. `and()` drops the undefined ones.
+function filterWhere({ city, state, zipCode }: PropertyFilter) {
+  return and(
+    city === undefined ? undefined : ilike(properties.city, `%${escapeLike(city)}%`),
+    state === undefined ? undefined : eq(properties.state, state),
+    zipCode === undefined ? undefined : eq(properties.zipCode, zipCode),
   );
 }
 
@@ -71,6 +86,27 @@ export function createPropertyRepository(db: Database): PropertyRepository {
     async findById(id) {
       const [row] = await db.select().from(properties).where(eq(properties.id, id)).limit(1);
       return row === undefined ? null : toProperty(row);
+    },
+
+    // Rows and count from one snapshot, so a concurrent create or delete cannot make them
+    // disagree. `id` breaks `createdAt` ties in the same direction (FR-02 AC3).
+    list({ filter, sort, limit, offset }) {
+      const where = filterWhere(filter);
+      const direction = sort === 'CREATED_AT_ASC' ? asc : desc;
+      return db.transaction(
+        async (tx) => {
+          const ordered = tx
+            .select()
+            .from(properties)
+            .where(where)
+            .orderBy(direction(properties.createdAt), direction(properties.id))
+            .offset(offset);
+          const rows = await (limit === undefined ? ordered : ordered.limit(limit));
+          const [counted] = await tx.select({ n: count() }).from(properties).where(where);
+          return { items: rows.map(toProperty), totalCount: counted?.n ?? 0 };
+        },
+        { isolationLevel: 'repeatable read', accessMode: 'read only' },
+      );
     },
   };
 }

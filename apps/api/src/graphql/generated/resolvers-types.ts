@@ -62,12 +62,53 @@ export type Property = {
   zipCode: Scalars['String']['output'];
 };
 
+/**
+ * Filters for `properties`. They combine with AND. A missing, null or blank value is ignored, and
+ * each value may be at most 100 characters.
+ */
+export type PropertyFilter = {
+  /** Case-insensitive contains match. `%`, `_` and `\` are matched literally. */
+  city?: InputMaybe<Scalars['String']['input']>;
+  /** Exact match on the two-letter code, case-insensitive. */
+  state?: InputMaybe<Scalars['String']['input']>;
+  /** Exact match on all five digits. */
+  zipCode?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** One page of a property list. */
+export type PropertyPage = {
+  __typename?: 'PropertyPage';
+  items: Array<Property>;
+  /** How many properties match the filter, across all pages. */
+  totalCount: Scalars['Int']['output'];
+};
+
+/** The order of a property list. Ties on `createdAt` are broken by `id` in the same direction. */
+export type PropertySort =
+  /** Oldest first. */
+  | 'CREATED_AT_ASC'
+  /** Newest first. */
+  | 'CREATED_AT_DESC';
+
 export type Query = {
   __typename?: 'Query';
   /** Returns ok when the API is up. */
   health: Scalars['String']['output'];
+  /**
+   * Properties that match `filter`, sorted by `sort`. Without `limit` every match is returned.
+   * `limit` must be 1-100 and `offset` 0 or greater. Errors: BAD_USER_INPUT.
+   */
+  properties: PropertyPage;
   /** The property with this id, or null when there is none or the id is not a UUID. */
   property?: Maybe<Property>;
+};
+
+
+export type QueryPropertiesArgs = {
+  filter?: InputMaybe<PropertyFilter>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  sort?: InputMaybe<PropertySort>;
 };
 
 
@@ -167,6 +208,9 @@ export type ResolversTypes = {
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Property: ResolverTypeWrapper<Property>;
+  PropertyFilter: PropertyFilter;
+  PropertyPage: ResolverTypeWrapper<PropertyPage>;
+  PropertySort: PropertySort;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   WeatherData: ResolverTypeWrapper<WeatherData>;
@@ -184,6 +228,8 @@ export type ResolversParentTypes = {
   JSON: Scalars['JSON']['output'];
   Mutation: Record<PropertyKey, never>;
   Property: Property;
+  PropertyFilter: PropertyFilter;
+  PropertyPage: PropertyPage;
   Query: Record<PropertyKey, never>;
   String: Scalars['String']['output'];
   WeatherData: WeatherData;
@@ -224,8 +270,14 @@ export type PropertyResolvers<ContextType = GraphQLContext, ParentType extends R
   zipCode?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
+export type PropertyPageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['PropertyPage'] = ResolversParentTypes['PropertyPage']> = {
+  items?: Resolver<Array<ResolversTypes['Property']>, ParentType, ContextType>;
+  totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   health?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  properties?: Resolver<ResolversTypes['PropertyPage'], ParentType, ContextType, RequireFields<QueryPropertiesArgs, 'offset' | 'sort'>>;
   property?: Resolver<Maybe<ResolversTypes['Property']>, ParentType, ContextType, RequireFields<QueryPropertyArgs, 'id'>>;
 };
 
@@ -240,6 +292,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   JSON?: GraphQLScalarType;
   Mutation?: MutationResolvers<ContextType>;
   Property?: PropertyResolvers<ContextType>;
+  PropertyPage?: PropertyPageResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   WeatherData?: WeatherDataResolvers<ContextType>;
 };

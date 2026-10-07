@@ -3,6 +3,7 @@ import { DateTimeResolver, JSONResolver } from 'graphql-scalars';
 import { z } from 'zod';
 import { badUserInput } from './errors.ts';
 import type { Resolvers } from './generated/resolvers-types.ts';
+import { propertiesArgsSchema } from './properties-args.ts';
 
 const propertyId = z.uuid();
 
@@ -13,6 +14,12 @@ export const resolvers: Resolvers = {
   DateTime: DateTimeResolver,
   Query: {
     health: () => 'ok',
+    // Every invalid argument in one BAD_USER_INPUT, before any query (FR-01 AC5).
+    properties: (_parent, args, { services }) => {
+      const parsed = propertiesArgsSchema.safeParse(args);
+      if (!parsed.success) throw badUserInput(parsed.error.issues);
+      return services.property.list(parsed.data);
+    },
     // A malformed id cannot match a row: null without a query.
     property: (_parent, { id }, { services }) => {
       const parsed = propertyId.safeParse(id);

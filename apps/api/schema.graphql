@@ -41,9 +41,47 @@ type Property {
   createdAt: DateTime!
 }
 
+"The order of a property list. Ties on `createdAt` are broken by `id` in the same direction."
+enum PropertySort {
+  "Newest first."
+  CREATED_AT_DESC
+  "Oldest first."
+  CREATED_AT_ASC
+}
+
+"""
+Filters for `properties`. They combine with AND. A missing, null or blank value is ignored, and
+each value may be at most 100 characters.
+"""
+input PropertyFilter {
+  "Case-insensitive contains match. `%`, `_` and `\\` are matched literally."
+  city: String
+  "Exact match on the two-letter code, case-insensitive."
+  state: String
+  "Exact match on all five digits."
+  zipCode: String
+}
+
+"One page of a property list."
+type PropertyPage {
+  items: [Property!]!
+  "How many properties match the filter, across all pages."
+  totalCount: Int!
+}
+
 type Query {
   "Returns ok when the API is up."
   health: String!
+  """
+  Properties that match `filter`, sorted by `sort`. Without `limit` every match is returned.
+  `limit` must be 1-100 and `offset` 0 or greater. Errors: BAD_USER_INPUT.
+  """
+  properties(
+    filter: PropertyFilter
+    sort: PropertySort = CREATED_AT_DESC
+    limit: Int
+    offset: Int = 0
+  ): PropertyPage!
   "The property with this id, or null when there is none or the id is not a UUID."
   property(id: ID!): Property
 }

@@ -42,3 +42,15 @@ export const PROPERTY = /* GraphQL */ `
   }
   ${PROPERTY_FIELDS}
 `;
+
+export const PROPERTIES = /* GraphQL */ `
+  query Properties($filter: PropertyFilter, $sort: PropertySort, $limit: Int, $offset: Int) {
+    properties(filter: $filter, sort: $sort, limit: $limit, offset: $offset) {
+      items {
+        ...PropertyFields
+      }
+      totalCount
+    }
+  }
+  ${PROPERTY_FIELDS}
+`;

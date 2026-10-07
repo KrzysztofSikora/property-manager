@@ -2,11 +2,12 @@ import { stateName } from '@property-manager/shared';
 import type { Address, StateCode } from '@property-manager/shared';
 import { PropertyAlreadyExistsError, WeatherLocationMismatchError } from '../domain/errors.ts';
 import type { PropertyRepository, WeatherClient } from '../domain/ports.ts';
-import type { Property } from '../domain/property.ts';
+import type { Property, PropertyListQuery, PropertyPage } from '../domain/property.ts';
 
 export type PropertyService = {
   create(address: Address): Promise<Property>;
   getById(id: string): Promise<Property | null>;
+  list(query: PropertyListQuery): Promise<PropertyPage>;
 };
 
 export type PropertyServiceDeps = { repository: PropertyRepository; weather: WeatherClient };
@@ -46,6 +47,11 @@ export function createPropertyService({
 
     getById(id) {
       return repository.findById(id);
+    },
+
+    // Filtering, order and paging are repository rules; no weather call (FR-01 AC6).
+    list(query) {
+      return repository.list(query);
     },
   };
 }
