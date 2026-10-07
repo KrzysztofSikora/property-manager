@@ -381,7 +381,7 @@ them into exit 1. The `DrizzleQueryError.cause` finding is recorded for S-02.
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: Shared states and error codes (578325a)
 - [x] Phase 2: Schema, migration and migrate command (9759a37)
-- [ ] Phase 3: Test helpers and documentation
+- [x] Phase 3: Test helpers and documentation (5cc911b)
 
 ## Deviations
 
