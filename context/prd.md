@@ -430,6 +430,9 @@ non-key fields is unknown from one sample (OQ-03), so they stay optional.
     or HTTPS), 615 `request_failed`. 105 is not in the current table. Classification uses only
     `code`, never `type`, and `info` is never logged or returned. 104 and 429 are not triggered
     for real.
+  - DC region (R-03, S-02 Phase 2): a `createProperty` for `1600 Pennsylvania Ave NW`,
+    `Washington`, `DC`, `20500` through `pnpm dev` succeeded, so Weatherstack's `region` for
+    DC matches `"District of Columbia"`. No alias is needed.
   Everything else in this section marked UNVERIFIED is checked when the adapter is built.
 
 ## Non-functional requirements

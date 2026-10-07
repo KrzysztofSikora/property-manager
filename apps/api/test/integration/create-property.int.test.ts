@@ -138,7 +138,11 @@ describe('createProperty', () => {
   });
 
   it('FR-07 AC2: keeps a leading-zero zip as a string', async () => {
-    const app = testApp();
+    const app = testApp({
+      weather: new FakeWeatherClient(
+        weatherstackResponse({ location: { region: 'Massachusetts' } }),
+      ),
+    });
 
     const created = createdProperty(
       await app.execute(
@@ -196,6 +200,24 @@ describe('createProperty', () => {
       { field: 'zipCode', message: 'must be 5 digits' },
     ]);
     expect(app.weather.calls).toEqual([]);
+  });
+
+  it('FR-05 AC4: a region outside the input state returns WEATHER_LOCATION_MISMATCH and stores nothing', async () => {
+    const app = testApp({
+      weather: new FakeWeatherClient(weatherstackResponse({ location: { region: 'California' } })),
+    });
+
+    const result = await app.execute(CREATE_PROPERTY, validInput());
+
+    const error = expectGraphQLError(result, 'WEATHER_LOCATION_MISMATCH');
+    expect(error.message).toBe(
+      'Weatherstack placed this address in "California", not in AZ (Arizona). The property was not saved.',
+    );
+    expect(error.extensions).toEqual({ code: 'WEATHER_LOCATION_MISMATCH' });
+    expect(error.path).toEqual(['createProperty']);
+    expect(await countProperties(app.db)).toBe(0);
+    expect(app.weather.calls).toEqual([QUERY]);
+    expectNoSecret(result, app.logs());
   });
 
   it('FR-05 AC6: a rejected save returns INTERNAL_SERVER_ERROR without SQL or a path, and stores nothing', async () => {

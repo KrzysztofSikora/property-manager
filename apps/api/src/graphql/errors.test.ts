@@ -2,7 +2,11 @@ import { GraphQLError, Kind, locatedError, parse } from 'graphql';
 import type { FieldNode } from 'graphql';
 import { describe, expect, it } from 'vitest';
 import { captureLogs } from '../../test/helpers/logs.ts';
-import { WeatherQuotaExceededError, WeatherUnavailableError } from '../domain/errors.ts';
+import {
+  WeatherLocationMismatchError,
+  WeatherQuotaExceededError,
+  WeatherUnavailableError,
+} from '../domain/errors.ts';
 import { badUserInput, logUnexpectedErrors, maskError, summarizeError } from './errors.ts';
 
 const MASKED = 'Unexpected error.';
@@ -110,6 +114,11 @@ describe('maskError', () => {
       new WeatherQuotaExceededError({ cause: { weatherstackError: { code: 104 } } }),
       'WEATHER_QUOTA_EXCEEDED',
       'The Weatherstack usage limit has been reached, so the property was not saved. Upgrade the Weatherstack plan or replace the API key.',
+    ],
+    [
+      new WeatherLocationMismatchError('AZ', 'California'),
+      'WEATHER_LOCATION_MISMATCH',
+      'Weatherstack placed this address in "California", not in AZ (Arizona). The property was not saved.',
     ],
   ])('FR-10 AC1: maps %o to %s with its message', (domainError, code, message) => {
     const masked = asGraphQLError(maskError(thrownByResolver(domainError), MASKED));

@@ -1,4 +1,6 @@
-import type { Address } from '@property-manager/shared';
+import { stateName } from '@property-manager/shared';
+import type { Address, StateCode } from '@property-manager/shared';
+import { WeatherLocationMismatchError } from '../domain/errors.ts';
 import type { PropertyRepository, WeatherClient } from '../domain/ports.ts';
 import type { Property } from '../domain/property.ts';
 
@@ -14,15 +16,23 @@ export function weatherQuery(address: Address): string {
   return `${address.street}, ${address.city}, ${address.state} ${address.zipCode}, United States`;
 }
 
+// Weatherstack geocodes the query itself; a region other than the input state means it placed
+// the address elsewhere (FR-05 AC4). Exact match after trimming and lower-casing only.
+export function regionMatchesState(region: string, state: StateCode): boolean {
+  return region.trim().toLowerCase() === stateName(state).toLowerCase();
+}
+
 export function createPropertyService({
   repository,
   weather,
 }: PropertyServiceDeps): PropertyService {
   return {
-    // Weather first, then a single insert: a failure at either step stores nothing (NFR-08).
-    // `region` is checked in S-02 (FR-05 AC4).
+    // Weather, region check, then a single insert: a failure at any step stores nothing (NFR-08).
     async create(address) {
       const report = await weather.current(weatherQuery(address));
+      if (!regionMatchesState(report.region, address.state)) {
+        throw new WeatherLocationMismatchError(address.state, report.region);
+      }
       return repository.insert({
         ...address,
         lat: report.lat,

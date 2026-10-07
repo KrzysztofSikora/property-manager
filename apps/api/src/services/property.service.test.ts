@@ -1,11 +1,11 @@
 import { normalizeAddress } from '@property-manager/shared';
 import { describe, expect, it } from 'vitest';
-import { WeatherUnavailableError } from '../domain/errors.ts';
+import { WeatherLocationMismatchError, WeatherUnavailableError } from '../domain/errors.ts';
 import { InMemoryPropertyRepository } from '../../test/fakes/property-repository.ts';
 import { FakeWeatherClient } from '../../test/fakes/weather.ts';
 import { validInput } from '../../test/fixtures/property.ts';
 import { weatherstackError, weatherstackResponse } from '../../test/fixtures/weatherstack.ts';
-import { createPropertyService, weatherQuery } from './property.service.ts';
+import { createPropertyService, regionMatchesState, weatherQuery } from './property.service.ts';
 
 function setup(weather = new FakeWeatherClient()) {
   const repository = new InMemoryPropertyRepository();
@@ -28,6 +28,55 @@ describe('weatherQuery', () => {
     );
 
     expect(weatherQuery(other)).toBe('1 Main St, Boston, MA 02108, United States');
+  });
+});
+
+describe('regionMatchesState', () => {
+  it.each([
+    ['Arizona', 'AZ'],
+    ['arizona', 'AZ'],
+    [' Arizona ', 'AZ'],
+    ['ARIZONA', 'AZ'],
+    ['District of Columbia', 'DC'],
+    ['Massachusetts', 'MA'],
+  ] as const)('TR-09: %j matches %s', (region, state) => {
+    expect(regionMatchesState(region, state)).toBe(true);
+  });
+
+  it.each([
+    ['California', 'AZ'],
+    ['', 'AZ'],
+    ['   ', 'AZ'],
+    ['Arizona Territory', 'AZ'],
+    ['North Arizona', 'AZ'],
+    ['Virginia', 'WV'],
+    ['West Virginia', 'VA'],
+    ['Washington', 'DC'],
+  ] as const)('TR-09: %j does not match %s', (region, state) => {
+    expect(regionMatchesState(region, state)).toBe(false);
+  });
+});
+
+describe('WeatherLocationMismatchError', () => {
+  it('names the state code, the state name and the returned region', () => {
+    const error = new WeatherLocationMismatchError('AZ', 'California');
+
+    expect(error.code).toBe('WEATHER_LOCATION_MISMATCH');
+    expect(error.state).toBe('AZ');
+    expect(error.region).toBe('California');
+    expect(error.message).toBe(
+      'Weatherstack placed this address in "California", not in AZ (Arizona). The property was not saved.',
+    );
+  });
+
+  it('trims the region and cuts it to 100 characters', () => {
+    const long = `  ${'x'.repeat(150)}  `;
+
+    const error = new WeatherLocationMismatchError('AZ', long);
+
+    expect(error.region).toBe('x'.repeat(100));
+    expect(error.message).toContain(`"${'x'.repeat(100)}"`);
+    expect(error.message).not.toContain('x'.repeat(101));
   });
 });
 
@@ -69,6 +118,31 @@ describe('PropertyService.create', () => {
 
     await expect(service.create(address)).rejects.toBeInstanceOf(WeatherUnavailableError);
     expect(repository.rows).toEqual([]);
+  });
+
+  it('FR-05 AC4 (service half): a region mismatch makes one weather call and inserts nothing', async () => {
+    const body = weatherstackResponse({ location: { region: 'California' } });
+    const { service, repository, weather } = setup(new FakeWeatherClient(body));
+
+    const error: unknown = await service.create(address).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(WeatherLocationMismatchError);
+    expect(error).toMatchObject({
+      code: 'WEATHER_LOCATION_MISMATCH',
+      state: 'AZ',
+      region: 'California',
+    });
+    expect(weather.calls).toHaveLength(1);
+    expect(repository.rows).toEqual([]);
+  });
+
+  it('accepts a region that differs only in case and spacing', async () => {
+    const body = weatherstackResponse({ location: { region: '  ARIZONA ' } });
+    const { service, repository } = setup(new FakeWeatherClient(body));
+
+    const created = await service.create(address);
+
+    expect(repository.rows).toEqual([created]);
   });
 
   it('FR-05 AC6 (service half): a failing insert propagates and nothing is stored', async () => {
