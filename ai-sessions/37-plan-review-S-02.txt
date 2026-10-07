@@ -1,0 +1,322 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan-review create-property-guards                                           
+  ⎿  Running in the background as @plan-review
+
+● Agent "/plan-review create-property-guards" finished · 2m 6s
+
+● The plan review for create-property-guards is finished. The plan is ready to
+  implement with notes: no blockers, one major finding and four minor ones. The
+  full review is in context/changes/create-property-guards/plan-review.md. It
+  doesn't change plan.md.
+
+  Major
+  1. Phase 2 will break a test the plan doesn't list. The FR-07 AC2 test at
+     apps/api/test/integration/create-property.int.test.ts:136-147 creates a
+     property with state: 'MA' using the default fake weather client. That fake
+     returns region "Arizona", so the new region check will throw
+     WEATHER_LOCATION_MISMATCH and the test will fail. To fix it, give that test
+     a fake that returns 'Massachusetts' and add the test to Phase 2's file
+     list.
+
+  Minor
+  2. The race test needs no new fake logic. A sequential test never reaches the
+  in-memory repository's duplicate-key throw, because existsByAddress catches
+  the duplicate first. The existing failInsert(new PropertyAlreadyExistsError())
+  already covers that branch.
+  3. The default-timeout test is weak. Checking the 5000 constant and that fetch
+  gets a signal would still pass if the default weren't wired up. Spying on
+  AbortSignal.timeout and checking it gets 5000 (or 50 when injected) would
+  actually test it. Stryker would probably flag the gap otherwise.
+  4. The District of Columbia check means handling the API key. The plan calls
+  Weatherstack /current directly, which puts the key in a URL or shell command.
+  Instead, after Phase 2, create a property with the DC address through pnpm 
+  dev. That is still one call, and it goes through the create mutation as
+  CLAUDE.md requires.
+  5. Two scope nits:
+  - The mutation run includes graphql/errors.ts, which the plan doesn't change.
+    Either drop it or note that it's a deliberate re-check.
+  - The new text() test handler has a status parameter that no planned test
+    uses.
+
+  The review found nothing else wrong:
+  - The files, line numbers and library claims the plan cites match the repo.
+  - Every acceptance criterion has a named test.
+  - The plan follows the rules in lessons.md.
+  - The concurrency test doesn't depend on timing.
+
+  Do you want me to update plan.md with these fixes?
+
+✻ Sautéed for 8s · done 11:27 PM
+
+❯ yes, update plan.md with all five fixes                                       
+
+  Read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+● Only the FR-07 AC2 test at create-property.int.test.ts:136-147 goes through
+  the region check. The other MA uses are a weatherQuery unit test and a direct
+  repository insert. Now the edits:
+
+● Update(context/changes/create-property-guards/plan.md)
+  ⎿  Added 1 line, removed 1 line
+      125  |----------|--------|-----|------------|
+      126  | Which body codes mean the quota is used up | `104` and `429`
+            → `WEATHER_QUOTA_EXCEEDED`. HTTP **status** 429 stays `WEATHE
+           R_UNAVAILABLE`. | The docs describe body 429 as the monthly al
+           lowance, and the operator needs the actionable message. The st
+           atus 429 is a burst limit, where trying again helps. PRD FR-06
+            AC1 and the error-case table are updated. | user |
+      127  | Which codes write the configuration-error log | `101`, `105`
+            and `403`, all `WEATHER_UNAVAILABLE` to the client | 403 is t
+           he documented HTTPS/plan code; 105 is kept for older accounts.
+            The PRD table is updated. | user |
+      128 -| DC region string (R-03) | One manual real call with a DC add
+          -ress during Phase 2 (a human check, at least 1 s after any oth
+          -er call). The result is recorded in *Deviations* / PRD *Verifi
+          -ed so far*. If it is not "District of Columbia", an alias is a
+          -dded and tested. | A verified value costs one quota call. A gu
+          -essed alias list could still miss. | user |                   
+      128 +| DC region string (R-03) | One real call with a DC address af
+          +ter Phase 2 lands (a human check, at least 1 s after any other
+          + call), made as a `createProperty` through `pnpm dev`, not a h
+          +and-built `/current` request. A success proves the region matc
+          +hes; a `WEATHER_LOCATION_MISMATCH` message shows the region We
+          +atherstack returned. The result is recorded in *Deviations* / 
+          +PRD *Verified so far*. If it is not "District of Columbia", an
+          + alias is added and tested. | A verified value costs one quota
+          + call. A guessed alias list could still miss. Going through th
+          +e mutation keeps the key out of any URL or shell command and k
+          +eeps the only real call in the create mutation (CLAUDE.md). | 
+          +user (method: plan-review #4) |                               
+      129  | Phase split | 3 phases: classification, region, duplicates |
+            One reviewable diff per guard. | user |
+      130  | Where the region check lives | `regionMatchesState(region, s
+           tate)` exported from `services/property.service.ts`. It compar
+           es the trimmed, lower-cased `region` with `stateName(state)`, 
+           lower-cased. | The test-plan names it as a service mutation ta
+           rget (TR-09). It is business logic, not adapter logic. | resea
+           rch (test-plan) |
+      131  | Mismatch error contract | `WeatherLocationMismatchError(stat
+           e, region)`. The message is `Weatherstack placed this address 
+           in "<region>", not in <code> (<name>). The property was not sa
+           ved.` and `extensions` is `{ code }` only. | FR-10 only requir
+           es the message to name both. Extra extension fields would be a
+           n untested contract with no consumer yet. | research (PRD) |
+
+● Update(context/changes/create-property-guards/plan.md)
+  ⎿  Added 1 line, removed 1 line
+      170    - The other paths (network, timeout, non-2xx, invalid JSON) 
+           are unchanged apart from the
+      171      timeout.
+      172  - `test/msw/weatherstack.ts`: adds `hang()` (records, then `aw
+           ait delay('infinite')`) and
+      173 -  `text(body, status?)` (a non-JSON 200).                     
+      173 +  `text(body)` (a non-JSON 200).                              
+      174  
+      175  ### Service (`services/property.service.ts`)
+      176  
+
+● Update(context/changes/create-property-guards/plan.md)
+  ⎿  Added 3 lines, removed 2 lines
+      192    and maps the unique violation through a small `isAddressUniq
+           ueViolation(error: unknown)`
+      193    type guard over `error` and `error.cause` (`pg.DatabaseError
+           `).
+      194  - `test/fakes/property-repository.ts`: `existsByAddress` uses 
+           the same normalization rule
+      195 -  (lower-cased street and city, state, zip). `insert` throws `
+          -PropertyAlreadyExistsError` on                                
+      196 -  the same key, so the service unit tests can exercise the rac
+          -e branch.                                                     
+      195 +  (lower-cased street and city, state, zip). `insert` is uncha
+          +nged: a sequential test cannot                                
+      196 +  reach it with a stored key after a clean pre-check, so the s
+          +ervice unit test for the race                                 
+      197 +  branch uses the existing `failInsert(new PropertyAlreadyExis
+          +tsError())`.                                                  
+      198  
+      199  ### Data flow
+      200  
+
+● Update(context/changes/create-property-guards/plan.md)
+  ⎿  Added 3 lines, removed 3 lines
+      236      - FR-06 AC1 and AC2: the TR-02 table. For each code, asser
+           t the class and `code`, plus
+      237        `reason` and `cause.weatherstackError.code` (lesson: not
+            only the type).
+      238      - FR-06 AC3 / TR-10: `hang()` with `timeoutMs: 50` rejects
+            with `WeatherUnavailableError`
+      239 -      after exactly one request, and the logged error name is 
+          -`TimeoutError`.                                               
+      240 -      `DEFAULT_TIMEOUT_MS === 5000`, and a stubbed `fetch` rec
+          -eives a signal when no                                        
+      241 -      `timeoutMs` is passed.                                  
+      239 +      after exactly one request, and the logged error name is 
+          +`TimeoutError`. A spy on                                      
+      240 +      `AbortSignal.timeout` is called with `5000` when no `tim
+          +eoutMs` is passed and with `50`                               
+      241 +      when `timeoutMs: 50` is passed, which proves the default
+          + is wired, not only declared.                                 
+      242      - FR-06 AC4 / TR-11: network error, 500, 503, status 429 a
+           nd non-JSON each reject with
+      243        `WeatherUnavailableError` and one request.
+      244      - FR-06 AC5 / TR-03: the existing schema cases, now also a
+           sserting `reason: 'upstream'`.
+
+● Update(context/changes/create-property-guards/plan.md)
+  ⎿  Added 6 lines, removed 1 line
+      267    - `apps/api/src/services/property.service.test.ts`: the TR-0
+           9 table, plus the service
+      268      order.
+      269    - `apps/api/src/graphql/errors.test.ts`: the mismatch row.
+      270 -  - `apps/api/test/integration/create-property.int.test.ts`: t
+          -he FR-05 AC4 test.                                            
+      270 +  - `apps/api/test/integration/create-property.int.test.ts`: t
+          +he FR-05 AC4 test, and the                                    
+      271 +    existing FR-07 AC2 test (`state: 'MA'`, lines 136-147) get
+          +s                                                             
+      272 +    `new FakeWeatherClient(weatherstackResponse({ location: { 
+          +region: 'Massachusetts' } }))`.                               
+      273 +    The default fake returns `"Arizona"`, so without this the 
+          +test fails with                                               
+      274 +    `WEATHER_LOCATION_MISMATCH`. Before committing, grep the t
+          +ests for any other non-AZ create                              
+      275 +    that goes through the service (at `b9ccf66` this is the on
+          +ly one).                                                      
+      276    - `context/prd.md`: *Verified so far* gets the DC result.
+      277  - Proves:
+      278    - Unit (TR-09): `regionMatchesState` true for `"Arizona"`, `
+           "arizona"`, `" Arizona "`
+
+● Update(context/changes/create-property-guards/plan.md)
+  ⎿  Added 6 lines, removed 4 lines
+      286      "Arizona" and "California", count 0, and 1 weather call.
+      287  - Agent checks: `pnpm vitest run --project api-unit`, `pnpm vi
+           test run --project api-int`,
+      288    `pnpm typecheck`, `pnpm lint`
+      289 -- Human checks: one real `GET /current` for a DC address (e.g.
+          - `1600 Pennsylvania Ave NW,                                   
+      290 -  Washington, DC 20500, United States`, `units=f`), at least 1
+          - s after any other call. Record                               
+      291 -  only `location.region` and `request.type`, never the URL wit
+          -h the key. Read the mismatch                                  
+      292 -  message wording.                                            
+      289 +- Human checks: after the phase lands, with `pnpm dev` running
+          +, one `createProperty` for a DC                               
+      290 +  address (e.g. `1600 Pennsylvania Ave NW`, `Washington`, `DC`
+          +, `20500`), at least 1 s after                                
+      291 +  any other call. A success proves "District of Columbia" matc
+          +hes. A                                                        
+      292 +  `WEATHER_LOCATION_MISMATCH` message shows the region Weather
+          +stack returned: record it and add                             
+      293 +  the alias. Nobody types the key into a URL or shell command.
+          + Read the mismatch message                                    
+      294 +  wording.                                                    
+      295  
+      296  ### Phase 3: Duplicate prevention
+      297  
+
+● Update(context/changes/create-property-guards/plan.md)
+  ⎿  Added 1 line, removed 2 lines
+      304      `PropertyAlreadyExistsError` only for that constraint.
+      305    - `apps/api/src/services/property.service.ts`: the pre-check
+            before the weather call.
+      306    - `apps/api/src/services/property.service.test.ts`: pre-chec
+           k and race-branch tests.
+      307 -  - `apps/api/test/fakes/property-repository.ts`: `existsByAdd
+          -ress`, and a duplicate on                                     
+      308 -    `insert`.                                                 
+      307 +  - `apps/api/test/fakes/property-repository.ts`: `existsByAdd
+          +ress` only.                                                   
+      308    - `apps/api/src/graphql/errors.test.ts`: the duplicate row.
+      309    - `apps/api/test/integration/property-repository.int.test.ts
+           `: `existsByAddress` true/false
+      310      (case and spacing variants already normalized), a second `
+           insert` of the same address
+
+● Update(context/changes/create-property-guards/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      316  - Proves:
+      317    - Unit (service): a pre-check hit means 0 weather calls and 
+           0 inserts, and the error's
+      318      `code` is `PROPERTY_ALREADY_EXISTS`. A duplicate on `inser
+           t` after a clean pre-check
+      319 -    propagates `PropertyAlreadyExistsError`.                  
+      319 +    (`repository.failInsert(new PropertyAlreadyExistsError())`
+          +) propagates                                                  
+      320 +    `PropertyAlreadyExistsError`.                             
+      321    - Integration:
+      322      - FR-08 AC1: `seedProperty`, then a create with `street: "
+           15528 e golden eagle  blvd",
+      323        city: "FOUNTAIN HILLS"` → `PROPERTY_ALREADY_EXISTS`, 0 w
+           eather calls, count 1.
+
+● Update(context/changes/create-property-guards/plan.md)
+  ⎿  Added 3 lines, removed 1 line
+      328        count 1.
+      329  - Agent checks: `pnpm vitest run --project api-unit`, `pnpm vi
+           test run --project api-int`,
+      330    `pnpm typecheck`, `pnpm lint`; then `/mutation create-proper
+           ty-guards` on `response.ts`,
+      331 -  `client.ts`, `property.service.ts` and `graphql/errors.ts` (
+          -`--concurrency 4`, lesson 1).                                 
+      331 +  `client.ts` and `property.service.ts` (`--concurrency 4`, le
+          +sson 1). `graphql/errors.ts` is                               
+      332 +  left out: `maskError` does not change, and the test-plan tar
+          +gets only modules the change                                  
+      333 +  touches.                                                    
+      334  - Human checks: none.
+      335  
+      336  ## Risks and unknowns
+
+● Update(context/changes/create-property-guards/plan.md)
+  ⎿  Added 2 lines, removed 2 lines
+      341    never triggered for real. If Weatherstack sends a different 
+           code for an exhausted quota, the
+      342    user sees `WEATHER_UNAVAILABLE` and the warn log shows the c
+           ode. It is a one-line table
+      343    change.
+      344 -- **The DC region string** (R-03): resolved by the Phase 2 hum
+          -an check. Until then, the unit                                
+      345 -  table row uses "District of Columbia".                      
+      344 +- **The DC region string** (R-03): resolved by the Phase 2 hum
+          +an check (a `createProperty`                                  
+      345 +  through `pnpm dev`). Until then, the unit table row uses "Di
+          +strict of Columbia".                                          
+      346  - **Concurrency test flakiness** (TR-06): the barrier holds bo
+           th calls after the pre-check, so
+      347    both always reach `insert`. Determinism does not depend on t
+           iming. `fileParallelism: false`
+      348    keeps truncation from racing.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I've made all five fixes in context/changes/create-property-guards/plan.md,
+  and Prettier reports no formatting problems.
+
+  1. The FR-07 AC2 test that would break: Phase 2's file list now includes the
+     test at create-property.int.test.ts:136-147, with a fake weather client
+     that returns 'Massachusetts'. I searched the current tests and this is the
+     only non-AZ create that goes through the service. The other MA uses are a
+     weatherQuery unit test and a direct repository insert, so the region check
+     won't affect them. The plan still says to search again before committing.
+  2. The race test: the in-memory repository's insert no longer gets duplicate
+     logic. The service test for a duplicate on insert uses the existing
+     failInsert(new PropertyAlreadyExistsError()), and Phase 3 only changes the
+     fake to add existsByAddress.
+  3. The default-timeout test: it now spies on AbortSignal.timeout and checks it
+     is called with 5000 when no timeout is passed and 50 when one is injected.
+  4. The District of Columbia check: it now happens after Phase 2 lands, as one
+     createProperty through pnpm dev, so nobody types the key into a URL or
+     shell command. I updated the Decisions row (marked as changed by review
+     finding #4), the Phase 2 human check and the Risks entry to match.
+  5. Scope nits: I removed graphql/errors.ts from the Stryker run and wrote down
+     why, since maskError doesn't change. I also dropped the unused status
+     parameter from text().
+
+✻ Sautéed for 56s · done 11:28 PM

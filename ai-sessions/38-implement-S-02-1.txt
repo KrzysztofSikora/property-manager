@@ -1,0 +1,1070 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement create-property-guards                                             
+
+  Read 1 file, ran 5 shell commands (ctrl+o to expand)
+
+● I've reviewed the plan (READY WITH NOTES, already applied) and source files
+  for Phase 1's weather failure classification work. Next I'll mark the roadmap
+  entry as in-progress (only updating the S-02 status, leaving the pre-existing
+  Prettier reformatting alone) and start writing the failing tests.
+
+● Bash(sed -i '/^| S-02 /s/| planned |/| in-progress |/' context/roadmap.md &&
+      grep '^| S-02' context/roadmap.md; grep -n "expectGraphQLError" -A15
+      apps/api/test/helpe…)
+  ⎿  | S-02 | #4    | create-property-guards       | slice      | FR-05 (AC
+     4, AC5), FR-06, FR-08, FR-10    | S-01       | M    | in-progress |
+     24:export function expectGraphQLError(result: ExecuteResult, code: str
+     … +72 lines (ctrl+o to expand)
+  ⎿  Updated context/roadmap.md (+1 -1)
+      13  | F-01 | #1    | repo-skeleton                | foundation | FR
+          -14 AC3, NFR-04, NFR-06                | -          | M    | do
+          ne    |
+      14  | F-02 | #2    | property-schema              | foundation | (F
+          R-08 AC2, NFR-08 groundwork)           | F-01       | S    | do
+          ne    |
+      15  | S-01 | #3    | create-property-with-weather | slice      | FR
+          -05 (AC1–AC3, AC6), FR-07, FR-10       | F-02       | M    | do
+          ne    |
+      16 -| S-02 | #4    | create-property-guards       | slice      | FR
+         --05 (AC4, AC5), FR-06, FR-08, FR-10    | S-01       | M    | pl
+         -anned |                                                        
+      16 +| S-02 | #4    | create-property-guards       | slice      | FR
+         +-05 (AC4, AC5), FR-06, FR-08, FR-10    | S-01       | M    | in
+         +-progress |                                                    
+      17  | S-03 | #5    | query-and-delete-properties  | slice      | FR
+          -01, FR-02, FR-03, FR-04, FR-09, FR-10 | S-01       | M    | to
+          do    |
+      18  | S-04 | #6    | list-and-details-pages       | slice      | FR
+          -11 (Must ACs), FR-12 (AC1–AC5)        | S-03       | M    | to
+          do    |
+      19  | S-05 | #7    | create-property-page         | slice      | FR
+          -13                                    | S-02, S-04 | M    | to
+          do    |
+
+  Listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● MSW's delay is confirmed. Next I'm writing the error classes and the failing
+  tests.
+
+● Write(apps/api/src/domain/errors.ts)
+  ⎿  Added 21 lines, removed 1 line
+       5    abstract readonly code: ErrorCode;
+       6  }
+       7  
+       8 +// `configuration`: Weatherstack rejected the key or the plan, 
+         +so the operator must act. The                                  
+       9 +// client sees the same code either way; only the log level dif
+         +fers.                                                          
+      10 +export type WeatherFailureReason = 'configuration' | 'upstream'
+         +;                                                              
+      11 +                                                               
+      12 +export type WeatherUnavailableOptions = ErrorOptions & { reason
+         +?: WeatherFailureReason };                                     
+      13 +                                                               
+      14  export class WeatherUnavailableError extends DomainError {
+      15    override name = 'WeatherUnavailableError';
+      16    readonly code = 'WEATHER_UNAVAILABLE';
+      17 +  readonly reason: WeatherFailureReason;                       
+      18  
+      12 -  constructor(options?: ErrorOptions) {                        
+      19 +  constructor({ reason = 'upstream', ...options }: WeatherUnava
+         +ilableOptions = {}) {                                          
+      20      super('Weather could not be fetched, so the property was no
+          t saved. Try again later.', options);
+      21 +    this.reason = reason;                                      
+      22    }
+      23  }
+      24 +                                                               
+      25 +export class WeatherQuotaExceededError extends DomainError {   
+      26 +  override name = 'WeatherQuotaExceededError';                 
+      27 +  readonly code = 'WEATHER_QUOTA_EXCEEDED';                    
+      28 +                                                               
+      29 +  constructor(options?: ErrorOptions) {                        
+      30 +    super(                                                     
+      31 +      'The Weatherstack usage limit has been reached, so the pr
+         +operty was not saved. Upgrade the Weatherstack plan or replace 
+         +the API key.',                                                 
+      32 +      options,                                                 
+      33 +    );                                                         
+      34 +  }                                                            
+      35 +}                                                              
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/test/msw/weatherstack.ts'…)
+  ⎿  Updated apps/api/test/msw/weatherstack.ts (+10 -1)
+      1 +import { delay } from 'msw';                                    
+      2  import { http, HttpResponse } from 'msw/http';
+      3  import type { HttpHandler } from 'msw/http';
+      4  import { weatherstackResponse } from '../fixtures/weatherstack.t
+         s';
+     ...
+      11  // asserts the query and the count. Compare `access_key` to the
+           sentinel; never print it.
+      12  export type RecordingHandler = { handler: HttpHandler; requests
+          : URL[] };
+      13  
+      13 -function recording(respond: () => Response): RecordingHandler {
+      14 +function recording(respond: () => Response | Promise<Response>)
+         +: RecordingHandler {                                           
+      15    const requests: URL[] = [];
+      16    const handler = http.get(CURRENT, ({ request }) => {
+      17      requests.push(new URL(request.url));
+     ...
+      26    status: (status: number, body: JsonObject = {}) =>
+      27      recording(() => HttpResponse.json(body, { status })),
+      28    networkError: () => recording(() => HttpResponse.error()),
+      29 +  // Never responds: only the client's timeout ends the request
+         + (FR-06 AC3).                                                  
+      30 +  hang: () =>                                                  
+      31 +    recording(async () => {                                    
+      32 +      await delay('infinite');                                 
+      33 +      return HttpResponse.error();                             
+      34 +    }),                                                        
+      35 +  // HTTP 200 with a body that is not JSON.                    
+      36 +  text: (body: string) => recording(() => HttpResponse.text(bod
+         +y)),                                                           
+      37  };
+
+● Now the response tests.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/adapters/weatherstack/response.test.ts'…)
+  ⎿  116:    expect(JSON.stringify(error)).not.toContain('Info text');
+     123:    expect(error.cause).toEqual({ weatherstackError: {} });
+  ⎿  Updated apps/api/src/adapters/weatherstack/response.test.ts (+84 -9)
+       1  import { describe, expect, it } from 'vitest';
+       2  import { weatherstackError, weatherstackResponse } from '../../
+          ../test/fixtures/weatherstack.ts';
+       3 -import { WeatherUnavailableError } from '../../domain/errors.ts
+         -';                                                             
+       4 -import { parseWeatherstackResponse } from './response.ts';     
+       3 +import { WeatherQuotaExceededError, WeatherUnavailableError } f
+         +rom '../../domain/errors.ts';                                  
+       4 +import { classifyWeatherstackError, parseWeatherstackResponse }
+         + from './response.ts';                                         
+       5  
+       6 +describe('classifyWeatherstackError', () => {                  
+       7 +  it.each([                                                    
+       8 +    [104, 'quota'],                                            
+       9 +    [429, 'quota'],                                            
+      10 +    [101, 'configuration'],                                    
+      11 +    [105, 'configuration'],                                    
+      12 +    [403, 'configuration'],                                    
+      13 +    [615, 'upstream'],                                         
+      14 +    [404, 'upstream'],                                         
+      15 +    [0, 'upstream'],                                           
+      16 +    [undefined, 'upstream'],                                   
+      17 +  ])('TR-02: code %s is %s', (code, expected) => {             
+      18 +    expect(classifyWeatherstackError(code)).toBe(expected);    
+      19 +  });                                                          
+      20 +});                                                            
+      21 +                                                               
+      22  describe('parseWeatherstackResponse', () => {
+      23    it('TR-03: parses the recorded sample (contract)', () => {
+      24      const body = weatherstackResponse();
+     ...
+      45        const error = catchError(() => parseWeatherstackResponse(
+          body));
+      46  
+      47        expect(error.cause).toEqual({ issues: [`current.${field}`
+          ] });
+      48 +      expect(error.reason).toBe('upstream');                   
+      49      },
+      50    );
+      51  
+     ...
+      64      const error = catchError(() => parseWeatherstackResponse(we
+          atherstackResponse(overrides)));
+      65  
+      66      expect(error.cause).toEqual({ issues: [path] });
+      67 +    expect(error.reason).toBe('upstream');                     
+      68    });
+      69  
+      70    it.each([
+     … 89 more lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/adapters/weatherstack/response.test.ts'…)
+  ⎿  + Received
+
+     - {
+     … +24 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/adapters/weatherstack/response.test.ts (+3 -17)
+      112      );
+      113  
+      114      expect(error).toBeInstanceOf(errorClass);
+      115 -    expect(error).toMatchObject({ ...fields, cause: { weathers
+          -tackError: { code, type } } });                               
+      116 -    expect(JSON.stringify(error)).not.toContain('Info text'); 
+      117 -    expect(Object.keys(errorCause(error).weatherstackError)).t
+          -oEqual(['code', 'type']);                                     
+      115 +    expect(error).toMatchObject(fields);                      
+      116 +    // Equality, not a subset match: an `info` key in the caus
+          +e fails here.                                                 
+      117 +    expect(error).toHaveProperty('cause', { weatherstackError:
+          + { code, type } });                                           
+      118    });
+      119  
+      120    it('TR-02: a success: false body without an error is unavail
+           able (upstream), with an empty cause', () => {
+     ...
+      153    throw new Error('expected a throw');
+      154  }
+      155  
+      156 -function errorCause(error: unknown): { weatherstackError: obje
+          -ct } {                                                        
+      157 -  if (                                                        
+      158 -    error instanceof Error &&                                 
+      159 -    typeof error.cause === 'object' &&                        
+      160 -    error.cause !== null &&                                   
+      161 -    'weatherstackError' in error.cause &&                     
+      162 -    typeof error.cause.weatherstackError === 'object' &&      
+      163 -    error.cause.weatherstackError !== null                    
+      164 -  ) {                                                         
+      165 -    return { weatherstackError: error.cause.weatherstackError 
+          -};                                                            
+      166 -  }                                                           
+      167 -  throw new Error('expected a weatherstackError cause');      
+      168 -}                                                             
+      169 -                                                              
+      156  function catchError(fn: () => unknown): WeatherUnavailableErro
+           r {
+      157    try {
+      158      fn();
+
+● The tests fail for the expected reasons: the classifier is missing and the
+  wrong error classes are thrown. Now the implementation.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/adapters/weatherstack/response.ts'…)
+  ⎿   Test Files  1 passed (1)
+           Tests  39 passed (39)
+        Start at  23:32:20
+     … +2 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/adapters/weatherstack/response.ts (+24 -3)
+      1  import { z } from 'zod';
+      2 -import { WeatherUnavailableError } from '../../domain/errors.ts'
+        -;                                                               
+      2 +import { WeatherQuotaExceededError, WeatherUnavailableError } fr
+        +om '../../domain/errors.ts';                                    
+      3  import { currentKeyFieldsSchema } from '../../domain/weather.ts'
+         ;
+      4  import type { WeatherReport } from '../../domain/weather.ts';
+      5  
+     ...
+      18    current: currentKeyFieldsSchema,
+      19  });
+      20  
+      21 -// Weatherstack reports API errors with HTTP 200 and this body.
+         - S-02 classifies the codes.                                    
+      21 +// Weatherstack reports API errors with HTTP 200 and this body.
+      22  const errorBodySchema = z.object({
+      23    success: z.literal(false),
+      24    error: z.object({ code: z.number().optional(), type: z.string
+          ().optional() }).optional(),
+      25  });
+      26  
+      27 +export type WeatherstackErrorClass = 'quota' | 'configuration' 
+         +| 'upstream';                                                  
+      28 +                                                               
+      29 +// Codes from the Weatherstack docs (plan, OQ-04). Body 429 is 
+         +the monthly allowance, unlike an                               
+      30 +// HTTP 429 status, which the client never gets this far with. 
+         +105 is a legacy code.                                          
+      31 +export function classifyWeatherstackError(code: number | undefi
+         +ned): WeatherstackErrorClass {                                 
+      32 +  switch (code) {                                              
+      33 +    case 104:                                                  
+      34 +    case 429:                                                  
+      35 +      return 'quota';                                          
+      36 +    case 101:                                                  
+      37 +    case 105:                                                  
+      38 +    case 403:                                                  
+      39 +      return 'configuration';                                  
+      40 +    default:                                                   
+      41 +      return 'upstream';                                       
+      42 +  }                                                            
+      43 +}                                                              
+      44 +                                                               
+      45  // The cause never holds the body: only the error code, or the 
+          paths that failed to parse.
+      46  export function parseWeatherstackResponse(body: unknown): Weath
+          erReport {
+      47    const failure = errorBodySchema.safeParse(body);
+      48    if (failure.success) {
+      49      const { code, type } = failure.data.error ?? {};
+      32 -    throw new WeatherUnavailableError({ cause: { weatherstackEr
+         -ror: { code, type } } });                                      
+     … 7 more lines (ctrl+o to expand)
+
+● Response tests pass. Now the client tests.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/adapters/weatherstack/client.test.ts'…)
+  ⎿   ❯ |api-unit| src/adapters/weatherstack/client.test.ts (28 tests | 9 f
+     ailed) 5225ms
+          × TR-10: the timeout signal uses the default 12ms
+     … +41 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/adapters/weatherstack/client.test.ts (+126 -19)
+       1 -import { http, HttpResponse } from 'msw/http';                 
+       2 -import { describe, expect, it } from 'vitest';                 
+       1 +import { afterEach, describe, expect, it, vi } from 'vitest';  
+       2  import { weatherstackError, weatherstackResponse } from '../../
+          ../test/fixtures/weatherstack.ts';
+       3  import { captureLogs } from '../../../test/helpers/logs.ts';
+       4  import { expectNoSecret, TEST_WEATHERSTACK_KEY } from '../../..
+          /test/helpers/secrets.ts';
+       5  import { weatherstackHandlers } from '../../../test/msw/weather
+          stack.ts';
+       6  import { server } from '../../../test/setup/msw.ts';
+       8 -import { WeatherUnavailableError } from '../../domain/errors.ts
+         -';                                                             
+       9 -import { createWeatherstackClient } from './client.ts';        
+       7 +import { WeatherQuotaExceededError, WeatherUnavailableError } f
+         +rom '../../domain/errors.ts';                                  
+       8 +import { createWeatherstackClient, DEFAULT_TIMEOUT_MS } from '.
+         +/client.ts';                                                   
+       9  import type { WeatherstackClientOptions } from './client.ts';
+      10  
+      11  const BASE_URL = 'https://weatherstack.test';
+     ...
+      41    return lines.filter((line) => line.level === 40);
+      42  }
+      43  
+      44 +function errors(lines: Record<string, unknown>[]): Record<strin
+         +g, unknown>[] {                                                
+      45 +  return lines.filter((line) => line.level === 50);            
+      46 +}                                                              
+      47 +                                                               
+      48 +afterEach(() => {                                              
+      49 +  vi.restoreAllMocks();                                        
+      50 +});                                                            
+      51 +                                                               
+      52  describe('createWeatherstackClient', () => {
+      53    it('TR-17 / FR-05 AC2: sends one GET /current with the query,
+           units=f and the key', async () => {
+      54      const { handler, requests } = weatherstackHandlers.ok();
+     ...
+      107      expect(signals[0]).toBeInstanceOf(AbortSignal);
+      108    });
+      109  
+      110 +  it.each([                                                   
+      111 +    ['the default', {}, 5000],                                
+      112 +    ['an injected timeoutMs', { timeoutMs: 50 }, 50],         
+      113 +  ])('TR-10: the timeout signal uses %s', async (_case, option
+          +s, expected) => {                                             
+      114 +    const timeout = vi.spyOn(AbortSignal, 'timeout');         
+      115 +    server.use(weatherstackHandlers.ok().handler);            
+      116 +    const { client } = setup(options);                        
+      117 +                                                              
+     … 155 more lines (ctrl+o to expand)
+
+● The expected 9 tests fail. The hang test ran into Vitest's 5 s limit because
+  the timeout can't be injected yet. Now the client.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/adapters/weatherstack/client.ts'…)
+  ⎿        Tests  78 passed (78)
+  ⎿  Updated apps/api/src/adapters/weatherstack/client.ts (+15 -6)
+      1  import type { Logger } from 'pino';
+      2 -import { WeatherUnavailableError } from '../../domain/errors.ts'
+        -;                                                               
+      2 +import { WeatherQuotaExceededError, WeatherUnavailableError } fr
+        +om '../../domain/errors.ts';                                    
+      3  import type { WeatherClient } from '../../domain/ports.ts';
+      4  import { redactText, redactUrl } from './redact.ts';
+      5  import { parseWeatherstackResponse } from './response.ts';
+     ...
+       9    accessKey: string;
+      10    logger: Logger;
+      11    fetch?: typeof globalThis.fetch;
+      12 +  // Tests inject a short one (TR-10); production uses the defa
+         +ult.                                                           
+      13 +  timeoutMs?: number;                                          
+      14  };
+      15  
+      14 -const TIMEOUT_MS = 5000;                                       
+      16 +export const DEFAULT_TIMEOUT_MS = 5000;                        
+      17  
+      18  type ErrorSummary = { name: string; message: string };
+      19  
+     ...
+      25    return { name: 'UnknownError', message: 'A non-Error value wa
+          s thrown.' };
+      26  }
+      27  
+      26 -// One attempt per call, no retry: every request spends quota. 
+         -S-02 classifies the failures.                                  
+      28 +// One attempt per call, no retry: every request spends quota. 
+      29  export function createWeatherstackClient({
+      30    baseUrl,
+      31    accessKey,
+      32    logger,
+      33    fetch = globalThis.fetch,
+      34 +  timeoutMs = DEFAULT_TIMEOUT_MS,                              
+      35  }: WeatherstackClientOptions): WeatherClient {
+      36    const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+      37  
+     ...
+      50  
+      51        let response: Response;
+      52        try {
+      50 -        response = await fetch(url, { signal: AbortSignal.timeo
+         -ut(TIMEOUT_MS) });                                             
+      53 +        response = await fetch(url, { signal: AbortSignal.timeo
+         +ut(timeoutMs) });                                              
+      54        } catch (error) {
+      55          unavailable({ error: summarize(error, accessKey) }, 'We
+          atherstack request failed');
+      56        }
+     … 16 more lines (ctrl+o to expand)
+
+● Adapter tests are green (78). Next are the maskError rows and the integration
+  matrix.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/graphql/errors.test.ts'…)
+  ⎿        Tests  23 passed (23)
+  ⎿  Updated apps/api/src/graphql/errors.test.ts (+26 -1)
+      2  import type { FieldNode } from 'graphql';
+      3  import { describe, expect, it } from 'vitest';
+      4  import { captureLogs } from '../../test/helpers/logs.ts';
+      5 -import { WeatherUnavailableError } from '../domain/errors.ts';  
+      5 +import { WeatherQuotaExceededError, WeatherUnavailableError } fr
+        +om '../domain/errors.ts';                                       
+      6  import { badUserInput, logUnexpectedErrors, maskError, summarize
+         Error } from './errors.ts';
+      7  
+      8  const MASKED = 'Unexpected error.';
+     ...
+       94      expect(masked.extensions).toEqual({ code: 'WEATHER_UNAVAIL
+           ABLE' });
+       95    });
+       96  
+       97 +  // FR-10 AC1: each create error reaches the client with its 
+          +code and message.                                             
+       98 +  it.each([                                                   
+       99 +    [                                                         
+      100 +      new WeatherUnavailableError({ cause: { status: 500 } }),
+      101 +      'WEATHER_UNAVAILABLE',                                  
+      102 +      'Weather could not be fetched, so the property was not s
+          +aved. Try again later.',                                      
+      103 +    ],                                                        
+      104 +    [                                                         
+      105 +      new WeatherUnavailableError({ reason: 'configuration' })
+          +,                                                             
+      106 +      'WEATHER_UNAVAILABLE',                                  
+      107 +      'Weather could not be fetched, so the property was not s
+          +aved. Try again later.',                                      
+      108 +    ],                                                        
+      109 +    [                                                         
+      110 +      new WeatherQuotaExceededError({ cause: { weatherstackErr
+          +or: { code: 104 } } }),                                       
+      111 +      'WEATHER_QUOTA_EXCEEDED',                               
+      112 +      'The Weatherstack usage limit has been reached, so the p
+          +roperty was not saved. Upgrade the Weatherstack plan or replac
+          +e the API key.',                                              
+      113 +    ],                                                        
+      114 +  ])('FR-10 AC1: maps %o to %s with its message', (domainError
+          +, code, message) => {                                         
+      115 +    const masked = asGraphQLError(maskError(thrownByResolver(d
+          +omainError), MASKED));                                        
+      116 +                                                              
+      117 +    expect(masked.message).toBe(message);                     
+      118 +    expect(masked.extensions).toEqual({ code });              
+      119 +    expect(masked.cause).toBeUndefined();                     
+      120 +  });                                                         
+      121 +                                                              
+      122    it('FR-10 AC2: masks a resolver-thrown Error and drops its c
+           ause', () => {
+      123      const error = new Error('insert into "properties" failed a
+           t /srv/app/src/db/client.ts:12');
+      124  
+
+● Now the integration matrix, which replaces the interim test.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/test/integration/create-property.int.test.ts'…)
+  ⎿  docker-ok
+           Tests  70 passed (70)
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+117 
+     -15)
+       3  import { InMemoryPropertyRepository } from '../fakes/property-r
+          epository.ts';
+       4  import { FakeWeatherClient } from '../fakes/weather.ts';
+       5  import { validInput } from '../fixtures/property.ts';
+       6 -import { weatherstackResponse } from '../fixtures/weatherstack.
+         -ts';                                                           
+       6 +import { weatherstackError, weatherstackResponse } from '../fix
+         +tures/weatherstack.ts';                                        
+       7  import { createTestApp } from '../helpers/app.ts';
+       8  import type { ExecuteResult, TestApp, TestAppOptions } from '..
+          /helpers/app.ts';
+       9  import { countProperties, resetDb } from '../helpers/db.ts';
+      10  import { expectGraphQLError } from '../helpers/graphql.ts';
+      11  import { expectNoSecret, TEST_WEATHERSTACK_KEY } from '../helpe
+          rs/secrets.ts';
+      12  import { weatherstackHandlers } from '../msw/weatherstack.ts';
+      13 +import type { RecordingHandler } from '../msw/weatherstack.ts';
+      14  import { CREATE_PROPERTY, PROPERTY } from '../operations.ts';
+      15  import { server } from '../setup/msw.ts';
+      16  
+      17 +const UNAVAILABLE =                                            
+      18 +  'Weather could not be fetched, so the property was not saved.
+         + Try again later.';                                            
+      19 +const QUOTA_EXCEEDED =                                         
+      20 +  'The Weatherstack usage limit has been reached, so the proper
+         +ty was not saved. Upgrade the Weatherstack plan or replace the 
+         +API key.';                                                     
+      21  const QUERY = '15528 E Golden Eagle Blvd, Fountain Hills, AZ 85
+          268, United States';
+      22  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-
+          [0-9a-f]{12}$/;
+      23  // What an unexpected error must never show the caller (FR-10 A
+          C2).
+     ...
+      256      expect(error.extensions).toEqual({ code: 'INTERNAL_SERVER_
+           ERROR' });
+      257      expectNoInternals(result);
+      258    });
+      254 -                                                              
+      255 -  it('interim (S-02 refines): a weather failure returns WEATHE
+          -R_UNAVAILABLE and stores nothing', async () => {              
+      256 -    const app = testApp({                                     
+      257 -      weather: new FakeWeatherClient(weatherstackResponse({ cu
+          -rrent: { humidity: undefined } })),                           
+      258 -    });                                                       
+      259 -                                                              
+      260 -    const result = await app.execute(CREATE_PROPERTY, validInp
+          -ut());                                                        
+      261 -                                                              
+      262 -    const error = expectGraphQLError(result, 'WEATHER_UNAVAILA
+          -BLE');                                                        
+      263 -    expect(error.message).toBe(                               
+      264 -      'Weather could not be fetched, so the property was not s
+          -aved. Try again later.',                                      
+      265 -    );                                                        
+      266 -    expect(await countProperties(app.db)).toBe(0);            
+      267 -  });                                                         
+      259  });
+     … 117 more lines (ctrl+o to expand)
+  ⎿  (timeout 6m 40s)
+
+● Integration passes (70 tests). Now the PRD and test-plan wording.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/prd.md'…)
+  ⎿  28:| TR-01 |
+     29:| TR-02 |
+     37:| TR-10 |
+     … +20 lines (ctrl+o to expand)
+  ⎿  Updated context/prd.md (+18 -7)
+      157  
+      158  ### FR-06 Weather failure handling  (Must, covers US-07, B-5, 
+           D-01, D-02, A-08 – A-10)
+      159  
+      160 -- AC1: Given Weatherstack returns a usage-limit error (code 10
+          -4), When `createProperty` runs,                               
+      160 +- AC1: Given Weatherstack returns a usage-limit error (body `e
+          +rror.code` 104 or 429; an HTTP                                
+      161 +  429 status is AC4), When `createProperty` runs,             
+      162    Then error code `WEATHER_QUOTA_EXCEEDED` is returned with a 
+           message telling the operator to
+      163    upgrade the Weatherstack plan or replace the API key.
+      164  - AC2: Given Weatherstack returns HTTP 200 with `success: fals
+           e` and any other error code,
+     ...
+      172    Data model), `location.lat`, `location.lon` or `location.reg
+           ion`, or where `lat`/`lon` are not
+      173    numeric, When `createProperty` runs, Then error code `WEATHE
+           R_UNAVAILABLE` is returned
+      174    (response validated, R-04). Missing non-key fields do not fa
+           il the create.
+      174 -- AC6: Given the key is missing or invalid (codes 101), When `
+          -createProperty` runs, Then error                              
+      175 +- AC6: Given the key is missing or invalid, or the plan does n
+          +ot allow the request (body codes                              
+      176 +  101, 105 and 403), When `createProperty` runs, Then error   
+      177    code `WEATHER_UNAVAILABLE` is returned to the client and a s
+           erver log entry records a
+      178    configuration error; neither contains the key value (A-09).
+      179  - AC7: Given any weather failure, When the error and server lo
+           gs are inspected, Then no
+     ...
+      401  
+      402    | Case | Detected by | Our code |
+      403    |------|-------------|----------|
+      402 -  | Usage limit reached | `success: false`, `error.code` 104 (
+          -`usage_limit_reached`) — UNVERIFIED | `WEATHER_QUOTA_EXCEEDED`
+          - |                                                            
+      403 -  | Missing/invalid key | `error.code` 101 (`missing_access_ke
+          -y` / `invalid_access_key`) — UNVERIFIED | `WEATHER_UNAVAILABLE
+          -` + config log |                                              
+      404 -  | HTTPS not allowed on plan | `error.code` 105 (`https_acces
+          -s_restricted`) — UNVERIFIED (R-02) | `WEATHER_UNAVAILABLE` + c
+          -onfig log |                                                   
+      405 -  | Location not found | `error.code` 615 (`request_failed`) —
+          - UNVERIFIED | `WEATHER_UNAVAILABLE` |                         
+      404 +  | Usage limit reached | `success: false`, `error.code` 104 (
+          +`usage_limit_reached`) — docs | `WEATHER_QUOTA_EXCEEDED` |    
+      405 +  | Monthly allowance reached | `error.code` 429 (`too_many_re
+          +quests`) — docs | `WEATHER_QUOTA_EXCEEDED` |                  
+      406 +  | Missing/invalid key | `error.code` 101 (`unauthorized`; ol
+          +der docs: `missing_access_key` / `invalid_access_key`) — docs 
+          +| `WEATHER_UNAVAILABLE` + config log |                        
+      407 +  | Plan does not support the function or HTTPS | `error.code`
+          + 403 (`forbidden`) — docs | `WEATHER_UNAVAILABLE` + config log
+          + |                                                            
+      408 +  | HTTPS not allowed on plan (legacy) | `error.code` 105 (`ht
+          +tps_access_restricted`) — older docs only (R-02) | `WEATHER_UN
+          +AVAILABLE` + config log |                                     
+      409 +  | Location not found | `error.code` 615 (`request_failed`) —
+          + docs | `WEATHER_UNAVAILABLE` |                               
+      410    | Any other `success: false` | `error` present | `WEATHER_UN
+           AVAILABLE` |
+      407 -  | Rate limit (calls in quick succession) | HTTP 429 (seen 20
+          -26-10-07) | `WEATHER_UNAVAILABLE` |                           
+      411 +  | Rate limit (calls in quick succession) | HTTP 429 status (
+          +seen 2026-10-07), whatever the body | `WEATHER_UNAVAILABLE` | 
+      412    | Timeout (> 5 s), network error, non-2xx | client | `WEATHE
+           R_UNAVAILABLE` |
+      413    | Body fails validation | schema check | `WEATHER_UNAVAILABL
+           E` |
+      414    | Region ≠ submitted state | region check | `WEATHER_LOCATIO
+           N_MISMATCH` |
+     ...
+      423    - HTTPS works with the project's key.
+      424    - Two calls within about a second returned HTTP 429.
+      425    - Response shape: `docs/samples/weatherstack-current.json` (
+           the brief's address, imperial).
+     … 10 more lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+● Bash(python3 - <<'EOF'
+      import re…)
+  ⎿   context/prd.md       | 25 ++++++++++++++++++-------
+      context/test-plan.md | 10 +++++-----
+      2 files changed, 23 insertions(+), 12 deletions(-)
+     3
+  ⎿  Updated context/test-plan.md (+5 -5)
+      25  
+      26  | ID | Risk | Impact | Likelihood | Level | Test(s) | Status |
+      27  |----|------|--------|------------|-------|---------|--------|
+      28 -| TR-01 | Weatherstack key leaks into a log line, a logged URL,
+         - a GraphQL error or a thrown HTTP error (NFR-01, R-05). The key
+         - is a query parameter, so any `String(url)` or `error.message` 
+         -from `fetch` leaks it. | H | M | U + I | U: `redactUrl` / `reda
+         -ctError` helpers on URLs with `access_key` first, middle, last 
+         -and URL-encoded. I: every FR-06 failure case runs with a sentin
+         -el key (`TEST_WEATHERSTACK_KEY`); assert the sentinel is absent
+         - from the captured pino output and the serialized GraphQL respo
+         -nse, and that any logged URL contains `access_key=[REDACTED]` (
+         -FR-06 AC6, AC7). Pre-commit secret scan (see *Quality gates*). 
+         -| planned (S-01, S-02) |                                       
+      29 -| TR-02 | Weatherstack error payloads are misclassified: HTTP 2
+         -00 with `success: false` is treated as success, or code 104 is 
+         -not mapped to `WEATHER_QUOTA_EXCEEDED` (FR-06 AC1, AC2, R-01). 
+         -Weatherstack reports errors in a 200 body, which is easy to mis
+         -s. | H | M | U (MSW) | Adapter tests, one `it.each` table: 104 
+         -→ quota; 101, 105 → unavailable + config log entry; 615, unknow
+         -n code → unavailable; `success: false` without `error` → unavai
+         -lable. Bodies follow the documented shape (OQ-04, verified in t
+         -he S-02 plan). | planned (S-02) |                              
+      28 +| TR-01 | Weatherstack key leaks into a log line, a logged URL,
+         + a GraphQL error or a thrown HTTP error (NFR-01, R-05). The key
+         + is a query parameter, so any `String(url)` or `error.message` 
+         +from `fetch` leaks it. | H | M | U + I | U: `redactUrl` / `reda
+         +ctError` helpers on URLs with `access_key` first, middle, last 
+         +and URL-encoded. I: every FR-06 failure case runs with a sentin
+         +el key (`TEST_WEATHERSTACK_KEY`); assert the sentinel is absent
+         + from the captured pino output and the serialized GraphQL respo
+         +nse, and that any logged URL contains `access_key=[REDACTED]` (
+         +FR-06 AC6, AC7). Pre-commit secret scan (see *Quality gates*). 
+         +| covered (S-01, S-02) |                                       
+      29 +| TR-02 | Weatherstack error payloads are misclassified: HTTP 2
+         +00 with `success: false` is treated as success, or code 104 is 
+         +not mapped to `WEATHER_QUOTA_EXCEEDED` (FR-06 AC1, AC2, R-01). 
+         +Weatherstack reports errors in a 200 body, which is easy to mis
+         +s. | H | M | U (MSW) | Adapter tests, one `it.each` table: 104,
+         + body 429 → quota; 101, 105, 403 → unavailable + config log ent
+         +ry; 615, unknown code → unavailable; `success: false` without `
+         +error` → unavailable. Bodies follow the documented shape (OQ-04
+         +, verified in the S-02 plan). | covered (S-02) |               
+      30  | TR-03 | A response with a changed or partial shape (missing `
+          current`, a missing key field, `lat`/`lon` not numeric) is stor
+          ed as a broken record, or crashes later on the details page (FR
+          -06 AC5, R-04, NFR-08). | H | M | U | Adapter schema tests: the
+           recorded sample `docs/samples/weatherstack-current.json` parse
+          s (contract test). Then each key field removed one at a time (`
+          it.each`) → `WEATHER_UNAVAILABLE`. Non-numeric `lat` → unavaila
+          ble. Missing `astro` / `air_quality` / non-key fields → success
+          . | planned (S-01 happy path, S-02 failures) |
+      31  | TR-04 | A Weatherstack call is made where it must not be: a d
+          uplicate, invalid input, a query, a delete, or a retry (C-03, B
+          -N2, FR-01 AC6, FR-04 AC3, FR-07 AC1, FR-08 AC1, FR-09 AC3). Ev
+          ery extra call spends quota (R-01). | H | M | I | `FakeWeatherC
+          lient.calls` asserted in every resolver-level integration test:
+           exactly 1 on a successful create, 0 on validation failure, dup
+          licate, `properties`, `property` and `deleteProperty`. Adapter 
+          test: exactly one HTTP request on timeout, 5xx and 429 (no retr
+          y, FR-06 AC3). | planned (S-01 – S-03) |
+      32  | TR-05 | A failed create leaves a partial or orphan row: the s
+          ave runs before the region check, or a DB error happens mid-way
+           (FR-05 AC5, AC6, NFR-08). | H | L | I | For every failure code
+          : property count before = after. The DB rejecting the save (rep
+          ository fake that throws) → `INTERNAL_SERVER_ERROR` with no row
+          . Schema: `NOT NULL` on every required column, an insert with a
+           null is rejected, and the CHECKs reject out-of-range or malfor
+          med values (F-02, `schema.int.test.ts`). | schema half covered 
+          (F-02); planned (S-01, S-02) |
+     ...
+      34  | TR-07 | Address normalization differs between the duplicate c
+          heck, the unique index and the stored value, so `"15528 e golde
+          n eagle  blvd"` is not caught as a duplicate, or a valid addres
+          s is wrongly blocked (FR-05 AC3, FR-08 AC1, FR-08 AC3). | M | M
+           | U + I | U: `normalizeAddress` table (trim, collapse inner wh
+          itespace, state upper-case, case kept for display). I: FR-08 AC
+          1 variant through the API; FR-08 AC3 delete-then-recreate succe
+          eds. | planned (S-01, S-02, S-03) |
+      35  | TR-08 | Input validation lets bad data through or rejects val
+          id data: ZIP+4, 4-digit zip, leading-zero zip turned into a num
+          ber, territories, full state names, blank or overlong street/ci
+          ty (FR-07 AC1 – AC5, A-01 – A-03). | M | M | U + I | U: shared 
+          address schema in `packages/shared`, `it.each` with the PRD's e
+          xact examples plus boundary lengths (200/201 street, 100/101 ci
+          ty after trimming). I: one resolver test with several invalid f
+          ields → one `BAD_USER_INPUT` listing all fields in `extensions.
+          fields`, 0 weather calls. FR-07 AC2 `"02108"` stored and return
+          ed as the string `"02108"`. | planned (S-01) |
+      36  | TR-09 | The region check gives a false result: case or whites
+          pace in `region`, DC as "District of Columbia" (R-03), or a mis
+          sing state in the code → name table, so a valid address is reje
+          cted or a mismatch is stored (FR-05 AC4). | M | M | U + I | U: 
+          `regionMatchesState` table (exact, different case, padded, DC, 
+          mismatch). U: the states table has exactly 51 entries and every
+           code maps to a name. I: FR-05 AC4 → `WEATHER_LOCATION_MISMATCH
+          ` whose message names "AZ"/"Arizona" and "California", count un
+          changed. | planned (S-02) |
+      37 -| TR-10 | The timeout does not fire or a hang blocks the mutati
+         -on for longer than 6 s (FR-06 AC3, NFR-03). | M | M | U (MSW) |
+         - Adapter test with an MSW handler that never resolves (`delay('
+         -infinite')`) and an injected short timeout (e.g. 50 ms) → `WEAT
+         -HER_UNAVAILABLE`, one request. A separate check asserts that th
+         -e default timeout from config is 5000 ms. The real 5 s wait is 
+         -not run in the suite. | planned (S-02) |                       
+      38 -| TR-11 | Network error, non-2xx status or 429 throws an unmapp
+         -ed error, which becomes `INTERNAL_SERVER_ERROR` or leaks the UR
+         -L (FR-06 AC4). | M | M | U (MSW) | Adapter `it.each`: `HttpResp
+         -onse.error()`, 500, 503, 429 (seen 2026-10-07), 200 with a non-
+         -JSON body → `WEATHER_UNAVAILABLE`, key absent from the error. |
+         - planned (S-02) |                                              
+      37 +| TR-10 | The timeout does not fire or a hang blocks the mutati
+         +on for longer than 6 s (FR-06 AC3, NFR-03). | M | M | U (MSW) |
+         + Adapter test with an MSW handler that never resolves (`delay('
+         +infinite')`) and an injected short timeout (e.g. 50 ms) → `WEAT
+         +HER_UNAVAILABLE`, one request. A separate check spies on `Abort
+         +Signal.timeout` and asserts the client default of 5000 ms. The 
+         +real 5 s wait is not run in the suite. | covered (S-02) |      
+      38 +| TR-11 | Network error, non-2xx status or 429 throws an unmapp
+         +ed error, which becomes `INTERNAL_SERVER_ERROR` or leaks the UR
+         +L (FR-06 AC4). | M | M | U (MSW) | Adapter `it.each`: `HttpResp
+         +onse.error()`, 500, 503, HTTP status 429 (seen 2026-10-07; a bo
+         +dy code 429 is quota, TR-02), 200 with a non-JSON body → `WEATH
+         +ER_UNAVAILABLE`, key absent from the error. | covered (S-02) | 
+      39  | TR-12 | Error mapping is wrong: a domain error gets the wrong
+           `extensions.code`, or an unexpected error exposes a stack trac
+          e, SQL, a file path or the key (FR-10 AC1, AC2). | M | M | U + 
+          I | U: error formatter table, one case per FR-10 code and an un
+          known `Error` → `INTERNAL_SERVER_ERROR` with a generic message.
+           I: a repository fake throwing an `Error` containing SQL text a
+          nd a path → the response contains neither. | planned (S-01, S-0
+          2) |
+      40  | TR-13 | Filtering is wrong: the city `ILIKE` does not escape 
+          `%` / `_`, state is not upper-cased, zip uses prefix matching, 
+          blank filters filter for `""`, or `totalCount` ignores the filt
+          er (FR-03 AC1 – AC6). | M | M | I | Testcontainers: seeded prop
+          erties, one test per FR-03 AC. Extra: `city: "%"` and `city: "_
+          "` match nothing unless the name contains them. Arg parsing (bl
+          ank → absent, upper-casing) also has a unit table. | planned (S
+          -03) |
+      41  | TR-14 | Sorting or paging is unstable: ties on `created_at` p
+          roduce duplicates or gaps across pages; `limit`/`offset` bounds
+           not enforced; no `limit` returns a default page instead of all
+           (FR-01 AC3 – AC5, FR-02 AC1 – AC3). | M | M | U + I | U: args 
+          schema (`limit` 0/1/100/101, `offset` -1/0, absent `limit`). I:
+           25 rows inserted with the same `created_at`; pages at offset 0
+           and 20 together hold all 25 ids once in both directions. No `l
+          imit` returns 25. | planned (S-03) |
+     ...
+      187  5. Assert the result the caller sees: the returned value, the 
+           parsed object, the thrown domain
+      188     error's `code`. Do not assert on private helpers or call or
+           der inside the unit.
+      189  6. Adapter tests: start from the `weatherstackHandlers` in `ap
+           ps/api/test/msw/weatherstack.ts`
+      190 -   (`ok`, `status`, `networkError`; each records its requests)
+          -. Override per test                                           
+      190 +   (`ok`, `status`, `networkError`, `hang`, `text`; each recor
+          +ds its requests). Override per test                           
+      191     with `server.use(http.get('*/current', () => HttpResponse.j
+           son(...)))` (imports from
+      192     `msw/http` in MSW 3). To check the
+      193     request, read it inside the handler and assert on `url.sear
+           chParams` (compare `access_key`
+
+● Docs are updated. Now the full checks: unit, typecheck, lint and format.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Lint flags expect.stringContaining inside object literals (it returns any).
+  I'll move those URL checks into separate assertions.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/adapters/weatherstack/client.test.ts'…)
+  ⎿  $ eslint .
+     $ prettier --check .
+     Checking formatting...
+     … +3 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/adapters/weatherstack/client.test.ts (+10 -10)
+      253        const error = await rejection(client.current(QUERY));
+      254  
+      255        expect(error).toBeInstanceOf(
+      256 -        errorCode === 'WEATHER_QUOTA_EXCEEDED' ? WeatherQuotaE
+          -xceededError : WeatherUnavailableError,                       
+      256 +        errorCode === 'WEATHER_QUOTA_EXCEEDED'                
+      257 +          ? WeatherQuotaExceededError                         
+      258 +          : WeatherUnavailableError,                          
+      259        );
+      258 -      expect(error).toMatchObject({ code: errorCode, cause: { 
+          -weatherstackError: { code, type } } });                       
+      260 +      expect(error).toMatchObject({                           
+      261 +        code: errorCode,                                      
+      262 +        cause: { weatherstackError: { code, type } },         
+      263 +      });                                                     
+      264        expect(requests).toHaveLength(1);
+      265        const logged = logs().filter((line) => Number(line.level
+           ) >= 40);
+      261 -      expect(logged).toEqual([                                
+      262 -        expect.objectContaining({                             
+      263 -          level,                                              
+      264 -          msg,                                                
+      265 -          url: expect.stringContaining('access_key=[REDACTED]'
+          -),                                                            
+      266 -          cause: { weatherstackError: { code, type } },       
+      267 -        }),                                                   
+      268 -      ]);                                                     
+      266 +      expect(logged).toHaveLength(1);                         
+      267 +      expect(logged[0]).toMatchObject({ level, msg, cause: { w
+          +eatherstackError: { code, type } } });                        
+      268 +      expect(String(logged[0]?.url)).toContain('access_key=[RE
+          +DACTED]');                                                    
+      269        expectNoSecret(error, logs());
+      270      },
+      271    );
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+13 
+     -11)
+      14  import { CREATE_PROPERTY, PROPERTY } from '../operations.ts';
+      15  import { server } from '../setup/msw.ts';
+      16  
+      17 -const UNAVAILABLE =                                            
+      18 -  'Weather could not be fetched, so the property was not saved.
+         - Try again later.';                                            
+      17 +const UNAVAILABLE = 'Weather could not be fetched, so the prope
+         +rty was not saved. Try again later.';                          
+      18  const QUOTA_EXCEEDED =
+      19    'The Weatherstack usage limit has been reached, so the proper
+          ty was not saved. Upgrade the Weatherstack plan or replace the 
+          API key.';
+      20  const QUERY = '15528 E Golden Eagle Blvd, Fountain Hills, AZ 85
+          268, United States';
+     ...
+      369      ['HTTP 500', () => weatherstackHandlers.status(500), 'WEAT
+           HER_UNAVAILABLE', UNAVAILABLE],
+      370      ['HTTP 503', () => weatherstackHandlers.status(503), 'WEAT
+           HER_UNAVAILABLE', UNAVAILABLE],
+      371      ['HTTP 429', () => weatherstackHandlers.status(429), 'WEAT
+           HER_UNAVAILABLE', UNAVAILABLE],
+      373 -    ['a network error', () => weatherstackHandlers.networkErro
+          -r(), 'WEATHER_UNAVAILABLE', UNAVAILABLE],                     
+      372      [
+      373 +      'a network error',                                      
+      374 +      () => weatherstackHandlers.networkError(),              
+      375 +      'WEATHER_UNAVAILABLE',                                  
+      376 +      UNAVAILABLE,                                            
+      377 +    ],                                                        
+      378 +    [                                                         
+      379        'a 200 that is not JSON',
+      380        () => weatherstackHandlers.text('<html>busy</html>'),
+      381        'WEATHER_UNAVAILABLE',
+     ...
+      421      expectGraphQLError(result, 'WEATHER_UNAVAILABLE');
+      422      const operation = app.logs().find((line) => line.msg === '
+           graphql operation');
+      423      expect(operation?.requestId).toMatch(UUID);
+      420 -    const configErrors = app.logs().filter((line) => line.msg 
+          -=== 'Weatherstack configuration error');                      
+      421 -    expect(configErrors).toEqual([                            
+      422 -      expect.objectContaining({                               
+      423 -        level: 50,                                            
+      424 -        requestId: operation?.requestId,                      
+      425 -        url: expect.stringContaining('access_key=[REDACTED]'),
+      426 -      }),                                                     
+      427 -    ]);                                                       
+      424 +    const configErrors = app                                  
+      425 +      .logs()                                                 
+      426 +      .filter((line) => line.msg === 'Weatherstack configurati
+          +on error');                                                   
+      427 +    expect(configErrors).toHaveLength(1);                     
+      428 +    expect(configErrors[0]).toMatchObject({ level: 50, request
+          +Id: operation?.requestId });                                  
+      429 +    expect(String(configErrors[0]?.url)).toContain('access_key
+          +=[REDACTED]');                                                
+     … 3 more lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/adapters/weatherstack/response.test.ts (+12 -9)
+      106        { code: 'WEATHER_UNAVAILABLE', reason: 'upstream' },
+      107      ],
+      108      [999, 'unknown', WeatherUnavailableError, { code: 'WEATHER
+           _UNAVAILABLE', reason: 'upstream' }],
+      109 -  ])('TR-02: a success: false body with code %d (%s) throws %o
+          -', (code, type, errorClass, fields) => {                      
+      110 -    const error = thrown(() =>                                
+      111 -      parseWeatherstackResponse(weatherstackError(code, type, 
+          -'Info text, never kept.')),                                   
+      112 -    );                                                        
+      109 +  ])(                                                         
+      110 +    'TR-02: a success: false body with code %d (%s) throws %o'
+          +,                                                             
+      111 +    (code, type, errorClass, fields) => {                     
+      112 +      const error = thrown(() =>                              
+      113 +        parseWeatherstackResponse(weatherstackError(code, type
+          +, 'Info text, never kept.')),                                 
+      114 +      );                                                      
+      115  
+      114 -    expect(error).toBeInstanceOf(errorClass);                 
+      115 -    expect(error).toMatchObject(fields);                      
+      116 -    // Equality, not a subset match: an `info` key in the caus
+          -e fails here.                                                 
+      117 -    expect(error).toHaveProperty('cause', { weatherstackError:
+          - { code, type } });                                           
+      118 -  });                                                         
+      116 +      expect(error).toBeInstanceOf(errorClass);               
+      117 +      expect(error).toMatchObject(fields);                    
+      118 +      // Equality, not a subset match: an `info` key in the ca
+          +use fails here.                                               
+      119 +      expect(error).toHaveProperty('cause', { weatherstackErro
+          +r: { code, type } });                                         
+      120 +    },                                                        
+      121 +  );                                                          
+      122  
+      123    it('TR-02: a success: false body without an error is unavail
+           able (upstream), with an empty cause', () => {
+      124      const error = catchError(() => parseWeatherstackResponse({
+            success: false }));
+  ⎿  (timeout 8m 20s)
+
+● All checks pass. A quick read-through of the final client diff:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(cat >> context/changes/create-property-guards/plan.md <<'EOF'…)
+  ⎿  - [ ] Phase 2: Region check
+     - [ ] Phase 3: Duplicate prevention
+     … +8 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/create-property-guards/plan.md (+4 -0)
+      357  - [ ] Phase 3: Duplicate prevention
+      358  
+      359  ## Deviations
+      360 +                                                              
+      361 +- Phase 1: the `test-plan.md` Cookbook (step 6) also lists the
+          + new `hang` and `text` handlers.                              
+      362 +  The standalone non-JSON client test moved into the TR-01/TR-
+          +11 `it.each` (as a `text()` row),                             
+      363 +  and the old 615 row moved to the new body-code table, so eac
+          +h case is asserted once.                                      
+
+● Phase 1 (weather failure classification) is built and every agent check
+  passes. It isn't committed yet: first I need you to check the docs wording
+  below.
+
+  What changed
+  - apps/api/src/domain/errors.ts: new WeatherQuotaExceededError
+    (WEATHER_QUOTA_EXCEEDED). WeatherUnavailableError gains a reason of
+    'configuration' or 'upstream', defaulting to 'upstream'.
+  - apps/api/src/adapters/weatherstack/response.ts: classifyWeatherstackError
+    sorts body codes: 104/429 → quota, 101/105/403 → configuration, anything
+    else → upstream. The parser throws the matching error class and never keeps
+    info.
+  - apps/api/src/adapters/weatherstack/client.ts: new timeoutMs option
+    (DEFAULT_TIMEOUT_MS = 5000). Quota and configuration rejections log at error
+    level; everything else stays at warn.
+  - apps/api/test/msw/weatherstack.ts: new hang() and text(body) handlers.
+  - response.test.ts: a classification table and the typed throws, asserting
+    class, code, reason and the exact cause.
+  - client.test.ts:
+    - the default and injected timeouts, checked by spying on
+      AbortSignal.timeout;
+    - a hang ends as TimeoutError after one request;
+    - 503, status 429 and non-JSON bodies;
+    - a body-code table with the log level and message;
+    - a key planted in info is neither thrown nor logged.
+  - graphql/errors.test.ts: tests for code and message on unavailable,
+    configuration and quota errors.
+  - create-property.int.test.ts: the interim test is replaced by a 14-case MSW
+    failure matrix, plus an end-to-end test that code 101 writes one
+    configuration-error log line with the request's requestId.
+  - context/prd.md: FR-06 AC1/AC6 wording, the error-case table (body 429, 403,
+    legacy 105), and the docs source under Verified so far.
+  - context/test-plan.md: TR-02/TR-10/TR-11 wording, TR-01/02/10/11 set to
+    covered, and the new handlers listed in the Cookbook.
+  - plan.md: a Deviations entry.
+
+  Checks
+  - api-unit: 189 passed.
+  - api-int (Docker): 70 passed.
+  - pnpm typecheck: clean.
+  - pnpm lint: clean. It first flagged two expect.stringContaining uses; I
+    rewrote those as separate assertions.
+  - pnpm format:check: clean.
+
+  Deviations (small, logged in the plan): the Cookbook now lists the new
+  handlers. The standalone non-JSON test became a row in the table, and the 615
+  row moved to the body-code table so each case is tested once.
+
+  Human check: does the PRD/test-plan wording for body 429 and 403 read 
+  correctly?
+  Run git diff context/prd.md context/test-plan.md. Things to look at:
+  - FR-06 AC1: "body error.code 104 or 429; an HTTP 429 status is AC4".
+  - FR-06 AC6: "body codes 101, 105 and 403".
+  - The error-case table: separate rows for body 429 (quota), 403 (configuration
+    log) and 105 (legacy).
+  - The rate-limit row now reads "HTTP 429 status … whatever the body".
+
+  Proposed commit (after you confirm), staged by explicit path:
+  feat(create-property-guards): classify Weatherstack failures and inject the 
+  timeout
+
+  Refs #4
+  - Files: the 8 code and test files above, plus context/prd.md,
+    context/test-plan.md, context/changes/create-property-guards/plan.md and
+    plan-review.md (both are untracked now, so the plan would land with its
+    first phase).
+  - I'm leaving out context/roadmap.md. It was already modified before I
+    started: Prettier reformatted it and broke some list indentation (e.g. "+
+    fake adapter" became "- fake adapter"). My only edit there is S-02 →
+    in-progress.
+  - I'm also leaving out plan-S-02.txt and plan-review-S-02.txt.
+
+  Should I include plan-review.md in this commit, and do you want the roadmap
+  reformat fixed or committed separately?
+
+  Next: Phase 2 (region check). Consider /clear first.
+
+✻ Cooked for 4m 46s · done 11:35 PM

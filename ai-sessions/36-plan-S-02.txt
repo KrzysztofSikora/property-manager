@@ -1,0 +1,192 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan create-property-guards                                                  
+
+  Searched for 1 pattern, listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Now the S-01 plan and current code.
+
+  Read 1 file, ran 3 shell commands (ctrl+o to expand)
+
+● Now the test plan and test helpers.
+
+  Searched for 1 pattern, read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Fetch(https://weatherstack.com/documentation)
+  ⎿  Received 871 bytes (301 Moved Permanently)
+
+● I've read the roadmap, PRD, lessons, test plan and the current create path.
+  Next I'm checking Weatherstack's error codes in their docs (OQ-04).
+
+● Fetch(https://docs.apilayer.com/weatherstack/docs/api-documentation)
+  ⎿  Received 79.8KB (200 OK)
+
+● Web Search("weatherstack API error codes 104 usage_limit_reached 101
+            invalid_access_key 105 https_access_restricted 615 request_failed")
+  ⎿  Did 1 search in 5s
+
+● Fetch(https://docs.apilayer.com/weatherstack/docs/getting-started)
+  ⎿  Received 84.4KB (200 OK)
+
+● Fetch(https://web.archive.org/web/2024/https://weatherstack.com/documentation)
+  ⎿  Error: Claude Code is unable to fetch from web.archive.org
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Still trying to get Weatherstack's error-code table; the official docs page
+  renders client-side, so I'm checking an archived copy.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Research is done. A few things it couldn't settle, mostly from the
+  Weatherstack docs differing from the PRD's assumptions.
+
+● User answered Claude's questions:
+  ⎿  · Weatherstack's documented error table (archived docs, 2024) lists body 
+     code 429 `too_many_requests` as "monthly request allowance reached", next 
+     to 104 `usage_limit_reached`. The PRD maps only 104 to quota, and 
+     HTTP-status 429 (burst rate limit, seen 2026-10-07) to WEATHER_UNAVAILABLE.
+     How should body code 429 map? → 104 and body 429 → quota (suggested)
+     · The same docs replace 105 `https_access_restricted` with 403 `forbidden` 
+     ("plan does not support this API function / HTTPS"). Which body codes get 
+     the configuration-error log entry (FR-06 AC6), all still returning 
+     WEATHER_UNAVAILABLE? → 101, 105 and 403 (suggested)
+     · R-03: we don't know what `location.region` Weatherstack returns for a DC 
+     address. If it isn't "District of Columbia", every DC create fails with 
+     WEATHER_LOCATION_MISMATCH. How do we settle it? → One manual call 
+     (suggested)
+
+● Thanks. The remaining choices are settled by the PRD and the code. One
+  example: the mismatch error carries both states in its message only, with no
+  extra extensions, because FR-10 asks for nothing more. Here is the proposed
+  shape:
+
+  1. Weather failure classification. Adds WeatherQuotaExceededError. The adapter
+     maps body codes 104 and 429 to quota. It maps 101, 105 and 403 to
+     unavailable and writes a configuration-error log entry. Every other failure
+     (another body error, HTTP status 429, non-2xx, network error, invalid
+     JSON, schema failure) becomes unavailable. The timeout becomes injectable
+     (default 5000 ms), and MSW gets a hang handler. Proven by an MSW it.each
+     matrix on the adapter: FR-06 AC1–AC7, TR-01/02/10/11, plus a case where the
+     key sits inside Weatherstack's info text. An integration table through
+     createTestApp({ weather: 'msw' }) covers FR-05 AC5: each code is returned,
+     the count doesn't change, and no secret appears.
+  2. Region check. Adds regionMatchesState in the service (trimmed,
+     case-insensitive, against stateName) and WeatherLocationMismatchError,
+     whose message names "AZ (Arizona)" and the returned region. The check runs
+     after the weather call and before the insert. Proven by a unit table
+     (exact, case, padding, DC, mismatch), service unit tests showing no insert
+     on mismatch, and an integration test for FR-05 AC4. Human check: one real
+     DC call to confirm the region string.
+  3. Duplicate prevention. Adds PropertyRepository.existsByAddress (the same
+     lower() expressions as the unique index). The service pre-checks before the
+     weather call, and the repository maps a pg 23505 on
+     properties_address_unique (found on DrizzleQueryError.cause) to
+     PropertyAlreadyExistsError. Proven by FR-08 AC1 (case and whitespace
+     variant, 0 weather calls) and AC2 (withBarrier(2) plus Promise.all: one
+     success, one PROPERTY_ALREADY_EXISTS, count 1). AC3 is checked by deleting
+     the row directly in the test DB, then creating it again. A repository
+     integration test covers the 23505 mapping.
+
+● User answered Claude's questions:
+  ⎿  · Proceed with these 3 phases, or merge/split? → Proceed with 3 (suggested)
+
+  Searched for 1 pattern, ran 4 shell commands (ctrl+o to expand)
+
+● I confirmed MSW 3's delay('infinite') for the timeout test. Next I'm checking
+  where it's exported from, then writing the plan.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Writing the plan now.
+
+● Write(context/changes/create-property-guards/plan.md)
+  ⎿  Wrote 349 lines to context/changes/create-property-guards/plan.md
+       1 # Plan: create-property-guards (S-02)
+       3 ## Goal and end state
+       4 
+       5 Every way a create can be refused returns a specific, safe error
+       6 leaks the key. A duplicate costs no Weatherstack call, even when
+          two creates race (issue #4).
+       8 
+       9 - FR-06 AC1: a Weatherstack quota error (body `error.code` 104, 
+         or 429; see *Decisions*)
+         or to upgrade the plan or
+     … +576 lines (ctrl+o to expand)
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager && sed -i
+      's/^| S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5),
+      FR-06, FR-08, FR-10 |…)
+  ⎿  15:| S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5), FR
+     -06, FR-08, FR-10 | S-01 | M | planned |
+  ⎿  Updated context/roadmap.md (+1 -1)
+      12  | F-01 | #1 | repo-skeleton | foundation | FR-14 AC3, NFR-04, N
+          FR-06 | - | M | done |
+      13  | F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08
+           groundwork) | F-01 | S | done |
+      14  | S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1
+          –AC3, AC6), FR-07, FR-10 | F-02 | M | done |
+      15 -| S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5)
+         -, FR-06, FR-08, FR-10 | S-01 | M | todo |                      
+      15 +| S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5)
+         +, FR-06, FR-08, FR-10 | S-01 | M | planned |                   
+      16  | S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-0
+          2, FR-03, FR-04, FR-09, FR-10 | S-01 | M | todo |
+      17  | S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs)
+          , FR-12 (AC1–AC5) | S-03 | M | todo |
+      18  | S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04
+           | M | todo |
+
+● I wrote the plan to context/changes/create-property-guards/plan.md, and S-02
+  is now planned in context/roadmap.md.
+
+  Phases:
+  1. Weather failure classification.
+     - Body codes 104 and 429 return WEATHER_QUOTA_EXCEEDED.
+     - Body codes 101, 105 and 403 return WEATHER_UNAVAILABLE and write one
+       error-level "configuration error" log line.
+     - Everything else returns WEATHER_UNAVAILABLE.
+     - The timeout can be passed in for tests; it stays 5000 ms by default.
+     - Tests: a full MSW failure table at adapter level and end to end. One case
+       puts the key inside Weatherstack's info text and inside a fetch error
+       message, per your lesson on testing redaction.
+  2. Region check. regionMatchesState runs in the service, after the weather
+     call and before the save. A mismatch returns WEATHER_LOCATION_MISMATCH,
+     with a message naming "AZ", "Arizona" and the region Weatherstack returned.
+     Human check: one real call with a DC address.
+  3. Duplicate prevention. existsByAddress runs before the weather call, using
+     the same lower() expressions as the unique index. A pg 23505 on
+     properties_address_unique maps to PROPERTY_ALREADY_EXISTS; any other
+     database error is still masked. The race test uses withBarrier(2): both
+     creates pass the pre-check and reach the insert, so it's the index that
+     blocks the second one.
+
+  What the docs check found (OQ-04): the live Weatherstack docs load only in a
+  browser, so I read an archived 2024 copy of weatherstack.com/documentation.
+  Three things differ from the PRD:
+  - Body code 429 means the monthly allowance is used up.
+  - The HTTPS-plan code is now 403. Code 105 is no longer listed, so it's kept
+    only for older accounts.
+  - The 101 type is unauthorized, not the PRD's missing_access_key /
+    invalid_access_key. Classification uses only the code, never the type.
+
+  Phase 1 updates the PRD error table and FR-06 to match your answers.
+
+  Decided without asking:
+  - The mismatch error carries the two states in its message only, with no extra
+    extensions fields.
+  - The timeout is a client option, not a new environment variable.
+  - FR-08 AC3 is tested by deleting the row directly in the test database, since
+    deleteProperty arrives in S-03.
+
+  Next step: /plan-review create-property-guards.
+
+  Sources:
+  - weatherstack documentation (read through an archived 2024 copy)
+  - apilayer Weatherstack docs
+✻ Brewed for 4m 40s · done 11:23 PM
