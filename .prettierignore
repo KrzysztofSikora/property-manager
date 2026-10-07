@@ -1,0 +1,9 @@
+.claude/
+context/
+docs/
+ai-sessions/
+CLAUDE.md
+pnpm-lock.yaml
+**/generated/
+apps/web/src/graphql/
+reports/

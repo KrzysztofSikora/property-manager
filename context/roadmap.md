@@ -9,7 +9,7 @@ export) proportionate to a small app.
 
 | ID | Issue | change-id | Type | Covers | Depends on | Size | Status |
 |----|-------|-----------|------|--------|------------|------|--------|
-| F-01 | #1 | repo-skeleton | foundation | FR-14 AC3, NFR-04, NFR-06 | - | M | todo |
+| F-01 | #1 | repo-skeleton | foundation | FR-14 AC3, NFR-04, NFR-06 | - | M | in-progress |
 | F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08 groundwork) | F-01 | S | todo |
 | S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1–AC3, AC6), FR-07, FR-10 | F-02 | M | todo |
 | S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5), FR-06, FR-08, FR-10 | S-01 | M | todo |
@@ -80,7 +80,8 @@ Commits reference their issue with `Refs #<n>`; the last commit of an item uses 
 - Scope: Drizzle schema (`id`, address fields, `lat`, `long`, `weather_data jsonb` holding
   `{ units, current }`, `created_at timestamptz`), unique index on
   `lower(street) + lower(city) + state + zip`, drizzle-kit migration and a migrate command;
-  Testcontainers PostgreSQL harness for integration tests; `packages/shared` with the 50 states
+  migrations run in the Testcontainers `globalSetup` (the harness itself lands in F-01, see
+  `context/changes/repo-skeleton/plan.md`); `packages/shared` with the 50 states
   + DC table (code → name) and the error-code list; test helpers from the test-plan Cookbook
   (`createTestApp`, `resetDb`, `seedProperty`, `FakeWeatherClient` incl. `withBarrier`,
   `weatherstackResponse` / `weatherstackError` fixtures, `captureLogs`, `expectNoSecret`);
