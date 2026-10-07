@@ -1,0 +1,753 @@
+ ▐▛███▛█   Claude Code v2.1.293
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement query-and-delete-properties                                        
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Moving on to Phase 2, covering property(id) ACs and deleteProperty, validated
+  by FR-04/FR-09/FR-08 AC3 integration tests plus unit, typecheck, lint, format,
+  and codegen-drift checks. I noticed pre-existing dirty files (plan.md and
+  three untracked .txt exports) and will leave the .txt files untouched.
+
+  Searched for 1 pattern, ran 4 shell commands (ctrl+o to expand)
+
+● Writing the failing service tests first.
+
+● Bash(python3 - <<'EOF'
+      p='src/services/property.service.test.ts'…)
+  ⎿      204|     expect(await service.delete(deleted.id)).toBe(deleted.id)
+     ;
+            |                          ^
+     … +23 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/services/property.service.test.ts (+26 -0)
+      2  import { describe, expect, it } from 'vitest';
+      3  import {
+      4    PropertyAlreadyExistsError,
+      5 +  PropertyNotFoundError,                                        
+      6    WeatherLocationMismatchError,
+      7    WeatherUnavailableError,
+      8  } from '../domain/errors.ts';
+     ...
+      194      expect(await service.getById(crypto.randomUUID())).toBeNul
+           l();
+      195    });
+      196  });
+      197 +                                                              
+      198 +describe('PropertyService.delete', () => {                    
+      199 +  it('FR-09 AC1 (service half): returns the id and removes the
+          + row', async () => {                                          
+      200 +    const { service, repository } = setup();                  
+      201 +    const kept = await service.create(address);               
+      202 +    const deleted = await service.create(normalizeAddress(vali
+          +dInput({ street: '1 Main St' })));                            
+      203 +                                                              
+      204 +    expect(await service.delete(deleted.id)).toBe(deleted.id);
+      205 +    expect(repository.rows).toEqual([kept]);                  
+      206 +  });                                                         
+      207 +                                                              
+      208 +  it('FR-09 AC2 (service half): an unknown id throws PROPERTY_
+          +NOT_FOUND and deletes nothing', async () => {                 
+      209 +    const { service, repository } = setup();                  
+      210 +    const stored = await service.create(address);             
+      211 +                                                              
+      212 +    const error: unknown = await service.delete(crypto.randomU
+          +UID()).catch((e: unknown) => e);                              
+      213 +                                                              
+      214 +    expect(error).toBeInstanceOf(PropertyNotFoundError);      
+      215 +    expect(error).toMatchObject({                             
+      216 +      code: 'PROPERTY_NOT_FOUND',                             
+      217 +      message: 'No property with this id exists.',            
+      218 +    });                                                       
+      219 +    expect(repository.rows).toEqual([stored]);                
+      220 +  });                                                         
+      221 +});                                                           
+
+● The tests fail as expected: delete does not exist yet. Now the production
+  code.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/api &&
+      python3 - <<'EOF'
+      def edit(p, old, new):…)
+  ⎿  ../../packages/shared/src/errors.ts:2:export const ERROR_CODES = [
+     ../../packages/shared/src/errors.ts:9:  'INTERNAL_SERVER_ERROR',
+     ../../packages/shared/src/errors.ts:12:export type ErrorCode = (typeof
+      ERROR_CODES)[number];
+  ⎿  Updated apps/api/src/domain/errors.ts (+10 -0)
+      64      super('A property with this address already exists.', optio
+          ns);
+      65    }
+      66  }
+      67 +                                                               
+      68 +// The id is not echoed: it is client input, and a malformed on
+         +e is reported the same way.                                    
+      69 +export class PropertyNotFoundError extends DomainError {       
+      70 +  override name = 'PropertyNotFoundError';                     
+      71 +  readonly code = 'PROPERTY_NOT_FOUND';                        
+      72 +                                                               
+      73 +  constructor(options?: ErrorOptions) {                        
+      74 +    super('No property with this id exists.', options);        
+      75 +  }                                                            
+      76 +}                                                              
+  ⎿  Updated apps/api/src/domain/ports.ts (+2 -0)
+      15    findById(id: string): Promise<Property | null>;
+      16    // Filtered, sorted and paged; `totalCount` counts every matc
+          h (FR-01, FR-02, FR-03).
+      17    list(query: PropertyListQuery): Promise<PropertyPage>;
+      18 +  // False when no row had this id.                            
+      19 +  deleteById(id: string): Promise<boolean>;                    
+      20  };
+  ⎿  Updated apps/api/src/repositories/property.repository.ts (+9 -0)
+      108          { isolationLevel: 'repeatable read', accessMode: 'read
+            only' },
+      109        );
+      110      },
+      111 +                                                              
+      112 +    // One statement, so the delete and the not-found check ca
+          +nnot race.                                                    
+      113 +    async deleteById(id) {                                    
+      114 +      const rows = await db                                   
+      115 +        .delete(properties)                                   
+      116 +        .where(eq(properties.id, id))                         
+      117 +        .returning({ id: properties.id });                    
+      118 +      return rows.length > 0;                                 
+      119 +    },                                                        
+      120    };
+      121  }
+  ⎿  Updated apps/api/src/services/property.service.ts (+12 -1)
+       1  import { stateName } from '@property-manager/shared';
+       2  import type { Address, StateCode } from '@property-manager/shar
+          ed';
+       3 -import { PropertyAlreadyExistsError, WeatherLocationMismatchErr
+         -or } from '../domain/errors.ts';                               
+       3 +import {                                                       
+       4 +  PropertyAlreadyExistsError,                                  
+       5 +  PropertyNotFoundError,                                       
+       6 +  WeatherLocationMismatchError,                                
+       7 +} from '../domain/errors.ts';                                  
+       8  import type { PropertyRepository, WeatherClient } from '../doma
+          in/ports.ts';
+       9  import type { Property, PropertyListQuery, PropertyPage } from 
+          '../domain/property.ts';
+      10  
+     ...
+      12    create(address: Address): Promise<Property>;
+      13    getById(id: string): Promise<Property | null>;
+      14    list(query: PropertyListQuery): Promise<PropertyPage>;
+      15 +  delete(id: string): Promise<string>;                         
+      16  };
+      17  
+      18  export type PropertyServiceDeps = { repository: PropertyReposit
+          ory; weather: WeatherClient };
+     ...
+      58      list(query) {
+      59        return repository.list(query);
+      60      },
+      61 +                                                               
+      62 +    // A delete is permanent (A-05); no weather call (FR-09 AC3
+         +).                                                             
+      63 +    async delete(id) {                                         
+      64 +      if (!(await repository.deleteById(id))) throw new Propert
+         +yNotFoundError();                                              
+      65 +      return id;                                               
+      66 +    },                                                         
+      67    };
+      68  }
+  ⎿  Updated apps/api/src/graphql/resolvers.ts (+7 -0)
+      1  import { addressSchema } from '@property-manager/shared';
+      2  import { DateTimeResolver, JSONResolver } from 'graphql-scalars'
+         ;
+      3  import { z } from 'zod';
+      4 +import { PropertyNotFoundError } from '../domain/errors.ts';    
+      5  import { badUserInput } from './errors.ts';
+      6  import type { Resolvers } from './generated/resolvers-types.ts';
+      7  import { propertiesArgsSchema } from './properties-args.ts';
+     ...
+      34        if (!parsed.success) throw badUserInput(parsed.error.issu
+          es);
+      35        return services.property.create(parsed.data);
+      36      },
+      37 +    // A malformed id cannot match a row: PROPERTY_NOT_FOUND wi
+         +thout a query (FR-09 AC2).                                     
+      38 +    deleteProperty: (_parent, { id }, { services }) => {       
+      39 +      const parsed = propertyId.safeParse(id);                 
+      40 +      if (!parsed.success) throw new PropertyNotFoundError();  
+      41 +      return services.property.delete(parsed.data);            
+      42 +    },                                                         
+      43    },
+      44  };
+  ⎿  … 4 more files changed
+
+● Now the integration tests: the new file, and the edits to
+  create-property.int.test.ts.
+
+● Write(apps/api/test/integration/property-details-delete.int.test.ts)
+  ⎿  Wrote 154 lines to
+     apps/api/test/integration/property-details-delete.int.test.ts
+      1 import { afterEach, beforeEach, describe, expect, it } from 'vite
+        st';
+      2 import { createTestApp } from '../helpers/app.ts';
+      4 import { countProperties, resetDb, seedProperty } from '../helper
+        s/db.ts';
+      5 import { expectGraphQLError } from '../helpers/graphql.ts';
+      6 import { DELETE_PROPERTY, PROPERTIES, PROPERTY } from '../operati
+      7 import type { FakeWeatherClient } from '../fakes/weather.ts';
+      8 
+      9 const NOT_FOUND = 'No property with this id exists.';
+     … +167 lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='test/integration/create-property.int.test.ts'…)
+  ⎿  1:import { eq } from 'drizzle-orm';
+     3:import { properties } from '../../src/db/schema.ts';
+     15:import { CREATE_PROPERTY, DELETE_PROPERTY } from '../operations.ts'
+     … +11 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+4 -19)
+      12  import { expectNoSecret, TEST_WEATHERSTACK_KEY } from '../helpe
+          rs/secrets.ts';
+      13  import { weatherstackHandlers } from '../msw/weatherstack.ts';
+      14  import type { RecordingHandler } from '../msw/weatherstack.ts';
+      15 -import { CREATE_PROPERTY, PROPERTY } from '../operations.ts';  
+      15 +import { CREATE_PROPERTY, DELETE_PROPERTY } from '../operations
+         +.ts';                                                          
+      16  import { server } from '../setup/msw.ts';
+      17  
+      18  const UNAVAILABLE = 'Weather could not be fetched, so the prope
+          rty was not saved. Try again later.';
+     ...
+      324    it('FR-08 AC3: once the row is deleted, the same address can
+            be created again', async () => {
+      325      const app = testApp();
+      326      const first = createdProperty(await app.execute(CREATE_PRO
+           PERTY, validInput()));
+      327 -    await app.db.delete(properties).where(eq(properties.id, St
+          -ring(first.id)));                                             
+      327 +    expect(await app.execute(DELETE_PROPERTY, { id: first.id }
+          +)).toEqual({                                                  
+      328 +      data: { deleteProperty: first.id },                     
+      329 +    });                                                       
+      330  
+      331      const second = createdProperty(await app.execute(CREATE_PR
+           OPERTY, validInput()));
+      332  
+     ...
+      335    });
+      336  });
+      337  
+      336 -describe('property', () => {                                  
+      337 -  it('returns null for a malformed id, without an error', asyn
+          -c () => {                                                     
+      338 -    const app = testApp();                                    
+      339 -                                                              
+      340 -    expect(await app.execute(PROPERTY, { id: 'not-a-uuid' })).
+          -toEqual({ data: { property: null } });                        
+      341 -    expect(app.weather.calls).toEqual([]);                    
+      342 -  });                                                         
+      343 -                                                              
+      344 -  it('returns null for an unknown id', async () => {          
+      345 -    const app = testApp();                                    
+      346 -                                                              
+      347 -    expect(await app.execute(PROPERTY, { id: crypto.randomUUID
+          -() })).toEqual({                                              
+      348 -      data: { property: null },                               
+      349 -    });                                                       
+      350 -  });                                                         
+      351 -});                                                           
+      352 -                                                              
+      338  describe('createProperty through the real Weatherstack client 
+           (MSW)', () => {
+      339    function mswApp(): TestApp {
+     … 1 more lines (ctrl+o to expand)
+
+● PROPERTY is still used at line 99, so its import stays. I'll also check
+  whether eq is still used and compare the key weather fields against the create
+  test.
+
+● Bash(sed -i "s/import { CREATE_PROPERTY, DELETE_PROPERTY } from/import {
+      CREATE_PROPERTY, DELETE_PROPERTY, PROPERTY } from/"
+      test/integration/create-property.int.tes…)
+  ⎿        city: 'Fountain Hills',
+           state: 'AZ',
+           zipCode: '85268',
+     … +21 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+1 -1)
+      12  import { expectNoSecret, TEST_WEATHERSTACK_KEY } from '../helpe
+          rs/secrets.ts';
+      13  import { weatherstackHandlers } from '../msw/weatherstack.ts';
+      14  import type { RecordingHandler } from '../msw/weatherstack.ts';
+      15 -import { CREATE_PROPERTY, DELETE_PROPERTY } from '../operations
+         -.ts';                                                          
+      15 +import { CREATE_PROPERTY, DELETE_PROPERTY, PROPERTY } from '../
+         +operations.ts';                                                
+      16  import { server } from '../setup/msw.ts';
+      17  
+      18  const UNAVAILABLE = 'Weather could not be fetched, so the prope
+          rty was not saved. Try again later.';
+
+● My guessed fixture values were wrong. I'll fix them from the recorded sample
+  and remove the now-unused eq import.
+
+● Bash(python3 - <<'EOF'
+      p='test/integration/property-details-delete.int.test.ts'…)
+  ⎿  ✔ Generate
+     ✔ Generate to apps/web/src/graphql/
+     ✔ Generate outputs
+     … +31 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/property-details-delete.int.test.ts
+     (+6 -6)
+      48            units: 'IMPERIAL',
+      49            current: {
+      50              temperature: 82,
+      51 -            feelsLike: 84,                                     
+      52 -            weatherDescriptions: ['Sunny'],                    
+      51 +            feelsLike: 79,                                     
+      52 +            weatherDescriptions: ['Clear '],                   
+      53              weatherIcons: [
+      54 -              'https://cdn.worldweatheronline.com/images/wsymbo
+         -ls01_png_64/wsymbol_0001_sunny.png',                           
+      54 +              'https://cdn.worldweatheronline.com/images/wsymbo
+         +ls01_png_64/wsymbol_0008_clear_sky_night.png',                 
+      55              ],
+      56 -            windSpeed: 7,                                      
+      57 -            windDir: 'WSW',                                    
+      58 -            humidity: 12,                                      
+      56 +            windSpeed: 6,                                      
+      57 +            windDir: 'NE',                                     
+      58 +            humidity: 34,                                      
+      59              raw: stored.weatherData.current,
+      60            },
+      61          },
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+0 -1)
+      1 -import { eq } from 'drizzle-orm';                               
+      1  import { afterEach, beforeEach, describe, expect, it, vi } from 
+         'vitest';
+      2  import { properties } from '../../src/db/schema.ts';
+      3  import { InMemoryPropertyRepository } from '../fakes/property-re
+         pository.ts';
+  ⎿  Updated apps/api/src/graphql/generated/resolvers-types.ts (+13 -1)
+      34    __typename?: 'Mutation';
+      35    /**
+      36     * Validates and normalizes the address, fetches the current 
+          weather once, and stores the
+      37 -   * property. Errors: BAD_USER_INPUT, WEATHER_UNAVAILABLE, INT
+         -ERNAL_SERVER_ERROR.                                            
+      37 +   * property. Errors: BAD_USER_INPUT, PROPERTY_ALREADY_EXISTS,
+         + WEATHER_UNAVAILABLE,                                          
+      38 +   * WEATHER_QUOTA_EXCEEDED, WEATHER_LOCATION_MISMATCH, INTERNA
+         +L_SERVER_ERROR.                                                
+      39     */
+      40    createProperty?: Maybe<Property>;
+      41 +  /**                                                          
+      42 +   * Permanently deletes the property and returns its id. Error
+         +s: PROPERTY_NOT_FOUND (also for an                             
+      43 +   * id that is not a UUID).                                   
+      44 +   */                                                          
+      45 +  deleteProperty: Scalars['ID']['output'];                     
+      46  };
+      47  
+      48  
+     ...
+      53    zipCode: Scalars['String']['input'];
+      54  };
+      55  
+      56 +                                                               
+      57 +export type MutationDeletePropertyArgs = {                     
+      58 +  id: Scalars['ID']['input'];                                  
+      59 +};                                                             
+      60 +                                                               
+      61  export type Property = {
+      62    __typename?: 'Property';
+      63    city: Scalars['String']['output'];
+     ...
+      267  
+      268  export type MutationResolvers<ContextType = GraphQLContext, Pa
+           rentType extends ResolversParentTypes['Mutation'] = ResolversP
+           arentTypes['Mutation']> = {
+      269    createProperty?: Resolver<Maybe<ResolversTypes['Property']>,
+            ParentType, ContextType, RequireFields<MutationCreateProperty
+           Args, 'city' | 'state' | 'street' | 'zipCode'>>;
+      270 +  deleteProperty?: Resolver<ResolversTypes['ID'], ParentType, 
+          +ContextType, RequireFields<MutationDeletePropertyArgs, 'id'>>;
+      271  };
+      272  
+      273  export type PropertyResolvers<ContextType = GraphQLContext, Pa
+           rentType extends ResolversParentTypes['Property'] = ResolversP
+           arentTypes['Property']> = {
+
+● Typecheck, lint, format and the unit tests (359) are green. Now the full suite
+  with Testcontainers.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All 479 tests pass. Next, the test-plan updates.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/test-plan.md'…)
+  ⎿  All matched files use Prettier code style!
+  ⎿  Updated context/test-plan.md (+6 -6)
+      28  | TR-01 | Weatherstack key leaks into a log line, a logged URL,
+           a GraphQL error or a thrown HTTP error (NFR-01, R-05). The key
+           is a query parameter, so any `String(url)` or `error.message` 
+          from `fetch` leaks it. | H | M | U + I | U: `redactUrl` / `reda
+          ctError` helpers on URLs with `access_key` first, middle, last 
+          and URL-encoded. I: every FR-06 failure case runs with a sentin
+          el key (`TEST_WEATHERSTACK_KEY`); assert the sentinel is absent
+           from the captured pino output and the serialized GraphQL respo
+          nse, and that any logged URL contains `access_key=[REDACTED]` (
+          FR-06 AC6, AC7). Pre-commit secret scan (see *Quality gates*). 
+          | covered (S-01, S-02) |
+      29  | TR-02 | Weatherstack error payloads are misclassified: HTTP 2
+          00 with `success: false` is treated as success, or code 104 is 
+          not mapped to `WEATHER_QUOTA_EXCEEDED` (FR-06 AC1, AC2, R-01). 
+          Weatherstack reports errors in a 200 body, which is easy to mis
+          s. | H | M | U (MSW) | Adapter tests, one `it.each` table: 104,
+           body 429 → quota; 101, 105, 403 → unavailable + config log ent
+          ry; 615, unknown code → unavailable; `success: false` without `
+          error` → unavailable. Bodies follow the documented shape (OQ-04
+          , verified in the S-02 plan). | covered (S-02) |
+      30  | TR-03 | A response with a changed or partial shape (missing `
+          current`, a missing key field, `lat`/`lon` not numeric) is stor
+          ed as a broken record, or crashes later on the details page (FR
+          -06 AC5, R-04, NFR-08). | H | M | U | Adapter schema tests: the
+           recorded sample `docs/samples/weatherstack-current.json` parse
+          s (contract test). Then each key field removed one at a time (`
+          it.each`) → `WEATHER_UNAVAILABLE`. Non-numeric `lat` → unavaila
+          ble. Missing `astro` / `air_quality` / non-key fields → success
+          . | covered (S-01, S-02) |
+      31 -| TR-04 | A Weatherstack call is made where it must not be: a d
+         -uplicate, invalid input, a query, a delete, or a retry (C-03, B
+         --N2, FR-01 AC6, FR-04 AC3, FR-07 AC1, FR-08 AC1, FR-09 AC3). Ev
+         -ery extra call spends quota (R-01). | H | M | I | `FakeWeatherC
+         -lient.calls` asserted in every resolver-level integration test:
+         - exactly 1 on a successful create, 0 on validation failure, dup
+         -licate, `properties`, `property` and `deleteProperty`. Adapter 
+         -test: exactly one HTTP request on timeout, 5xx and 429 (no retr
+         -y, FR-06 AC3). | covered for create (S-01, S-02); planned (S-03
+         -) |                                                            
+      31 +| TR-04 | A Weatherstack call is made where it must not be: a d
+         +uplicate, invalid input, a query, a delete, or a retry (C-03, B
+         +-N2, FR-01 AC6, FR-04 AC3, FR-07 AC1, FR-08 AC1, FR-09 AC3). Ev
+         +ery extra call spends quota (R-01). | H | M | I | `FakeWeatherC
+         +lient.calls` asserted in every resolver-level integration test:
+         + exactly 1 on a successful create, 0 on validation failure, dup
+         +licate, `properties`, `property` and `deleteProperty`. Adapter 
+         +test: exactly one HTTP request on timeout, 5xx and 429 (no retr
+         +y, FR-06 AC3). | covered (S-01, S-02, S-03) |                  
+      32  | TR-05 | A failed create leaves a partial or orphan row: the s
+          ave runs before the region check, or a DB error happens mid-way
+           (FR-05 AC5, AC6, NFR-08). | H | L | I | For every failure code
+          : property count before = after. The DB rejecting the save (rep
+          ository fake that throws) → `INTERNAL_SERVER_ERROR` with no row
+          . Schema: `NOT NULL` on every required column, an insert with a
+           null is rejected, and the CHECKs reject out-of-range or malfor
+          med values (F-02, `schema.int.test.ts`). | covered (F-02, S-01,
+           S-02) |
+      33  | TR-06 | Two concurrent creates of the same address both pass 
+          the pre-check and both get stored (FR-08 AC2). This is a race, 
+          so it shows up rarely and stays hidden. | M | M | I | Testconta
+          iners: `FakeWeatherClient` holds both calls behind a barrier un
+          til both have passed the pre-check, then releases them. `Promis
+          e.all` of two `createProperty` calls → exactly one success, one
+           `PROPERTY_ALREADY_EXISTS`, count 1. Repository test: the pg `2
+          3505` error on insert maps to the domain duplicate error (Drizz
+          le 0.45 puts the pg error on `DrizzleQueryError.cause`); a herm
+          etic table pins the constraint name and the bare (unwrapped) er
+          ror. Storage half: two rows differing only in `street`/`city` c
+          ase violate `properties_address_unique` (F-02, `schema.int.test
+          .ts`). | covered (F-02, S-02) |
+      34 -| TR-07 | Address normalization differs between the duplicate c
+         -heck, the unique index and the stored value, so `"15528 e golde
+         -n eagle  blvd"` is not caught as a duplicate, or a valid addres
+         -s is wrongly blocked (FR-05 AC3, FR-08 AC1, FR-08 AC3). | M | M
+         - | U + I | U: `normalizeAddress` table (trim, collapse inner wh
+         -itespace, state upper-case, case kept for display). I: FR-08 AC
+         -1 variant through the API; FR-08 AC3 delete-then-recreate succe
+         -eds. | covered (S-01, S-02); FR-08 AC3 through `deleteProperty`
+         - planned (S-03) |                                              
+      34 +| TR-07 | Address normalization differs between the duplicate c
+         +heck, the unique index and the stored value, so `"15528 e golde
+         +n eagle  blvd"` is not caught as a duplicate, or a valid addres
+         +s is wrongly blocked (FR-05 AC3, FR-08 AC1, FR-08 AC3). | M | M
+         + | U + I | U: `normalizeAddress` table (trim, collapse inner wh
+         +itespace, state upper-case, case kept for display). I: FR-08 AC
+         +1 variant through the API; FR-08 AC3 delete-then-recreate succe
+         +eds. | covered (S-01, S-02, S-03) |                            
+      35  | TR-08 | Input validation lets bad data through or rejects val
+          id data: ZIP+4, 4-digit zip, leading-zero zip turned into a num
+          ber, territories, full state names, blank or overlong street/ci
+          ty (FR-07 AC1 – AC5, A-01 – A-03). | M | M | U + I | U: shared 
+          address schema in `packages/shared`, `it.each` with the PRD's e
+          xact examples plus boundary lengths (200/201 street, 100/101 ci
+          ty after trimming). I: one resolver test with several invalid f
+          ields → one `BAD_USER_INPUT` listing all fields in `extensions.
+          fields`, 0 weather calls. FR-07 AC2 `"02108"` stored and return
+          ed as the string `"02108"`. | planned (S-01) |
+      36  | TR-09 | The region check gives a false result: case or whites
+          pace in `region`, DC as "District of Columbia" (R-03), or a mis
+          sing state in the code → name table, so a valid address is reje
+          cted or a mismatch is stored (FR-05 AC4). | M | M | U + I | U: 
+          `regionMatchesState` table (exact, different case, padded, DC, 
+          mismatch). U: the states table has exactly 51 entries and every
+           code maps to a name. I: FR-05 AC4 → `WEATHER_LOCATION_MISMATCH
+          ` whose message names "AZ"/"Arizona" and "California", count un
+          changed. | covered (S-02) |
+      37  | TR-10 | The timeout does not fire or a hang blocks the mutati
+          on for longer than 6 s (FR-06 AC3, NFR-03). | M | M | U (MSW) |
+           Adapter test with an MSW handler that never resolves (`delay('
+          infinite')`) and an injected short timeout (e.g. 50 ms) → `WEAT
+          HER_UNAVAILABLE`, one request. A separate check spies on `Abort
+          Signal.timeout` and asserts the client default of 5000 ms. The 
+          real 5 s wait is not run in the suite. | covered (S-02) |
+      38  | TR-11 | Network error, non-2xx status or 429 throws an unmapp
+          ed error, which becomes `INTERNAL_SERVER_ERROR` or leaks the UR
+          L (FR-06 AC4). | M | M | U (MSW) | Adapter `it.each`: `HttpResp
+          onse.error()`, 500, 503, HTTP status 429 (seen 2026-10-07; a bo
+          dy code 429 is quota, TR-02), 200 with a non-JSON body → `WEATH
+          ER_UNAVAILABLE`, key absent from the error. | covered (S-02) |
+      39  | TR-12 | Error mapping is wrong: a domain error gets the wrong
+           `extensions.code`, or an unexpected error exposes a stack trac
+          e, SQL, a file path or the key (FR-10 AC1, AC2). | M | M | U + 
+          I | U: error formatter table, one case per FR-10 code and an un
+          known `Error` → `INTERNAL_SERVER_ERROR` with a generic message.
+           I: a repository fake throwing an `Error` containing SQL text a
+          nd a path → the response contains neither. | covered (S-01, S-0
+          2) |
+      40 -| TR-13 | Filtering is wrong: the city `ILIKE` does not escape 
+         -`%` / `_`, state is not upper-cased, zip uses prefix matching, 
+         -blank filters filter for `""`, or `totalCount` ignores the filt
+         -er (FR-03 AC1 – AC6). | M | M | I | Testcontainers: seeded prop
+         -erties, one test per FR-03 AC. Extra: `city: "%"` and `city: "_
+         -"` match nothing unless the name contains them. Arg parsing (bl
+         -ank → absent, upper-casing) also has a unit table. | planned (S
+         --03) |                                                         
+      41 -| TR-14 | Sorting or paging is unstable: ties on `created_at` p
+         -roduce duplicates or gaps across pages; `limit`/`offset` bounds
+         - not enforced; no `limit` returns a default page instead of all
+         - (FR-01 AC3 – AC5, FR-02 AC1 – AC3). | M | M | U + I | U: args 
+         -schema (`limit` 0/1/100/101, `offset` -1/0, absent `limit`). I:
+         - 25 rows inserted with the same `created_at`; pages at offset 0
+         - and 20 together hold all 25 ids once in both directions. No `l
+         -imit` returns 25. | planned (S-03) |                           
+      42 -| TR-15 | Lookups with an unknown or malformed id cause a serve
+         -r error instead of `null` / `PROPERTY_NOT_FOUND` (FR-04 AC2, AC
+         -4, FR-09 AC2). Postgres rejects a non-UUID cast with an error. 
+         -| M | M | I | `property(id: "not-a-uuid")` → `null` with no `er
+         -rors`. `deleteProperty` with a malformed id and with an unknown
+         - UUID → `PROPERTY_NOT_FOUND`. | planned (S-03) |               
+      40 +| TR-13 | Filtering is wrong: the city `ILIKE` does not escape 
+         +`%` / `_`, state is not upper-cased, zip uses prefix matching, 
+         +blank filters filter for `""`, or `totalCount` ignores the filt
+         +er (FR-03 AC1 – AC6). | M | M | I | Testcontainers: seeded prop
+         +erties, one test per FR-03 AC. Extra: `city: "%"` and `city: "_
+         +"` match nothing unless the name contains them; `\` is escaped 
+         +too, so a literal backslash matches only itself. Arg parsing (b
+         +lank → absent, upper-casing) also has a unit table. | covered (
+         +S-03) |                                                        
+      41 +| TR-14 | Sorting or paging is unstable: ties on `created_at` p
+         +roduce duplicates or gaps across pages; `limit`/`offset` bounds
+         + not enforced; no `limit` returns a default page instead of all
+         + (FR-01 AC3 – AC5, FR-02 AC1 – AC3). | M | M | U + I | U: args 
+         +schema (`limit` 0/1/100/101, `offset` -1/0, absent `limit`). I:
+         + 25 rows inserted with the same `created_at`; pages at offset 0
+         + and 20 together hold all 25 ids once in both directions. No `l
+         +imit` returns 25. | covered (S-03) |                           
+      42 +| TR-15 | Lookups with an unknown or malformed id cause a serve
+         +r error instead of `null` / `PROPERTY_NOT_FOUND` (FR-04 AC2, AC
+         +4, FR-09 AC2). Postgres rejects a non-UUID cast with an error. 
+         +| M | M | I | `property(id: "not-a-uuid")` → `null` with no `er
+         +rors`. `deleteProperty` with a malformed id and with an unknown
+         + UUID → `PROPERTY_NOT_FOUND`. | covered (S-03) |               
+      43  | TR-16 | Weather mapping is wrong: snake_case → camelCase key 
+          fields mismatch `raw`, `lat`/`long` swapped or left as strings,
+           `units` missing (FR-05 AC1, B-7f – B-7h). | M | L | U + I | U:
+           mapper from the parsed sample to the domain `WeatherData`; eac
+          h key field equals its source value, `raw` deep-equals the resp
+          onse's `current`. I: FR-05 AC1, create then `property(id)` retu
+          rns the same data. | planned (S-01) |
+      44  | TR-17 | The adapter sends the wrong request: the query is not
+           the full normalized address, `units` is not `f`, or the base U
+          RL is not read from config (FR-05 AC2, D-03, A-11). | M | L | U
+           (MSW) | MSW handler records the request. Assert path `/current
+          `, `query` = `"15528 E Golden Eagle Blvd, Fountain Hills, AZ 85
+          268, United States"`, `units=f`, the host from `WEATHERSTACK_BA
+          SE_URL`, and `access_key` present (compared to the sentinel, ne
+          ver printed). | planned (S-01) |
+      45  | TR-18 | Env config: the API starts without a key and fails at
+           the first create, or the error message prints the value (FR-14
+           AC3). | M | L | U | Config schema test: missing `WEATHERSTACK_
+          KEY` → error names the variable. With an invalid value elsewher
+          e, the message does not contain the sentinel key. `main.ts` sta
+          rted without the key (unset or `''`) exits 1 naming the variabl
+          e (`apps/api/src/config/env.test.ts`, `apps/api/src/main.test.t
+          s`). | covered (F-01) |
+     ...
+      113  | `apps/api/src/adapters/weatherstack/` response schema and er
+           ror classification, and `apps/api/src/domain/weather.ts` (key-
+           field schema, `toCurrentWeather` mapper) | Third-party payload
+            mapping: a 200 error body, a missing key field and snake_case
+            mapping are exactly where a silent bug stores bad data or bur
+           ns quota (TR-02, TR-03, TR-11, TR-16). | 85% | Not in CI. Loca
+           l `break` at 80% after the baseline. |
+      114  | `apps/api/src/adapters/weatherstack/redact.ts` (URL / error 
+           redaction) | One wrong regex leaks the key (TR-01). Small modu
+           le, so every mutant should die. | 100% (equivalents excepted) 
+           | Not in CI. Local `break` at 100% of non-equivalent mutants. 
+           |
+      115  | `apps/api/src/services/property.service.ts` create flow and 
+           `regionMatchesState` | The order validate → duplicate → weathe
+           r → region → save, and the region comparison, are business rul
+           es where a swapped step costs quota or stores bad records (TR-
+           04, TR-05, TR-09). Tested with `FakeWeatherClient` and an in-m
+           emory repository fake. | 80% | Not in CI. Local `break` at 75%
+            after the baseline. |
+      116 -| `apps/api/src/graphql/errors.ts` (domain error → `extensions
+          -.code`, masking) and the `properties` args schema | Error mapp
+          -ing and query argument rules (bounds, blank filters, upper-cas
+          -ing) are tables; a mutant in a table entry is a wrong code or 
+          -a wrong bound (TR-12, TR-14). | 90% | Not in CI. Local `break`
+          - at 85% after the baseline. |                                 
+      116 +| `apps/api/src/graphql/errors.ts` (domain error → `extensions
+          +.code`, masking) and the `properties` args schema (`apps/api/s
+          +rc/graphql/properties-args.ts`) | Error mapping and query argu
+          +ment rules (bounds, blank filters, upper-casing) are tables; a
+          + mutant in a table entry is a wrong code or a wrong bound (TR-
+          +12, TR-14). | 90% | Not in CI. Local `break` at 85% after the 
+          +baseline. |                                                   
+      117  | `apps/api/src/config/env.ts` (env schema, missing vs invalid
+            messages) | A bad bound or anchor starts the API on a wrong p
+           ort or URL; a wrong message hides which variable is wrong or e
+           choes a secret (TR-18). | 85% | Not in CI. Baseline 83.0% (F-0
+           1), 84.6% after F-02's `loadDatabaseConfig`; all 8 survivors e
+           quivalent or accepted. |
+      118  | `apps/api/src/db/migrate-cli.ts` (DB URL / password redactio
+           n in `pnpm db:migrate` output) | One wrong check prints the da
+           tabase password or garbles the failure reason (F-02). | 100% o
+           f non-equivalent, accepted survivors excepted | Not in CI. Bas
+           eline 76.3% (F-02); of the 9 survivors 3 are equivalent and 6 
+           accepted (entry-point block, `decodedOrSelf` catch), see `chan
+           ges/property-schema/mutation.md`. |
+      119  | `tooling/secret-scan.ts` (pre-commit key-leak scan) | One wr
+           ong hunk regex or line count lets the key into a commit or blo
+           cks clean commits (TR-01). | 100% (equivalents excepted) | Not
+            in CI. Baseline 93.6% (F-01) = 100% of non-equivalent. |
+
+● All the agent checks pass. The codegen drift check runs once the files are
+  staged, just before the commit.
+
+  Human checks. Please confirm these before I commit:
+
+  1. Start the database and the dev servers: docker compose up -d postgres && 
+     pnpm dev. Then open GraphiQL at http://localhost:4000/graphql.
+  2. Create a property, then delete it:
+  mutation { createProperty(street: "15528 E Golden Eagle Blvd", city: "Fountain
+  Hills", state: "AZ", zipCode: "85268") { id } }
+  mutation { deleteProperty(id: "<id from above>") }
+     It should return that id.
+  3. Run the same deleteProperty again. You should get errors[0].extensions.code
+     = "PROPERTY_NOT_FOUND", the message "No property with this id exists." and
+     data: null. Also try deleteProperty(id: "nope"), which should give the
+     same result.
+  4. Check the wording of that message, and of the deleteProperty and
+     createProperty descriptions in the docs pane.
+
+  Files changed so far:
+  - apps/api/schema.graphql: adds deleteProperty(id: ID!): ID! with a
+    description. The createProperty description now lists all six error codes.
+  - apps/api/src/graphql/generated/resolvers-types.ts: regenerated. Web output
+    is unchanged, as in phase 1.
+  - apps/api/src/domain/errors.ts: PropertyNotFoundError (PROPERTY_NOT_FOUND).
+  - apps/api/src/domain/ports.ts: deleteById(id): Promise<boolean>.
+  - apps/api/src/repositories/property.repository.ts: deleteById as a single
+    DELETE … RETURNING id.
+  - apps/api/src/services/property.service.ts: delete(id), which throws
+    PropertyNotFoundError when no row was deleted.
+  - apps/api/src/graphql/resolvers.ts: Mutation.deleteProperty. A malformed id
+    throws without calling the service.
+  - apps/api/test/fakes/property-repository.ts: deleteById.
+  - apps/api/test/operations.ts: DELETE_PROPERTY.
+  - apps/api/src/services/property.service.test.ts: two delete tests (returns
+    the id; unknown id gives PROPERTY_NOT_FOUND). Both were watched failing
+    before the code existed.
+  - apps/api/src/graphql/errors.test.ts: a PropertyNotFoundError row in the
+    FR-10 AC1 table.
+  - apps/api/test/integration/property-details-delete.int.test.ts (new): FR-04
+    AC1–AC4 and FR-09 AC1–AC3, covering both the unknown and the malformed id,
+    plus a second delete of the same id.
+  - apps/api/test/integration/create-property.int.test.ts: FR-08 AC3 now deletes
+    through DELETE_PROPERTY. The old describe('property') tests moved to the
+    new file.
+  - context/test-plan.md: TR-04, TR-07, TR-13, TR-14 and TR-15 are set to
+    covered. The args schema path is named, and TR-13 notes that \ is escaped.
+
+  Checks:
+
+  ┌───────────────────┬──────────────────────┐
+  │       Check       │        Result        │
+  ├───────────────────┼──────────────────────┤
+  │ pnpm codegen      │ ok                   │
+  ├───────────────────┼──────────────────────┤
+  │ pnpm typecheck    │ ok                   │
+  ├───────────────────┼──────────────────────┤
+  │ pnpm lint         │ ok                   │
+  ├───────────────────┼──────────────────────┤
+  │ pnpm format:check │ ok                   │
+  ├───────────────────┼──────────────────────┤
+  │ pnpm test:unit    │ 359 passed           │
+  ├───────────────────┼──────────────────────┤
+  │ pnpm test         │ 479 passed, 32 files │
+  └───────────────────┴──────────────────────┘
+
+  Deviations: none.
+
+  Once you confirm, I'll stage these files plus plan.md and test-plan.md by
+  path. The three untracked .txt exports stay out. I'll run the codegen drift
+  check and then propose this commit message:
+
+  feat(query-and-delete-properties): property details ACs and deleteProperty
+
+  Closes #5
+
+✻ Worked for 2m 6s · done 12:39 AM
+
+❯ human checks pass, commit it                                                  
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(sed -i 's/^- \[ \] Phase 2: property details ACs and `deleteProperty`$/-
+      [x] Phase 2: property details ACs and `deleteProperty` (4673407)/'
+      context/changes/quer…)
+  ⎿  313:- [x] Phase 2: property details ACs and `deleteProperty` (4673407)
+  ⎿  Updated context/changes/query-and-delete-properties/plan.md (+1 -1)
+      310  ## Progress
+      311  <!-- One line per phase. /implement ticks it and appends the c
+           ommit hash. -->
+      312  - [x] Phase 1: `properties` with sort, paging and filters (2dc
+           edf1)
+      313 -- [ ] Phase 2: property details ACs and `deleteProperty`      
+      313 +- [x] Phase 2: property details ACs and `deleteProperty` (4673
+          +407)                                                          
+      314  
+      315  ## Deviations
+      316  
+
+● I committed phase 2 as 4673407 feat(query-and-delete-properties): property 
+  details ACs and deleteProperty (Closes #5). Before committing, I re-ran
+  codegen and the generated files were unchanged. The pre-commit hook then
+  passed: format, typecheck and 359 unit tests.
+
+  - Plan: Phase 2 is now ticked in plan.md with (4673407). That edit isn't
+    committed yet. Per the workflow it goes in a final
+    docs(query-and-delete-properties): close plan commit, which I can make
+    whenever you want.
+  - Left alone: the three untracked .txt exports were not staged.
+
+  Next: this was the last phase of S-03, so run /review 
+  query-and-delete-properties. I'd /clear first.
+
+✻ Worked for 21s · done 12:45 AM

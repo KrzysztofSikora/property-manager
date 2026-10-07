@@ -1,0 +1,918 @@
+ ▐▛███▛█   Claude Code v2.1.293
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement query-and-delete-properties                                        
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Phase 1 will implement the properties query with zod args, a repository list
+  method, and FR-01/02/03 integration tests, verified via codegen, typecheck,
+  lint, format, and test checks. I'll also mark the roadmap status as
+  in-progress, matching the pattern from S-02's docs commit.
+
+● Bash(sed -i 's/| S-03 | #5 | query-and-delete-properties | slice | FR-01,
+      FR-02, FR-03, FR-04, FR-09, FR-10 | S-01 | M | planned |/| S-03 | #5 |
+      query-and-delete-pro…)
+  ⎿  | S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-02, FR-0
+     3, FR-04, FR-09, FR-10 | S-01 | M | in-progress |
+     | S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs), FR-12
+     … +253 lines (ctrl+o to expand)
+  ⎿  Updated context/roadmap.md (+1 -1)
+      13  | F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08
+           groundwork) | F-01 | S | done |
+      14  | S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1
+          –AC3, AC6), FR-07, FR-10 | F-02 | M | done |
+      15  | S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5)
+          , FR-06, FR-08, FR-10 | S-01 | M | done |
+      16 -| S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-0
+         -2, FR-03, FR-04, FR-09, FR-10 | S-01 | M | planned |           
+      16 +| S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-0
+         +2, FR-03, FR-04, FR-09, FR-10 | S-01 | M | in-progress |       
+      17  | S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs)
+          , FR-12 (AC1–AC5) | S-03 | M | todo |
+      18  | S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04
+           | M | todo |
+      19  | S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-1
+          5 | S-05 | M | todo |
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/schema.graphql'…)
+  ⎿  57:  "Case-insensitive contains match. `%`, `_` and `\\` are matched l
+     iterally."
+     ✔ Load GraphQL documents
+     … +9 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/schema.graphql (+38 -0)
+      41    createdAt: DateTime!
+      42  }
+      43  
+      44 +"The order of a property list. Ties on `createdAt` are broken b
+         +y `id` in the same direction."                                 
+      45 +enum PropertySort {                                            
+      46 +  "Newest first."                                              
+      47 +  CREATED_AT_DESC                                              
+      48 +  "Oldest first."                                              
+      49 +  CREATED_AT_ASC                                               
+      50 +}                                                              
+      51 +                                                               
+      52 +"""                                                            
+      53 +Filters for `properties`. They combine with AND. A missing, nul
+         +l or blank value is ignored, and                               
+      54 +each value may be at most 100 characters.                      
+      55 +"""                                                            
+      56 +input PropertyFilter {                                         
+      57 +  "Case-insensitive contains match. `%`, `_` and `\\` are match
+         +ed literally."                                                 
+      58 +  city: String                                                 
+      59 +  "Exact match on the two-letter code, case-insensitive."      
+      60 +  state: String                                                
+      61 +  "Exact match on all five digits."                            
+      62 +  zipCode: String                                              
+      63 +}                                                              
+      64 +                                                               
+      65 +"One page of a property list."                                 
+      66 +type PropertyPage {                                            
+      67 +  items: [Property!]!                                          
+      68 +  "How many properties match the filter, across all pages."    
+      69 +  totalCount: Int!                                             
+      70 +}                                                              
+      71 +                                                               
+      72  type Query {
+      73    "Returns ok when the API is up."
+      74    health: String!
+      75 +  """                                                          
+      76 +  Properties that match `filter`, sorted by `sort`. Without `li
+         +mit` every match is returned.                                  
+      77 +  `limit` must be 1-100 and `offset` 0 or greater. Errors: BAD_
+         +USER_INPUT.                                                    
+      78 +  """                                                          
+      79 +  properties(                                                  
+      80 +    filter: PropertyFilter                                     
+     … 7 more lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/graphql/generated/resolvers-types.ts (+53 -0)
+       62    zipCode: Scalars['String']['output'];
+       63  };
+       64  
+       65 +/**                                                           
+       66 + * Filters for `properties`. They combine with AND. A missing,
+          + null or blank value is ignored, and                          
+       67 + * each value may be at most 100 characters.                  
+       68 + */                                                           
+       69 +export type PropertyFilter = {                                
+       70 +  /** Case-insensitive contains match. `%`, `_` and `\` are ma
+          +tched literally. */                                           
+       71 +  city?: InputMaybe<Scalars['String']['input']>;              
+       72 +  /** Exact match on the two-letter code, case-insensitive. */
+       73 +  state?: InputMaybe<Scalars['String']['input']>;             
+       74 +  /** Exact match on all five digits. */                      
+       75 +  zipCode?: InputMaybe<Scalars['String']['input']>;           
+       76 +};                                                            
+       77 +                                                              
+       78 +/** One page of a property list. */                           
+       79 +export type PropertyPage = {                                  
+       80 +  __typename?: 'PropertyPage';                                
+       81 +  items: Array<Property>;                                     
+       82 +  /** How many properties match the filter, across all pages. 
+          +*/                                                            
+       83 +  totalCount: Scalars['Int']['output'];                       
+       84 +};                                                            
+       85 +                                                              
+       86 +/** The order of a property list. Ties on `createdAt` are brok
+          +en by `id` in the same direction. */                          
+       87 +export type PropertySort =                                    
+       88 +  /** Oldest first. */                                        
+       89 +  | 'CREATED_AT_ASC'                                          
+       90 +  /** Newest first. */                                        
+       91 +  | 'CREATED_AT_DESC';                                        
+       92 +                                                              
+       93  export type Query = {
+       94    __typename?: 'Query';
+       95    /** Returns ok when the API is up. */
+       96    health: Scalars['String']['output'];
+       97 +  /**                                                         
+       98 +   * Properties that match `filter`, sorted by `sort`. Without
+          + `limit` every match is returned.                             
+       99 +   * `limit` must be 1-100 and `offset` 0 or greater. Errors: 
+          +BAD_USER_INPUT.                                               
+      100 +   */                                                         
+      101 +  properties: PropertyPage;                                   
+     … 54 more lines (ctrl+o to expand)
+
+● Phase 1 started: SDL added and codegen ran. Next: domain types, args schema
+  with a failing unit table first.
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Domain types and the failing unit table:
+
+● Bash(cat >> apps/api/src/domain/property.ts <<'EOF'…)
+  ⎿  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+     … +4 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/domain/property.ts (+16 -0)
+      26  };
+      27  
+      28  export type NewProperty = Address & { lat: number; long: number
+          ; weatherData: StoredWeather };
+      29 +                                                               
+      30 +// Ties on `createdAt` are broken by `id` in the same direction
+         + (FR-02 AC3).                                                  
+      31 +export type PropertySort = 'CREATED_AT_DESC' | 'CREATED_AT_ASC'
+         +;                                                              
+      32 +                                                               
+      33 +// Normalized, with blank values removed (FR-03 AC6).          
+      34 +export type PropertyFilter = { city?: string; state?: string; z
+         +ipCode?: string };                                             
+      35 +                                                               
+      36 +// No `limit`: every match (FR-01 AC3).                        
+      37 +export type PropertyListQuery = {                              
+      38 +  filter: PropertyFilter;                                      
+      39 +  sort: PropertySort;                                          
+      40 +  limit?: number;                                              
+      41 +  offset: number;                                              
+      42 +};                                                             
+      43 +                                                               
+      44 +export type PropertyPage = { items: Property[]; totalCount: num
+         +ber };                                                         
+  ⎿  Created apps/api/src/graphql/properties-args.test.ts (+102 -0)
+        1 +import { describe, expect, it } from 'vitest';                
+        2 +import { propertiesArgsSchema } from './properties-args.ts';  
+        3 +                                                              
+        4 +const DEFAULTS = { filter: {}, sort: 'CREATED_AT_DESC', offset
+          +: 0 };                                                        
+        5 +                                                              
+        6 +function issues(args: unknown): { path: string; message: strin
+          +g }[] {                                                       
+        7 +  const result = propertiesArgsSchema.safeParse(args);        
+        8 +  if (result.success) return expect.fail('expected the args to
+          + be rejected');                                               
+        9 +  return result.error.issues.map(({ path, message }) => ({ pat
+          +h: path.join('.'), message }));                               
+       10 +}                                                             
+       11 +                                                              
+       12 +describe('propertiesArgsSchema', () => {                      
+       13 +  it.each([                                                   
+       14 +    ['absent', {}],                                           
+       15 +    ['null', { filter: null, sort: null, limit: null, offset: 
+          +null }],                                                      
+       16 +  ])('FR-01 AC3, FR-02 AC1: %s args give the defaults and no l
+          +imit', (_case, args) => {                                     
+       17 +    expect(propertiesArgsSchema.parse(args)).toStrictEqual(DEF
+          +AULTS);                                                       
+       18 +  });                                                         
+       19 +                                                              
+       20 +  it.each([1, 100])('FR-01 AC5: limit %i is accepted', (limit)
+          + => {                                                         
+       21 +    expect(propertiesArgsSchema.parse({ limit })).toStrictEqua
+          +l({ ...DEFAULTS, limit });                                    
+       22 +  });                                                         
+       23 +                                                              
+       24 +  it.each([0, 101, -1])('FR-01 AC5: limit %i is rejected', (li
+          +mit) => {                                                     
+       25 +    expect(issues({ limit })).toStrictEqual([                 
+       26 +      { path: 'limit', message: 'must be between 1 and 100' },
+       27 +    ]);                                                       
+       28 +  });                                                         
+       29 +                                                              
+       30 +  it('FR-01 AC5: offset 0 is accepted, and an offset needs no 
+          +limit', () => {                                               
+       31 +    expect(propertiesArgsSchema.parse({ offset: 0 })).toStrict
+          +Equal(DEFAULTS);                                              
+       32 +    expect(propertiesArgsSchema.parse({ offset: 20 })).toStric
+          +tEqual({ ...DEFAULTS, offset: 20 });                          
+       33 +  });                                                         
+       34 +                                                              
+       35 +  it('FR-01 AC5: offset -1 is rejected', () => {              
+       36 +    expect(issues({ offset: -1 })).toStrictEqual([            
+       37 +      { path: 'offset', message: 'must be 0 or greater' },    
+       38 +    ]);                                                       
+       39 +  });                                                         
+       40 +                                                              
+     … 62 more lines (ctrl+o to expand)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(cat > apps/api/src/graphql/properties-args.ts <<'EOF'
+      import { normalizeAddressText } from '@property-manager/shared';…)
+  ⎿  ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+      FAIL  |api-unit| src/graphql/properties-args.test.ts > propertiesArgs
+     … +25 lines (ctrl+o to expand)
+  ⎿  Created apps/api/src/graphql/properties-args.ts (+49 -0)
+       1 +import { normalizeAddressText } from '@property-manager/shared'
+         +;                                                              
+       2 +import { z } from 'zod';                                       
+       3 +import type { PropertyFilter, PropertyListQuery } from '../doma
+         +in/property.ts';                                               
+       4 +                                                               
+       5 +// Search values, not addresses: only a length cap, so `state: 
+         +"Arizona"` or a partial zip just                               
+       6 +// match nothing (FR-03 AC3). An explicit null is "not given", 
+         +as GraphQL allows for nullable                                 
+       7 +// args; a blank value too (FR-03 AC6). Messages never echo the
+         + input (FR-10).                                                
+       8 +function filterValue(normalize: (value: string) => string) {   
+       9 +  return z                                                     
+      10 +    .string()                                                  
+      11 +    .overwrite(normalize)                                      
+      12 +    .max(100, 'must be at most 100 characters')                
+      13 +    .nullish()                                                 
+      14 +    .transform((value) => value || undefined);                 
+      15 +}                                                              
+      16 +                                                               
+      17 +const filterSchema = z                                         
+      18 +  .object({                                                    
+      19 +    // Stored cities are normalized the same way, so "fountain 
+         + hills" still matches.                                         
+      20 +    city: filterValue(normalizeAddressText),                   
+      21 +    state: filterValue((value) => value.trim().toUpperCase()), 
+      22 +    zipCode: filterValue((value) => value.trim()),             
+      23 +  })                                                           
+      24 +  .nullish()                                                   
+      25 +  .transform(({ city, state, zipCode } = {}) => {              
+      26 +    const filter: PropertyFilter = {};                         
+      27 +    if (city !== undefined) filter.city = city;                
+      28 +    if (state !== undefined) filter.state = state;             
+      29 +    if (zipCode !== undefined) filter.zipCode = zipCode;       
+      30 +    return filter;                                             
+      31 +  });                                                          
+      32 +                                                               
+      33 +// Parses `QueryPropertiesArgs` into the service query (FR-01 A
+         +C5, FR-02 AC1).                                                
+      34 +export const propertiesArgsSchema = z                          
+      35 +  .object({                                                    
+      36 +    filter: filterSchema,                                      
+      37 +    sort: z.enum(['CREATED_AT_DESC', 'CREATED_AT_ASC']).nullish
+         +(),                                                            
+      38 +    limit: z                                                   
+      39 +      .int()                                                   
+      40 +      .min(1, 'must be between 1 and 100')                     
+     … 9 more lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/graphql/properties-args.ts'…)
+  ⎿   Test Files  1 passed (1)
+           Tests  19 passed (19)
+        Start at  00:25:48
+     … +2 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/graphql/properties-args.ts (+2 -1)
+      22      zipCode: filterValue((value) => value.trim()),
+      23    })
+      24    .nullish()
+      25 -  .transform(({ city, state, zipCode } = {}) => {              
+      25 +  .transform((value) => {                                      
+      26 +    const { city, state, zipCode } = value ?? {};              
+      27      const filter: PropertyFilter = {};
+      28      if (city !== undefined) filter.city = city;
+      29      if (state !== undefined) filter.state = state;
+  ⎿  Updated apps/api/src/graphql/properties-args.test.ts (+4 -5)
+      77      'TR-13: filter.%s may be 100 characters after trimming, not
+           101',
+      78      (field) => {
+      79        const hundred = 'a'.repeat(100);
+      80 -      expect(                                                  
+      81 -        propertiesArgsSchema.parse({ filter: { [field]: ` ${hun
+         -dred} ` } }).filter[                                           
+      82 -          field as 'city' | 'state' | 'zipCode'                
+      83 -        ],                                                     
+      84 -      ).toBe(field === 'state' ? hundred.toUpperCase() : hundre
+         -d);                                                            
+      80 +      expect(propertiesArgsSchema.parse({ filter: { [field]: ` 
+         +${hundred} ` } })).toStrictEqual({                             
+      81 +        ...DEFAULTS,                                           
+      82 +        filter: { [field]: field === 'state' ? hundred.toUpperC
+         +ase() : hundred },                                             
+      83 +      });                                                      
+      84        expect(issues({ filter: { [field]: `${hundred}b` } })).to
+          StrictEqual([
+      85          { path: `filter.${field}`, message: 'must be at most 10
+          0 characters' },
+      86        ]);
+
+● Args table green. Now escapeLike test (failing first), then
+  repository/port/service/resolver/fake.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/repositories/property.repository.test.ts'…)
+  ⎿  describe('escapeLike', () => {
+       it.each([
+         ['plain text', 'Fountain Hills', 'Fountain Hills'],
+     … +8 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/repositories/property.repository.test.ts (+13 -1)
+      1  import { DrizzleQueryError } from 'drizzle-orm';
+      2  import pg from 'pg';
+      3  import { describe, expect, it } from 'vitest';
+      4 -import { isAddressUniqueViolation } from './property.repository.
+        -ts';                                                            
+      4 +import { escapeLike, isAddressUniqueViolation } from './property
+        +.repository.ts';                                                
+      5  
+      6  function pgError(code: string, constraint: string): pg.DatabaseE
+         rror {
+      7    const error = new pg.DatabaseError('constraint violated', 0, '
+         error');
+     ...
+      42      expect(isAddressUniqueViolation(error)).toBe(false);
+      43    });
+      44  });
+      45 +                                                               
+      46 +describe('escapeLike', () => {                                 
+      47 +  it.each([                                                    
+      48 +    ['plain text', 'Fountain Hills', 'Fountain Hills'],        
+      49 +    ['%', '100% Town', '100\\% Town'],                         
+      50 +    ['_', 'St_Paul', 'St\\_Paul'],                             
+      51 +    ['\\', 'a\\b', 'a\\\\b'],                                  
+      52 +    ['a mix', '\\%_%', '\\\\\\%\\_\\%'],                       
+      53 +  ])('TR-13: %s', (_case, value, escaped) => {                 
+      54 +    expect(escapeLike(value)).toBe(escaped);                   
+      55 +  });                                                          
+      56 +});                                                            
+
+● Bash(python3 - <<'EOF'
+      import re…)
+  ⎿  39:export function escapeLike(value: string): string {
+     40-  return value.replace(/[\\%_]/g, '\\$&');
+     41-}
+  ⎿  Updated apps/api/src/repositories/property.repository.ts (+40 -2)
+       1  import { isStateCode } from '@property-manager/shared';
+       2 -import { and, eq, sql } from 'drizzle-orm';                    
+       2 +import { and, asc, count, desc, eq, ilike, sql } from 'drizzle-
+         +orm';                                                          
+       3  import pg from 'pg';
+       4  import type { Database } from '../db/client.ts';
+       5  import { properties } from '../db/schema.ts';
+       6  import type { PropertyRow } from '../db/schema.ts';
+       7  import { PropertyAlreadyExistsError } from '../domain/errors.ts
+          ';
+       8  import type { PropertyRepository } from '../domain/ports.ts';
+       9 -import type { Property } from '../domain/property.ts';         
+       9 +import type { Property, PropertyFilter } from '../domain/proper
+         +ty.ts';                                                        
+      10  import { toCurrentWeather } from '../domain/weather.ts';
+      11  
+      12  // A row that breaks these rules was not written through the se
+          rvice: fail loudly.
+     ...
+      34    );
+      35  }
+      36  
+      37 +// `\` is PostgreSQL's default LIKE escape, so `%`, `_` and `\`
+         + in a search match themselves                                  
+      38 +// (TR-13). The pattern is a bind parameter, so `standard_confo
+         +rming_strings` does not apply.                                 
+      39 +export function escapeLike(value: string): string {            
+      40 +  return value.replace(/[\\%_]/g, '\\$&');                     
+      41 +}                                                              
+      42 +                                                               
+      43 +// FR-03: city contains (case-insensitive), state and zip exact
+         +. `and()` drops the undefined ones.                            
+      44 +function filterWhere({ city, state, zipCode }: PropertyFilter) 
+         +{                                                              
+      45 +  return and(                                                  
+      46 +    city === undefined ? undefined : ilike(properties.city, `%$
+         +{escapeLike(city)}%`),                                         
+      47 +    state === undefined ? undefined : eq(properties.state, stat
+         +e),                                                            
+      48 +    zipCode === undefined ? undefined : eq(properties.zipCode, 
+         +zipCode),                                                      
+      49 +  );                                                           
+      50 +}                                                              
+      51 +                                                               
+      52  // Only a violation of the address index is mapped; every other
+           DB error propagates unchanged.
+      53  export function createPropertyRepository(db: Database): Propert
+          yRepository {
+      54    return {
+     ...
+       87        const [row] = await db.select().from(properties).where(e
+           q(properties.id, id)).limit(1);
+       88        return row === undefined ? null : toProperty(row);
+       89      },
+       90 +                                                              
+       91 +    // Rows and count from one snapshot, so a concurrent creat
+          +e or delete cannot make them                                  
+     … 23 more lines (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ go                                                                            
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/repositories/property.repository.ts'…)
+  ⎿  $ tsc -p . && pnpm -r typecheck
+     apps/web typecheck$ tsc -p tsconfig.app.json && tsc -p tsconfig.node.j
+     son
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/repositories/property.repository.ts (+3 -5)
+       95        const direction = sort === 'CREATED_AT_ASC' ? asc : desc
+           ;
+       96        return db.transaction(
+       97          async (tx) => {
+       98 -          const rows = tx                                     
+       98 +          const ordered = tx                                  
+       99              .select()
+      100              .from(properties)
+      101              .where(where)
+      102              .orderBy(direction(properties.createdAt), directio
+           n(properties.id))
+      103              .offset(offset);
+      104 +          const rows = await (limit === undefined ? ordered : 
+          +ordered.limit(limit));                                        
+      105            const [counted] = await tx.select({ n: count() }).fr
+           om(properties).where(where);
+      105 -          return {                                            
+      106 -            items: (await (limit === undefined ? rows : rows.l
+          -imit(limit))).map(toProperty),                                
+      107 -            totalCount: counted?.n ?? 0,                      
+      108 -          };                                                  
+      106 +          return { items: rows.map(toProperty), totalCount: co
+          +unted?.n ?? 0 };                                              
+      107          },
+      108          { isolationLevel: 'repeatable read', accessMode: 'read
+            only' },
+      109        );
+  ⎿  Updated apps/api/src/domain/ports.ts (+3 -1)
+      1  import type { Address } from '@property-manager/shared';
+      2 -import type { NewProperty, Property } from './property.ts';     
+      2 +import type { NewProperty, Property, PropertyListQuery, Property
+        +Page } from './property.ts';                                    
+      3  import type { WeatherReport } from './weather.ts';
+      4  
+      5  // Implemented by the Weatherstack adapter and by `FakeWeatherCl
+         ient` in tests.
+     ...
+      13    // Throws `PropertyAlreadyExistsError` when the unique addres
+          s index rejects the row.
+      14    insert(property: NewProperty): Promise<Property>;
+      15    findById(id: string): Promise<Property | null>;
+      16 +  // Filtered, sorted and paged; `totalCount` counts every matc
+         +h (FR-01, FR-02, FR-03).                                       
+      17 +  list(query: PropertyListQuery): Promise<PropertyPage>;       
+      18  };
+  ⎿  Updated apps/api/src/services/property.service.ts (+7 -1)
+       2  import type { Address, StateCode } from '@property-manager/shar
+          ed';
+       3  import { PropertyAlreadyExistsError, WeatherLocationMismatchErr
+          or } from '../domain/errors.ts';
+       4  import type { PropertyRepository, WeatherClient } from '../doma
+          in/ports.ts';
+       5 -import type { Property } from '../domain/property.ts';         
+       5 +import type { Property, PropertyListQuery, PropertyPage } from 
+         +'../domain/property.ts';                                       
+       6  
+       7  export type PropertyService = {
+       8    create(address: Address): Promise<Property>;
+       9    getById(id: string): Promise<Property | null>;
+      10 +  list(query: PropertyListQuery): Promise<PropertyPage>;       
+      11  };
+      12  
+      13  export type PropertyServiceDeps = { repository: PropertyReposit
+          ory; weather: WeatherClient };
+     ...
+      48      getById(id) {
+      49        return repository.findById(id);
+      50      },
+      51 +                                                               
+      52 +    // Filtering, order and paging are repository rules; no wea
+         +ther call (FR-01 AC6).                                         
+      53 +    list(query) {                                              
+      54 +      return repository.list(query);                           
+      55 +    },                                                         
+      56    };
+      57  }
+  ⎿  Updated apps/api/src/graphql/resolvers.ts (+7 -0)
+      3  import { z } from 'zod';
+      4  import { badUserInput } from './errors.ts';
+      5  import type { Resolvers } from './generated/resolvers-types.ts';
+      6 +import { propertiesArgsSchema } from './properties-args.ts';    
+      7  
+      8  const propertyId = z.uuid();
+      9  
+     ...
+      14    DateTime: DateTimeResolver,
+      15    Query: {
+      16      health: () => 'ok',
+      17 +    // Every invalid argument in one BAD_USER_INPUT, before any
+         + query (FR-01 AC5).                                            
+      18 +    properties: (_parent, args, { services }) => {             
+      19 +      const parsed = propertiesArgsSchema.safeParse(args);     
+      20 +      if (!parsed.success) throw badUserInput(parsed.error.issu
+         +es);                                                           
+      21 +      return services.property.list(parsed.data);              
+      22 +    },                                                         
+      23      // A malformed id cannot match a row: null without a query.
+      24      property: (_parent, { id }, { services }) => {
+      25        const parsed = propertyId.safeParse(id);
+  ⎿  Updated apps/api/test/fakes/property-repository.ts (+7 -1)
+      1  import type { Address } from '@property-manager/shared';
+      2  import type { PropertyRepository } from '../../src/domain/ports.
+         ts';
+      3 -import type { NewProperty, Property } from '../../src/domain/pro
+        -perty.ts';                                                      
+      3 +import type { NewProperty, Property, PropertyPage } from '../../
+        +src/domain/property.ts';                                        
+      4  import { toCurrentWeather } from '../../src/domain/weather.ts';
+      5  
+      6  function addressKey({ street, city, state, zipCode }: Address): 
+         string {
+     ...
+      42    findById(id: string): Promise<Property | null> {
+      43      return Promise.resolve(this.rows.find((row) => row.id === i
+          d) ?? null);
+      44    }
+      45 +                                                               
+      46 +  // Filtering and order are proved against PostgreSQL; a secon
+         +d implementation here would only                               
+      47 +  // be tested against itself.                                 
+      48 +  list(): Promise<PropertyPage> {                              
+      49 +    return Promise.reject(new Error('list is not supported by t
+         +he in-memory fake'));                                          
+      50 +  }                                                            
+      51  }
+  ⎿  … 1 more file changed
+
+● Unit tests and typecheck green. Now the integration test file.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Write(apps/api/test/integration/query-properties.int.test.ts)
+  ⎿  Wrote 365 lines to
+     apps/api/test/integration/query-properties.int.test.ts
+       1 import { afterEach, beforeEach, describe, expect, it } from 'vit
+         est';
+       2 import type { NewPropertyRow, PropertyRow } from '../../src/db/s
+       3 import { createTestApp } from '../helpers/app.ts';
+       4 import type { ExecuteResult, TestApp } from '../helpers/app.ts';
+       5 import { resetDb, seedProperty } from '../helpers/db.ts';
+       6 import { expectGraphQLError } from '../helpers/graphql.ts';
+       8 import type { FakeWeatherClient } from '../fakes/weather.ts';
+       9 
+      10 const T0 = Date.parse('2026-01-01T00:00:00.000Z');
+     … +414 lines (ctrl+o to expand)
+  ⎿  PostToolUse:Write hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/test/integration/query-properties.int.test.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/test/integ
+     ration/query-properties.int.test.ts
+        59:20  error  Invalid type "number" of template literal expression  
+     @typescript-eslint/restrict-template-expressions
+       153:55  error  Unsafe assignment of an `any` value                   
+     @typescript-eslint/no-unsafe-assignment
+
+     ✖ 2 problems (2 errors, 0 warnings)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Use exact messages instead of expect.any.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/test/integration/query-properties.int.test.ts'…)
+  ⎿  docker-ok
+
+      RUN  v5.0.3 /home/krzysztof/projects/taskTreeCover/property-manager
+     … +6 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/query-properties.int.test.ts (+15 
+     -12)
+      56    for (let i = 0; i < n; i += 1) {
+      57      rows.push(
+      58        await seedProperty(app.db, {
+      59 -        street: `${i + 1} Main St`,                            
+      59 +        street: `${String(i + 1)} Main St`,                    
+      60          createdAt: new Date(T0 + i * 1000),
+      61          ...overrides(i),
+      62        }),
+     ...
+      140    });
+      141  
+      142    it.each([
+      143 -    [{ limit: 0 }, 'limit'],                                  
+      144 -    [{ limit: 101 }, 'limit'],                                
+      145 -    [{ offset: -1 }, 'offset'],                               
+      146 -  ])('FR-01 AC5, FR-10 AC1: %o returns BAD_USER_INPUT and no i
+          -tems', async (args, field) => {                               
+      147 -    const app = testApp();                                    
+      148 -    await seedMany(app, 1);                                   
+      143 +    [{ limit: 0 }, 'limit', 'must be between 1 and 100'],     
+      144 +    [{ limit: 101 }, 'limit', 'must be between 1 and 100'],   
+      145 +    [{ offset: -1 }, 'offset', 'must be 0 or greater'],       
+      146 +  ])(                                                         
+      147 +    'FR-01 AC5, FR-10 AC1: %o returns BAD_USER_INPUT and no it
+          +ems',                                                         
+      148 +    async (args, field, message) => {                         
+      149 +      const app = testApp();                                  
+      150 +      await seedMany(app, 1);                                 
+      151  
+      150 -    const result = await app.execute(PROPERTIES, args);       
+      152 +      const result = await app.execute(PROPERTIES, args);     
+      153  
+      152 -    const error = expectGraphQLError(result, 'BAD_USER_INPUT')
+          -;                                                             
+      153 -    expect(error.extensions.fields).toEqual([{ field, message:
+          - expect.any(String) }]);                                      
+      154 -    expect(result.data).toBeNull();                           
+      155 -  });                                                         
+      154 +      const error = expectGraphQLError(result, 'BAD_USER_INPUT
+          +');                                                           
+      155 +      expect(error.extensions.fields).toEqual([{ field, messag
+          +e }]);                                                        
+      156 +      expect(result.data).toBeNull();                         
+      157 +    },                                                        
+      158 +  );                                                          
+      159  
+      160    it('FR-01 AC5: limit 100 is accepted, and an offset without 
+           a limit returns every match after it', async () => {
+     … 1 more lines (ctrl+o to expand)
+  ⎿  (timeout 5m)
+
+● All 28 pass. Sanity check that the key tests can fail: break escapeLike and
+  the id tiebreak temporarily.
+  Ran 1 shell command (ctrl+o to expand)
+
+● Both directions should catch a missing tiebreak; ASC passed by accident
+  because uuidv7() ids are inserted in id order. Seeding random v4 ids for TR-14
+  removes that coincidence.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/test/integration/query-properties.int.test.ts'…)
+  ⎿       × FR-02 AC3, TR-14: CREATED_AT_ASC pages at offsets 0 and 20 hold
+      all 25 ids once, in id order 78ms
+          × FR-02 AC3, TR-14: CREATED_AT_DESC pages at offsets 0 and 20 hol
+     … +4 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/query-properties.int.test.ts (+7 -3)
+      206      ]);
+      207    });
+      208  
+      209 -  // Equal `createdAt` for all 25, so only the `id` tiebreak o
+          -rders them. The expected order is                             
+      210 -  // a plain code-unit sort, which is PostgreSQL's byte order 
+          -for lowercase canonical UUIDs.                                
+      209 +  // Equal `createdAt` for all 25, so only the `id` tiebreak o
+          +rders them. Random v4 ids, because                            
+      210 +  // `uuidv7()` ids would follow insertion order and pass with
+          +out a tiebreak. The expected order                            
+      211 +  // is a plain code-unit sort, which is PostgreSQL's byte ord
+          +er for lowercase canonical UUIDs.                             
+      212    it.each([
+      213      ['CREATED_AT_ASC', (sorted: string[]) => sorted],
+      214      ['CREATED_AT_DESC', (sorted: string[]) => sorted.reverse()
+           ],
+     ...
+      216      'FR-02 AC3, TR-14: %s pages at offsets 0 and 20 hold all 2
+           5 ids once, in id order',
+      217      async (sort, direction) => {
+      218        const app = testApp();
+      218 -      const rows = await seedMany(app, 25, () => ({ createdAt:
+          - new Date(T0) }));                                            
+      219 +      const rows = await seedMany(app, 25, () => ({           
+      220 +        id: crypto.randomUUID(),                              
+      221 +        createdAt: new Date(T0),                              
+      222 +      }));                                                    
+      223  
+      224        const first = page(await app.execute(PROPERTIES, { sort,
+            limit: 20, offset: 0 }));
+      225        const second = page(await app.execute(PROPERTIES, { sort
+           , limit: 20, offset: 20 }));
+  ⎿  (timeout 5m)
+
+● Both directions now catch a missing tiebreak. Code restored; running the full
+  agent checks.
+
+● Bash(source ~/.nvm/nvm.sh && nvm use >/dev/null && pnpm format >/dev/null;
+      pnpm typecheck 2>&1 | tail -2 && pnpm lint 2>&1 | tail -4 && pnpm
+      format:check 2>&1 | tail…)
+  ⎿  $ prettier --write .
+     apps/web typecheck: Done
+     apps/api typecheck: Done
+     … +24 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/graphql/properties-args.ts (+5 -1)
+      44      offset: z.int().min(0, 'must be 0 or greater').nullish(),
+      45    })
+      46    .transform(({ filter, sort, limit, offset }) => {
+      47 -    const query: PropertyListQuery = { filter, sort: sort ?? 'C
+         -REATED_AT_DESC', offset: offset ?? 0 };                        
+      47 +    const query: PropertyListQuery = {                         
+      48 +      filter,                                                  
+      49 +      sort: sort ?? 'CREATED_AT_DESC',                         
+      50 +      offset: offset ?? 0,                                     
+      51 +    };                                                         
+      52      if (limit != null) query.limit = limit;
+      53      return query;
+      54    });
+  ⎿  (timeout 10m)
+
+● pnpm format runs repo-wide; checking it didn't reformat the untracked plan
+  files.
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Prettier ignores context/, so those files are untouched. Codegen drift check
+  (files not yet staged, so I compare checksums before and after a re-run):
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Logging deviations in the plan:
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/query-and-delete-properties/plan.md'…)
+  ⎿  303:  integration test with a literal `%`/`_` in a seeded city proves
+     the real behaviour.
+     321:- Phase 1, TR-13. Added an integration case for a literal `\` in t
+     he city filter, next to `%`
+  ⎿  Updated context/changes/query-and-delete-properties/plan.md (+9 -1)
+      313  - [ ] Phase 2: property details ACs and `deleteProperty`
+      314  
+      315  ## Deviations
+      316 -<filled during implementation>                                
+      316 +                                                              
+      317 +- Phase 1, TR-14 seeds. Plan says: 25 rows with the same `crea
+          +ted_at`. Code shows: with the                                 
+      318 +  default `uuidv7()` ids, insertion order equals id order, so 
+          +`CREATED_AT_ASC` passed with the                              
+      319 +  `id` tiebreak removed. Consequence: the TR-14 rows get rando
+          +m v4 ids; both directions now                                 
+      320 +  fail without the tiebreak (checked by removing it).         
+      321 +- Phase 1, TR-13. Added an integration case for a literal `\` 
+          +in the city filter, next to `%`                               
+      322 +  and `_`, since `escapeLike` escapes it too.                 
+      323 +- Phase 1, web codegen. `apps/web/src/graphql/*` did not chang
+          +e: the client preset emits only                               
+      324 +  types that web documents use, and none uses the new ones yet
+          + (S-04).                                                      
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Phase 1 is built and every agent check passes. Before I commit, I need you to
+  run the human checks below.
+
+  Human checks. Run docker compose up -d postgres && pnpm db:migrate && pnpm 
+  dev, open http://localhost:4000/graphql, and create a property or two first if
+  the database is empty.
+  - [ ] Run { properties { totalCount items { id city createdAt } } }. It should
+    list newest first.
+  - [ ] Run { properties(sort: CREATED_AT_ASC) { items { id createdAt } } }. It
+    should list oldest first.
+  - [ ] Run { properties(filter: { city: "fountain" }) { totalCount items { city
+    } } }. It should return only Fountain Hills.
+  - [ ] In the docs pane, check that the descriptions of properties,
+    PropertyFilter, PropertySort and PropertyPage read well.
+  - [ ] Optional: { properties(limit: 0) { totalCount } } should return
+    BAD_USER_INPUT with fields: [{ field: "limit", ... }].
+
+  What changed
+  - apps/api/schema.graphql: adds PropertySort, PropertyFilter, PropertyPage and
+    Query.properties, with descriptions.
+  - apps/api/src/graphql/generated/resolvers-types.ts: regenerated. The web
+    codegen output didn't change.
+  - apps/api/src/domain/property.ts: adds the PropertySort, PropertyFilter,
+    PropertyListQuery and PropertyPage types.
+  - apps/api/src/graphql/properties-args.ts (new): the zod args schema. An
+    explicit null counts as "not given", blank values are dropped, filter values
+    are normalized and capped at 100 characters, limit must be 1–100 and offset
+    ≥ 0.
+  - apps/api/src/graphql/properties-args.test.ts (new): 19-case unit table.
+  - apps/api/src/repositories/property.repository.ts: escapeLike, a filter where
+    builder, and list. Rows and count() are read in one read-only,
+    repeatable-read transaction, ordered by (createdAt, id) in the same
+    direction.
+  - apps/api/src/repositories/property.repository.test.ts: escapeLike table.
+  - apps/api/src/domain/ports.ts and apps/api/src/services/property.service.ts:
+    add list, which passes straight through.
+  - apps/api/src/graphql/resolvers.ts: Query.properties.
+  - apps/api/test/fakes/property-repository.ts: list rejects as "not supported".
+  - apps/api/test/operations.ts: adds PROPERTIES.
+  - apps/api/test/integration/query-properties.int.test.ts (new): 28 tests
+    covering FR-01 AC1–AC6, FR-02 AC1–AC3 (TR-14), FR-03 AC1–AC6, TR-13 and
+    TR-04.
+  - context/roadmap.md: S-03 set to in-progress.
+  - plan.md: deviations logged.
+
+  Checks
+
+  ┌───────────────────────────┬─────────────────────────────────────────────┐
+  │           Check           │                   Result                    │
+  ├───────────────────────────┼─────────────────────────────────────────────┤
+  │ Codegen drift (checksums  │                                             │
+  │ before and after a        │ no drift                                    │
+  │ re-run)                   │                                             │
+  ├───────────────────────────┼─────────────────────────────────────────────┤
+  │ pnpm typecheck / pnpm     │ pass                                        │
+  │ lint / pnpm format:check  │                                             │
+  ├───────────────────────────┼─────────────────────────────────────────────┤
+  │ pnpm test:unit            │ 356/356 pass                                │
+  ├───────────────────────────┼─────────────────────────────────────────────┤
+  │ pnpm vitest run --project │ 113/113 pass                                │
+  │  api-int                  │                                             │
+  ├───────────────────────────┼─────────────────────────────────────────────┤
+  │ New tests fail when the   │ yes: removing escapeLike fails the TR-13    │
+  │ code is broken            │ tests, and removing the id tiebreak fails   │
+  │                           │ both TR-14 directions                       │
+  └───────────────────────────┴─────────────────────────────────────────────┘
+
+  Deviations (small, logged in plan.md)
+  - TR-14 seeds use random v4 ids. With the default uuidv7() ids, the
+    oldest-first order matches id order anyway, so that test passed even with
+    the id tiebreak removed. With random ids, both sort directions fail when the
+    tiebreak is missing.
+  - Extra TR-13 case for a literal \ in the city filter, alongside % and _.
+  - No web codegen change. The web codegen only emits types that web code uses,
+    and none uses the new ones until S-04.
+
+  Proposed commits, once you confirm the checks:
+  1. docs(roadmap): mark S-03 query-and-delete-properties in progress, with Refs
+     #5. This stages only context/roadmap.md, as S-02 did.
+  2. feat(query-and-delete-properties): list properties with sort, paging and 
+     filters, with Refs #5. This stages the 13 code files above plus plan.md and
+     plan-review.md, all by explicit path.
+
+  I'll leave plan-S-03.txt and
+  context/changes/query-and-delete-properties/plan-review-S-03.txt unstaged.
+
+  Confirm the checks and approve or edit the messages, and I'll commit. After
+  that comes Phase 2 (property details ACs and deleteProperty); a /clear first
+  is a good idea.
+
+✻ Worked for 2m 55s · done 12:32 AM
+
+❯ checks pass, commit both                                                      
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ go                                                                            
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Bash(sed -i 's/^- \[ \] Phase 1: `properties` with sort, paging and filters$/-
+      [x] Phase 1: `properties` with sort, paging and filters (2dcedf1)/'
+      context/changes/qu…)
+  ⎿  312:- [x] Phase 1: `properties` with sort, paging and filters (2dcedf1
+     )
+  ⎿  Updated context/changes/query-and-delete-properties/plan.md (+1 -1)
+      309  
+      310  ## Progress
+      311  <!-- One line per phase. /implement ticks it and appends the c
+           ommit hash. -->
+      312 -- [ ] Phase 1: `properties` with sort, paging and filters     
+      312 +- [x] Phase 1: `properties` with sort, paging and filters (2dc
+          +edf1)                                                         
+      313  - [ ] Phase 2: property details ACs and `deleteProperty`
+      314  
+      315  ## Deviations
+
+● Both commits are in, and the pre-commit hook passed on each:
+
+  - 7aea877 docs(roadmap): mark S-03 query-and-delete-properties in progress
+    (Refs #5)
+  - 2dcedf1 feat(query-and-delete-properties): list properties with sort, paging
+    and filters (Refs #5)
+
+  Phase 1 is ticked in plan.md with hash 2dcedf1. That edit is uncommitted for
+  now and will go into the Phase 2 commit. plan-S-03.txt and
+  plan-review-S-03.txt are still untracked; I didn't stage them.
+
+  Next: Phase 2 adds the property details ACs and deleteProperty. Run /clear,
+  then /implement query-and-delete-properties.
+
+✻ Sautéed for 29s · done 12:36 AM

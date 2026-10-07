@@ -1,0 +1,82 @@
+ ▐▛███▛█   Claude Code v2.1.293
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /mutation query-and-delete-properties                                         
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● I'll focus testing on properties-args.ts (query argument rules) and the new
+  list/delete logic in property.service.ts:57-66, skipping the repository,
+  resolvers/schema/generated code, and domain types/error class since those
+  aren't targets or are just wiring/constants.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Stryker ran: 46 of 48 killed, 2 survivors, no timeouts. Now I'm strengthening
+  the sort test and writing up mutation.md.
+
+● Update(apps/api/src/graphql/properties-args.test.ts)
+  ⎿  Added 2 lines, removed 5 lines
+      45      ]);
+      46    });
+      47  
+      48 -  it('FR-02 AC2: CREATED_AT_ASC is kept', () => {              
+      49 -    expect(propertiesArgsSchema.parse({ sort: 'CREATED_AT_ASC' 
+         -})).toStrictEqual({                                            
+      50 -      ...DEFAULTS,                                             
+      51 -      sort: 'CREATED_AT_ASC',                                  
+      52 -    });                                                        
+      48 +  it.each(['CREATED_AT_DESC', 'CREATED_AT_ASC'])('FR-02 AC1, AC
+         +2: sort %s is kept', (sort) => {                               
+      49 +    expect(propertiesArgsSchema.parse({ sort })).toStrictEqual(
+         +{ ...DEFAULTS, sort });                                        
+      50    });
+      51  
+      52    it('FR-03: filter values are normalized', () => {
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(context/changes/query-and-delete-properties/mutation.md)
+  ⎿  Wrote 24 lines to
+     context/changes/query-and-delete-properties/mutation.md
+       1 # Mutation check: query-and-delete-properties
+       3 Targets: `apps/api/src/graphql/properties-args.ts` (whole file),
+       4 `apps/api/src/services/property.service.ts:57-66` (`list`, `dele
+       5 `apps/api/vitest.unit.config.ts` (command runner, `--concurrency
+          4`)
+          / 0; killed / survived /
+       7 no coverage / timeout)
+       9 Per file after: `properties-args.ts` 100% (42/42, first run, bas
+         eline), `property.service.ts:57-66`
+         lessons: Stryker concurrency).
+     … +29 lines (ctrl+o to expand)
+
+● The mutation score went from 95.8% to 97.9% (47 of 48 mutants killed, none
+  timed out). properties-args.ts is now at 100%, which is its first recorded
+  baseline, against a 90% target. The new list/delete lines in
+  property.service.ts are at 83.3%.
+
+  Tests: I added one test case and changed no production code. The sort test in
+  apps/api/src/graphql/properties-args.test.ts is now an it.each over both sort
+  values. Before, a broken CREATED_AT_DESC in the args schema went unnoticed:
+  sending that sort explicitly would have been rejected as bad input, and no
+  unit test checked it. The one survivor left is the list pass-through in the
+  service, and I marked it as accepted. The integration tests already catch it,
+  but Stryker only runs the unit tests, and a unit test would just repeat what
+  the in-memory fake returns.
+
+  Bugs: none found.
+
+  The decisions are recorded in
+  context/changes/query-and-delete-properties/mutation.md. Nothing is committed
+  yet. I don't see a recurring weakness here, so I have no new lesson to
+  suggest.
+
+  Decision for you: setting the local break threshold for properties-args.ts to
+  the test plan's 85% needs your approval. Should I set it?
+
+✻ Sautéed for 2m 35s · done 12:48 AM
