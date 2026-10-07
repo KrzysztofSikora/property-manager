@@ -42,14 +42,14 @@ Status: `planned` until the owning roadmap item lands, then `covered` or `gap`.
 | TR-15 | Lookups with an unknown or malformed id cause a server error instead of `null` / `PROPERTY_NOT_FOUND` (FR-04 AC2, AC4, FR-09 AC2). Postgres rejects a non-UUID cast with an error. | M | M | I | `property(id: "not-a-uuid")` → `null` with no `errors`. `deleteProperty` with a malformed id and with an unknown UUID → `PROPERTY_NOT_FOUND`. | planned (S-03) |
 | TR-16 | Weather mapping is wrong: snake_case → camelCase key fields mismatch `raw`, `lat`/`long` swapped or left as strings, `units` missing (FR-05 AC1, B-7f – B-7h). | M | L | U + I | U: mapper from the parsed sample to the domain `WeatherData`; each key field equals its source value, `raw` deep-equals the response's `current`. I: FR-05 AC1, create then `property(id)` returns the same data. | planned (S-01) |
 | TR-17 | The adapter sends the wrong request: the query is not the full normalized address, `units` is not `f`, or the base URL is not read from config (FR-05 AC2, D-03, A-11). | M | L | U (MSW) | MSW handler records the request. Assert path `/current`, `query` = `"15528 E Golden Eagle Blvd, Fountain Hills, AZ 85268, United States"`, `units=f`, the host from `WEATHERSTACK_BASE_URL`, and `access_key` present (compared to the sentinel, never printed). | planned (S-01) |
-| TR-18 | Env config: the API starts without a key and fails at the first create, or the error message prints the value (FR-14 AC3). | M | L | U | Config schema test: missing `WEATHERSTACK_KEY` → error names the variable. With an invalid value elsewhere, the message does not contain the sentinel key. | planned (F-01) |
+| TR-18 | Env config: the API starts without a key and fails at the first create, or the error message prints the value (FR-14 AC3). | M | L | U | Config schema test: missing `WEATHERSTACK_KEY` → error names the variable. With an invalid value elsewhere, the message does not contain the sentinel key. `main.ts` started without the key (unset or `''`) exits 1 naming the variable (`apps/api/src/config/env.test.ts`, `apps/api/src/main.test.ts`). | covered (F-01) |
 | TR-19 | UI shows the wrong thing for an API error: a generic message instead of the per-code one, entered values lost, or `BAD_USER_INPUT` not attached to fields (FR-13 AC3, AC4, NFR-09). | M | M | U (web) | Testing Library + MSW GraphQL: `it.each` over the four FR-10 create codes → the specific message, inputs keep their values. `BAD_USER_INPUT` with `fields: ['zipCode','state']` → messages next to those inputs. Mapper unit table: every code in the shared error-code list has a message (fails when a code is added without one). | planned (S-05) |
 | TR-20 | UI states are missing or wrong: no loading / empty / error-with-retry, the delete dialog deletes on cancel, the list is not refreshed after delete, unknown id crashes the details page, missing optional weather fields crash it (FR-11 AC5, AC6, FR-12 AC3 – AC5). | M | M | U (web) | Testing Library + MSW per AC: delayed handler → loading; empty list → empty state with create link; network error → error state, retry re-requests. Delete: cancel sends no mutation, confirm sends it and the row disappears. Details: `null` → not-found; a snapshot without `astro` / `air_quality` renders. jsdom `<dialog>` support checked in S-04. | planned (S-04) |
 | TR-21 | Client-side validation differs from the server's (FR-13 AC1). The shared schema prevents drift, but the form may not use it. | L | M | U (web) | Form test: an empty field, a 4-digit zip and `"XX"` show field messages and MSW records no request. Rule logic is tested once, in `packages/shared`. | planned (S-05) |
-| TR-22 | Layering or type rules erode (resolver imports a repository, `any`, enum, `.js` import), which hurts the assessment (NFR-04, NFR-06). | M | M | static | ESLint + `tsc` in pre-commit and CI. F-01 acceptance includes deliberate violations that must fail. No runtime test. | planned (F-01) |
-| TR-23 | Generated GraphQL types drift from `schema.graphql`, so resolvers or the web compile against a stale contract. | M | L | static | CI runs codegen, then `git diff --exit-code` on the generated files. Then `tsc`. | planned (F-01) |
+| TR-22 | Layering or type rules erode (resolver imports a repository, `any`, enum, `.js` import), which hurts the assessment (NFR-04, NFR-06). | M | M | static | ESLint + `tsc` in pre-commit and CI. Deliberate violations must fail: `tooling/guardrails.test.ts` (`tooling` project) lints virtual files with the real ESLint config and runs `tsc` on `tooling/fixtures/`. | covered (F-01) |
+| TR-23 | Generated GraphQL types drift from `schema.graphql`, so resolvers or the web compile against a stale contract. | M | L | static | CI runs `pnpm codegen`, then `git diff --exit-code` and an empty `git status --porcelain` on the generated directories (so new untracked output also fails). Then `tsc`. | covered (F-01) |
 | TR-24 | The core journey fails in a real browser on the real stack: routing, the SPA fallback, API URL config, CORS, migrations at start-up (FR-14 AC1, success criteria 1 – 3). Unit tests can't see wiring faults. | H | L | E | One Playwright smoke: create (stub Weatherstack) → lands on details with weather + coordinates → list shows it newest first → filter by city → delete with confirm → gone. Plus one error journey: the stub returns 104 → the form shows the quota message. | planned (S-06) |
-| TR-25 | A test calls the real Weatherstack (NFR-02), spending quota and making the suite flaky. | M | L | config | API Vitest setup starts MSW with `onUnhandledRequest: 'error'`, so any unmocked outbound request fails the test. CI holds no real key, only the sentinel. E2E points `WEATHERSTACK_BASE_URL` at the stub. | planned (F-01 setup, S-01 MSW) |
+| TR-25 | A test calls the real Weatherstack (NFR-02), spending quota and making the suite flaky. | M | L | config | API Vitest setup starts MSW with `onUnhandledFrame: 'error'` (MSW 3's name), so any unmocked outbound request fails the test. CI holds no real key, only the sentinel. E2E points `WEATHERSTACK_BASE_URL` at the stub. Proven by `apps/api/src/net-guard.test.ts` and a case in `apps/api/test/integration/smoke.int.test.ts`. | covered (F-01) |
 
 ## Not tested (and why)
 
@@ -87,8 +87,8 @@ Status: `planned` until the owning roadmap item lands, then `covered` or `gap`.
 | Gate | Runs | Must pass |
 |------|------|-----------|
 | Editor hook (Claude Code `PostToolUse` on `Edit`/`Write`, `.claude/settings.json`) | Prettier `--write` and ESLint on the edited file only. Output goes back to the agent. | Advisory. Problems are fixed in the same step; nothing is blocked here. |
-| Pre-commit (`.githooks/pre-commit`, enabled by a `prepare` script that sets `core.hooksPath`; no extra dependency) | Prettier `--check` and ESLint on staged files; `pnpm typecheck`; `pnpm test:unit` (hermetic only, no Docker); secret scan of the staged diff: fails if the staged diff contains the `WEATHERSTACK_KEY` value from `.env` or an `access_key=` followed by anything other than `[REDACTED]` or the test sentinel. The scan never prints the matched value. | All green to commit. `--no-verify` is not used (implement skill). |
-| CI (GitHub Actions, on every push and pull request) | `pnpm install --frozen-lockfile`; `pnpm lint`; `pnpm typecheck`; codegen then `git diff --exit-code` on the generated files; `pnpm test` (unit + integration, Testcontainers on `ubuntu-latest`); from S-06, `pnpm e2e` against the Compose stack with the stub Weatherstack. `WEATHERSTACK_KEY` is set to the sentinel; no real key is stored in CI. | All jobs green to merge to `main`. |
+| Pre-commit (`.githooks/pre-commit`, enabled by a `prepare` script that sets `core.hooksPath`; no extra dependency) | Prettier `--check` and ESLint on staged files; `pnpm typecheck`; `pnpm test:unit` (hermetic only, no Docker); secret scan of the staged diff (`tooling/secret-scan-cli.ts`): fails if an added line contains the `WEATHERSTACK_KEY` value from `.env`, or a key-like `access_key=[A-Za-z0-9]{16,}` (so `[REDACTED]`, the sentinel and short placeholders pass). It prints only `file:line kind`, never the matched value. | All green to commit. `--no-verify` is not used (implement skill). |
+| CI (GitHub Actions `.github/workflows/ci.yml`, on pull requests and pushes to `main`) | `pnpm install --frozen-lockfile`; `pnpm lint`; `pnpm typecheck`; `pnpm format:check`; codegen then `git diff --exit-code` plus an empty `git status --porcelain` on the generated directories; `pnpm test` (unit + integration, Testcontainers on `ubuntu-latest`); from S-06, `pnpm e2e` against the Compose stack with the stub Weatherstack. `WEATHERSTACK_KEY` is set to the sentinel; no real key is stored in CI. | All jobs green to merge to `main`. |
 | Per change, local (`/mutation <id>`) | Stryker on the mutation targets that the change touches. | Every surviving mutant has a recorded decision in `context/changes/<id>/mutation.md`. After the baseline, the local `break` threshold applies (see below). |
 | Per change (`/review <id>`) | Plan-vs-diff review. Checks the AC-to-test mapping and that every risk row the item owns is `covered`. | No open `blocker`/`major` finding. A target survivor with no decision is at least `major`. |
 
@@ -97,7 +97,8 @@ and runs per change instead.
 
 ## Mutation targets
 
-Only hermetic unit tests run under Stryker (`vitest.unit.config.ts`, excludes `*.int.test.ts`).
+Only hermetic unit tests run under Stryker (`apps/api/vitest.unit.config.ts`, which excludes
+`*.int.test.ts`; `packages/shared/vitest.config.ts`).
 Code guarded only by Testcontainers tests (the repository's SQL) is not a target. A mutant run
 per container start is too slow, and the integration tests in TR-06, TR-13 and TR-14 guard it.
 
@@ -133,7 +134,7 @@ recorded baseline needs the user's approval (mutation skill).
   with explicit `createdAt` when order matters.
 - **Time.** Ordering tests set `createdAt` explicitly instead of sleeping. Tie-break tests give
   many rows the same `createdAt`.
-- **Network.** MSW `setupServer` with `onUnhandledRequest: 'error'` in the API and web Vitest
+- **Network.** MSW `setupServer` with `onUnhandledFrame: 'error'` (MSW 3's name) in the API and web Vitest
   setup. `server.resetHandlers()` after each test. Testcontainers talks to Docker over a
   socket, which MSW does not intercept.
 - **Logs.** `captureLogs()` gives a pino logger writing to an in-memory stream and returns the
@@ -148,7 +149,14 @@ recorded baseline needs the user's approval (mutation skill).
 Naming: unit tests sit next to the code as `*.test.ts(x)`. Integration tests are
 `*.int.test.ts` under `apps/api/test/integration/`. E2E specs are `e2e/*.spec.ts`. Test names
 start with the AC or risk ID they cover. Every test has at least one assertion on observable
-behaviour. Commands are confirmed in F-01 and listed in CLAUDE.md.
+behaviour. Commands are listed in CLAUDE.md.
+
+Vitest projects (root `vitest.config.ts`): `shared` (`packages/shared/vitest.config.ts`),
+`api-unit` (`apps/api/vitest.unit.config.ts`, hermetic), `api-int`
+(`apps/api/vitest.int.config.ts`, Testcontainers `globalSetup` in
+`apps/api/test/setup/postgres.ts`), `web` (`apps/web/vitest.config.ts`, jsdom) and `tooling`
+(`tooling/*.test.ts`). `pnpm test:unit` runs all but `api-int`; `pnpm test` runs all. The API
+MSW setup is `apps/api/test/setup/msw.ts`, the web one `apps/web/src/test/setup.ts`.
 
 ### Add a unit test
 
@@ -163,12 +171,14 @@ For pure logic: validation, normalization, mapping, error classification, UI com
 5. Assert the result the caller sees: the returned value, the parsed object, the thrown domain
    error's `code`. Do not assert on private helpers or call order inside the unit.
 6. Adapter tests: start from `apps/api/test/msw/weatherstack.ts` handlers. Override per test
-   with `server.use(http.get('*/current', () => HttpResponse.json(...)))`. To check the
+   with `server.use(http.get('*/current', () => HttpResponse.json(...)))` (imports from
+   `msw/http` in MSW 3). To check the
    request, read it inside the handler and assert on `url.searchParams` (compare `access_key`
    to the sentinel, never print it).
 7. Web component tests: `renderWithProviders(<Page />, { route: '/properties/new' })` from
    `apps/web/src/test/render.tsx`. GraphQL handlers come from `apps/web/src/test/msw.ts`
-   (`graphql.query('Properties', ...)`, `graphql.mutation('CreateProperty', ...)`). Query by
+   (`api = graphql.link('/graphql')` from `msw/graphql`, so tests write
+   `api.query('Properties', ...)`, `api.mutation('CreateProperty', ...)`). Query by
    role or label, act with `userEvent`, assert what is on screen and which requests MSW
    recorded.
 8. Run `pnpm test:unit`. Make the test fail once (break the code or the expectation) to see that

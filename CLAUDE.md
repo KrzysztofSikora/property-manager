@@ -68,4 +68,21 @@ Details and trade-offs: `context/tech-stack.md`.
 
 ## Commands
 
-TODO: fill in after F-01 (install, dev, test, lint, typecheck, mutation, e2e).
+Run everything with Node 24. Each agent Bash call starts a fresh shell that may be on an
+older Node, so prefix commands with `source ~/.nvm/nvm.sh && nvm use >/dev/null && ...`.
+The pre-commit hook fails with "Node 24 required" otherwise.
+
+| Task | Command |
+|------|---------|
+| Install (also sets `core.hooksPath` to `.githooks`) | `pnpm install` |
+| Database for dev | `docker compose up -d postgres` |
+| Dev servers (API `:4000/graphql`, web `:5173`) | `pnpm dev` (needs `WEATHERSTACK_KEY` in `.env`) |
+| Hermetic tests (no Docker; pre-commit runs these) | `pnpm test:unit` |
+| All tests incl. Testcontainers integration (Docker running) | `pnpm test` |
+| One Vitest project | `pnpm vitest run --project api-unit` (`shared`, `api-unit`, `api-int`, `web`, `tooling`) |
+| Lint | `pnpm lint` |
+| Typecheck | `pnpm typecheck` |
+| Format / check | `pnpm format` / `pnpm format:check` |
+| GraphQL codegen (commit the output) | `pnpm codegen` |
+| Mutation (one module, targets in `context/test-plan.md`) | `pnpm --filter @property-manager/api test:mutation --mutate src/<module>.ts` |
+| E2E | not yet (S-06) |

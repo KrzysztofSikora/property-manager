@@ -59,7 +59,7 @@ Commits reference their issue with `Refs #<n>`; the last commit of an item uses 
   - Test tooling assumed by `context/test-plan.md`: `vitest.unit.config.ts` (hermetic only) and
     an integration config (`*.int.test.ts`, Testcontainers `globalSetup`,
     `fileParallelism: false`); `test:unit`, `test` and `test:mutation` scripts; MSW setup with
-    `onUnhandledRequest: 'error'`.
+    `onUnhandledFrame: 'error'`.
   - `.githooks/pre-commit` (enabled through `core.hooksPath`) with format, lint, typecheck,
     unit tests and the staged-diff secret scan; Claude Code editor hook running Prettier +
     ESLint on the edited file.
