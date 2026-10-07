@@ -1,0 +1,4 @@
+type Query {
+  "Placeholder until S-01: returns ok when the API is up."
+  health: String!
+}

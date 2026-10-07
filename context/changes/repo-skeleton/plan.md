@@ -544,7 +544,7 @@ Library facts:
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [ ] Phase 1: Workspace, static rules and commit gate
+- [x] Phase 1: Workspace, static rules and commit gate (a25205e)
 - [ ] Phase 2: API skeleton with config, logging, Yoga and server codegen
 - [ ] Phase 3: API test harness (integration project, Testcontainers, MSW, Stryker)
 - [ ] Phase 4: Web shell
@@ -558,3 +558,17 @@ Library facts:
   (local toolchain, nothing committed).
 - Phase 1: pnpm 12 runs the root `prepare` script only when the install changes something,
   not on an up-to-date `pnpm install`. On a fresh clone it runs, so the design holds.
+- Phase 2: `contextType` is `'../context.ts#GraphQLContext'`. The top-level `importExtension`
+  does not rewrite that path (it generated `'../context'`), so the extension is spelled out.
+- Phase 2: Envelop types the execute args as `any`. `app.ts` narrows `args.document` with an
+  `isDocumentNode` guard and takes the operation name from the document via `getOperationAST`,
+  because `args.operationName` is only the request parameter (`null` for `query Health {...}`
+  sent without one). `createYoga<object, GraphQLContext>`: a `Record<string, unknown>` server
+  context does not type-check against `createSchema`.
+- Phase 2: `main.ts` wraps Yoga in `createServer((req, res) => { void yoga(req, res) })`,
+  because `no-misused-promises` rejects passing the async handler directly.
+- Phase 2: `net-guard.test.ts` also asserts the rejection's cause names `onUnhandledFrame`,
+  so an offline machine cannot pass it by accident.
+- Phase 2: pnpm resolved `@graphql-codegen/cli` 7.4.4 and `typescript-resolvers` 6.1.0 (one
+  patch behind *Findings*). `@vitest/mocker` warns about an unmet optional `msw ^2.4.9` peer
+  (browser mocking, unused).

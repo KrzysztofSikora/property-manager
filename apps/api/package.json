@@ -1,0 +1,23 @@
+{
+  "name": "@property-manager/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=../../.env src/main.ts",
+    "start": "node src/main.ts",
+    "typecheck": "tsc -p .",
+    "test:unit": "vitest run -c vitest.unit.config.ts"
+  },
+  "dependencies": {
+    "graphql": "^17.0.2",
+    "graphql-yoga": "^5.24.2",
+    "pino": "^10.4.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1",
+    "msw": "^3.0.2",
+    "vitest": "^5.0.3"
+  }
+}
