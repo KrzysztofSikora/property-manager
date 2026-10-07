@@ -446,9 +446,9 @@ is a single statement, so a failure at any step stores nothing (NFR-08).
 - To verify in Phase 4 (not blocking): how `graphql-scalars` `DateTimeResolver` typing
   interacts with codegen's `{ input, output }` scalar config under `strictTypeChecked`. The
   fallback is `DateTime: 'Date'` for both, with the serializer accepting `Date`.
-- To verify in Phase 2 (not blocking): whether MSW 3 `http.get` sees `AbortSignal.timeout`
-  aborts in Node 24 `fetch`. The timeout test itself is S-02 (FR-06 AC3). S-01 only sets the
-  signal.
+- Verified in Phase 2: MSW 3 `http.get` honours `AbortSignal.timeout` in Node 24 `fetch` (a
+  handler delayed 2 s rejects with `TimeoutError` after ~200 ms at a 200 ms timeout). The
+  timeout test itself is S-02 (FR-06 AC3). S-01 only sets the signal.
 - Real quota: the Phase 4 human check spends one Weatherstack call. No automated test calls it
   (NFR-02; `net-guard.test.ts` keeps guarding this).
 - The S-03 scope shrinks by the minimal `property(id)`. The roadmap S-01 and S-03 entries are
@@ -460,7 +460,7 @@ is a single statement, so a failure at any step stores nothing (NFR-08).
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [ ] Phase 1: Shared address schema
+- [x] Phase 1: Shared address schema (3f63dd6)
 - [ ] Phase 2: Domain and Weatherstack adapter
 - [ ] Phase 3: Repository and service
 - [ ] Phase 4: GraphQL wiring and end-to-end create
@@ -470,3 +470,9 @@ is a single statement, so a failure at any step stores nothing (NFR-08).
 - Phase 1: `pnpm install` also merged duplicate peer-variant entries in `pnpm-lock.yaml`
   (`vite`, `msw`, `vitest`, `@vitest/mocker` without the `esbuild`/`tsx` peers) into the
   variant already in use. No package version changed.
+- Phase 2: `test/msw/weatherstack.ts` also has `status(code, body?)` and `networkError()` next
+  to `ok(body?)`, all recording requests. The plan named only the success handler, but Phase 2's
+  own failure tests (500, network error) need them. S-02 adds the rest of the matrix.
+- Phase 2: `response.ts` puts `currentKeyFieldsSchema` (from `domain/weather.ts`) inside the
+  response schema instead of calling `toCurrentWeather`. Same schema, one parse, and the issue
+  paths in the error cause read `current.<field>`.
