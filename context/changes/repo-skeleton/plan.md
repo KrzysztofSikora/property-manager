@@ -548,7 +548,7 @@ Library facts:
 - [x] Phase 2: API skeleton with config, logging, Yoga and server codegen (537d8aa)
 - [x] Phase 3: API test harness (integration project, Testcontainers, MSW, Stryker) (d0abb88)
 - [x] Phase 4: Web shell (7c2a89c)
-- [ ] Phase 5: CI, env template, docs and test-plan sync
+- [x] Phase 5: CI, env template, docs and test-plan sync (d0a8fd0)
 
 ## Deviations
 - Phase 1: `tooling/secret-scan.ts` also exports `formatLeaks(leaks)`, so the "key absent
