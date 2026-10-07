@@ -56,7 +56,14 @@ Commits reference their issue with `Refs #<n>`; the last commit of an item uses 
     routes as placeholders and the typed `execute()` wrapper.
   - GraphQL Code Generator for server resolver types and web client preset.
   - Vitest in both apps; `docker-compose.yml` with `postgres` only; `.env.example`.
-  - GitHub Actions CI (lint, typecheck, test).
+  - Test tooling assumed by `context/test-plan.md`: `vitest.unit.config.ts` (hermetic only) and
+    an integration config (`*.int.test.ts`, Testcontainers `globalSetup`,
+    `fileParallelism: false`); `test:unit`, `test` and `test:mutation` scripts; MSW setup with
+    `onUnhandledRequest: 'error'`.
+  - `.githooks/pre-commit` (enabled through `core.hooksPath`) with format, lint, typecheck,
+    unit tests and the staged-diff secret scan; Claude Code editor hook running Prettier +
+    ESLint on the edited file.
+  - GitHub Actions CI (lint, typecheck, codegen drift check, test).
   - Fill the *Commands* section of CLAUDE.md.
 - Depends on: -
 - Acceptance: FR-14 AC3; NFR-04; a deliberate resolver → repository import and a `./x.js` import
@@ -74,7 +81,10 @@ Commits reference their issue with `Refs #<n>`; the last commit of an item uses 
   `{ units, current }`, `created_at timestamptz`), unique index on
   `lower(street) + lower(city) + state + zip`, drizzle-kit migration and a migrate command;
   Testcontainers PostgreSQL harness for integration tests; `packages/shared` with the 50 states
-  + DC table (code → name) and the error-code list.
+  + DC table (code → name) and the error-code list; test helpers from the test-plan Cookbook
+  (`createTestApp`, `resetDb`, `seedProperty`, `FakeWeatherClient` incl. `withBarrier`,
+  `weatherstackResponse` / `weatherstackError` fixtures, `captureLogs`, `expectNoSecret`);
+  update the test-plan Cookbook if names change.
 - Depends on: F-01
 - Acceptance: migration applies to an empty Testcontainers database; inserting two rows whose
   addresses differ only in case/whitespace (already normalized) violates the unique index; a row
