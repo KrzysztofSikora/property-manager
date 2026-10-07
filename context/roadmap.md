@@ -7,16 +7,16 @@ export) proportionate to a small app.
 
 ## Overview
 
-| ID | change-id | Type | Covers | Depends on | Size | Status |
-|----|-----------|------|--------|------------|------|--------|
-| F-01 | repo-skeleton | foundation | FR-14 AC3, NFR-04, NFR-06 | - | M | todo |
-| F-02 | property-schema | foundation | (FR-08 AC2, NFR-08 groundwork) | F-01 | S | todo |
-| S-01 | create-property-with-weather | slice | FR-05 (AC1–AC3, AC6), FR-07, FR-10 | F-02 | M | todo |
-| S-02 | create-property-guards | slice | FR-05 (AC4, AC5), FR-06, FR-08, FR-10 | S-01 | M | todo |
-| S-03 | query-and-delete-properties | slice | FR-01, FR-02, FR-03, FR-04, FR-09, FR-10 | S-01 | M | todo |
-| S-04 | list-and-details-pages | slice | FR-11 (Must ACs), FR-12 (AC1–AC5) | S-03 | M | todo |
-| S-05 | create-property-page | slice | FR-13 | S-02, S-04 | M | todo |
-| S-06 | run-and-document | slice | FR-14 (AC1, AC2), FR-15 | S-05 | M | todo |
+| ID | Issue | change-id | Type | Covers | Depends on | Size | Status |
+|----|-------|-----------|------|--------|------------|------|--------|
+| F-01 | #1 | repo-skeleton | foundation | FR-14 AC3, NFR-04, NFR-06 | - | M | todo |
+| F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08 groundwork) | F-01 | S | todo |
+| S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1–AC3, AC6), FR-07, FR-10 | F-02 | M | todo |
+| S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5), FR-06, FR-08, FR-10 | S-01 | M | todo |
+| S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-02, FR-03, FR-04, FR-09, FR-10 | S-01 | M | todo |
+| S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs), FR-12 (AC1–AC5) | S-03 | M | todo |
+| S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04 | M | todo |
+| S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-15 | S-05 | M | todo |
 
 Order follows risk: tooling and schema first, then the Weatherstack integration (the only
 third-party unknown, R-01 – R-05) and the concurrency-sensitive duplicate rule, then the
@@ -37,6 +37,7 @@ job. Stryker is not in CI; it runs per change on test-plan targets.
 **AI sessions (FR-15).** Delivered incrementally: every skill run is exported to `ai-sessions/`
 as `NN-<change-id>-<step>.txt` (running number `NN`, as already used for `00`–`06`). S-06 checks
 that every item has its exports and links them from the README.
+Commits reference their issue with `Refs #<n>`; the last commit of an item uses `Closes #<n>`.
 
 ## Items
 
@@ -198,18 +199,18 @@ that every item has its exports and links them from the README.
 
 Should items from the PRD, picked up only after S-06 is `done`:
 
-- FR-11 AC3a: list filters reflected in the URL query string (`useSearchParams`, zod-parsed),
+- #9 FR-11 AC3a: list filters reflected in the URL query string (`useSearchParams`, zod-parsed),
   so a reload keeps them.
-- FR-11 AC4: UI pagination (20 per page, page indicator and total) using the API's
+- #10 FR-11 AC4: UI pagination (20 per page, page indicator and total) using the API's
   `limit`/`offset`.
-- FR-12 AC6: details page shows observation time, pressure, precipitation, cloud cover, UV
+- #11 FR-12 AC6: details page shows observation time, pressure, precipitation, cloud cover, UV
   index, visibility, and `astro` / `airQuality` when present.
-- Data model: typed non-key `CurrentWeather` fields, including the `astro` and `airQuality`
+- #12 Data model: typed non-key `CurrentWeather` fields, including the `astro` and `airQuality`
   objects (until then they are available only in `current.raw`).
 
 Could:
 
-- FR-16 Demo seed data (Q-04): a documented, never-automatic seed command that creates a few
+- #13 FR-16 Demo seed data (Q-04): a documented, never-automatic seed command that creates a few
   real Zillow addresses through `createProperty`. Uses real quota (R-01).
 
 ## Open roadmap questions

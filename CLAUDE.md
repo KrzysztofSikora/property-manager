@@ -40,6 +40,8 @@ silently pick one.
 - **TypeScript strict, no `any`.** Use `unknown` plus narrowing or zod parsing instead.
 - Check library APIs against current docs (context7 MCP), not memory.
 - One Conventional Commit per implemented phase.
+- Commits reference their GitHub issue with `Refs #<n>`; the last commit of a roadmap item
+  uses `Closes #<n>`. Issue numbers are in the `context/roadmap.md` Overview table.
 
 ## Mutation testing
 
