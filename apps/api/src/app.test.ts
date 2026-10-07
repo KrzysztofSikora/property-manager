@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { InMemoryPropertyRepository } from '../test/fakes/property-repository.ts';
+import { FakeWeatherClient } from '../test/fakes/weather.ts';
 import { createApp } from './app.ts';
 import { loadConfig } from './config/env.ts';
 import { createLogger } from './logger.ts';
@@ -13,7 +15,12 @@ function setup() {
     },
   });
   const config = loadConfig({ WEATHERSTACK_KEY: 'TEST_WEATHERSTACK_KEY' });
-  const { yoga } = createApp({ config, logger });
+  const { yoga } = createApp({
+    config,
+    logger,
+    repository: new InMemoryPropertyRepository(),
+    weather: new FakeWeatherClient(),
+  });
   const operationLines = () =>
     lines.filter(
       (line): line is { msg: string; requestId: unknown } =>

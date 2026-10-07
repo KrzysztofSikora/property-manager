@@ -17,6 +17,7 @@
     "@property-manager/shared": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "graphql": "^17.0.2",
+    "graphql-scalars": "^2.0.0",
     "graphql-yoga": "^5.24.2",
     "pg": "^8.23.1",
     "pino": "^10.4.0",

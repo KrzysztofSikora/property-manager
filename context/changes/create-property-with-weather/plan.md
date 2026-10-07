@@ -462,7 +462,7 @@ is a single statement, so a failure at any step stores nothing (NFR-08).
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: Shared address schema (3f63dd6)
 - [x] Phase 2: Domain and Weatherstack adapter (a964edb)
-- [ ] Phase 3: Repository and service
+- [x] Phase 3: Repository and service (44ff45b)
 - [ ] Phase 4: GraphQL wiring and end-to-end create
 
 ## Deviations
@@ -480,3 +480,15 @@ is a single statement, so a failure at any step stores nothing (NFR-08).
   carries `StoredWeather` through `db/schema.ts`, so the planned type change happens there.
 - Phase 3: the repository's `toProperty` narrows the `text` `state` column with `isStateCode`
   and throws on a stored non-US code, with no cast. One extra integration test covers it.
+- Phase 4: `apps/api/vitest.{unit,int}.config.ts` alias `graphql` to the file Node resolves
+  (not in the file list). Under Vitest 5 our bare `graphql` import resolved to graphql 17's
+  `__dev__/index.js` (CJS conditions), while Yoga, loaded natively, got `__dev__/index.mjs`:
+  two `GraphQLError` classes, so `instanceof` in `createMaskError` failed and every error was
+  masked (a parse error even returned HTTP 500). Plain `node src/main.ts` loads one copy.
+- Phase 4: `createMaskError` walks `cause`, not `originalError`. graphql 17 sets both and marks
+  `originalError` deprecated.
+- Phase 4: the web client output did not change. The client preset emits only the types its
+  documents use, and the web app queries only `health`. A throwaway probe document confirmed the
+  new `scalars` config types `createdAt` as `string` and `raw` as `unknown` for S-04.
+- Phase 4: `test/integration/smoke.int.test.ts` is unchanged: `createTestApp()` without options
+  keeps working. The Cookbook also documents the `repository` option and the handler names.

@@ -6,14 +6,21 @@ import { createSchema, createYoga } from 'graphql-yoga';
 import type { Plugin, YogaServerInstance } from 'graphql-yoga';
 import type { Logger } from 'pino';
 import type { Config } from './config/env.ts';
+import type { PropertyRepository, WeatherClient } from './domain/ports.ts';
 import type { GraphQLContext } from './graphql/context.ts';
+import { createMaskError } from './graphql/errors.ts';
 import { resolvers } from './graphql/resolvers.ts';
+import { createPropertyService } from './services/property.service.ts';
 
 const typeDefs = readFileSync(new URL('../schema.graphql', import.meta.url), 'utf8');
 
+// Ports, not concrete adapters: `main.ts` passes the Drizzle repository and the Weatherstack
+// client, tests pass fakes.
 export type AppDeps = {
   config: Config;
   logger: Logger;
+  repository: PropertyRepository;
+  weather: WeatherClient;
 };
 
 export type App = {
@@ -73,15 +80,17 @@ function operationLogging(logger: Logger): Plugin<GraphQLContext> {
   };
 }
 
-// Composition root: S-01 wires services, repositories and adapters here.
-export function createApp({ logger }: AppDeps): App {
+// Composition root: services are built here from the ports.
+export function createApp({ logger, repository, weather }: AppDeps): App {
+  const services = { property: createPropertyService({ repository, weather }) };
   const yoga = createYoga<object, GraphQLContext>({
     schema: createSchema<GraphQLContext>({ typeDefs, resolvers }),
     context: () => {
       const requestId = randomUUID();
-      return { requestId, logger: logger.child({ requestId }) };
+      return { requestId, logger: logger.child({ requestId }), services };
     },
     plugins: [operationLogging(logger)],
+    maskedErrors: { maskError: createMaskError(logger) },
     logging: false,
   });
   return { yoga };

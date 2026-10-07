@@ -1,4 +1,57 @@
+"Any JSON value. Used for the Weatherstack `current` object as it was received."
+scalar JSON
+
+"An RFC 3339 date-time string in UTC."
+scalar DateTime
+
+enum WeatherUnits {
+  IMPERIAL
+}
+
+"Key fields of Weatherstack `current`. Every other field is in `raw`."
+type CurrentWeather {
+  temperature: Int!
+  feelsLike: Int!
+  weatherDescriptions: [String!]!
+  weatherIcons: [String!]!
+  windSpeed: Int!
+  windDir: String!
+  humidity: Int!
+  "The Weatherstack `current` object as it was received."
+  raw: JSON!
+}
+
+"The weather snapshot taken when the property was created."
+type WeatherData {
+  units: WeatherUnits!
+  current: CurrentWeather!
+}
+
+type Property {
+  id: ID!
+  street: String!
+  city: String!
+  "Two-letter US state code (50 states or DC)."
+  state: String!
+  "Five digits, kept as a string so leading zeros survive."
+  zipCode: String!
+  lat: Float!
+  long: Float!
+  weatherData: WeatherData!
+  createdAt: DateTime!
+}
+
 type Query {
-  "Placeholder until S-01: returns ok when the API is up."
+  "Returns ok when the API is up."
   health: String!
+  "The property with this id, or null when there is none or the id is not a UUID."
+  property(id: ID!): Property
+}
+
+type Mutation {
+  """
+  Validates and normalizes the address, fetches the current weather once, and stores the
+  property. Errors: BAD_USER_INPUT, WEATHER_UNAVAILABLE, INTERNAL_SERVER_ERROR.
+  """
+  createProperty(street: String!, city: String!, state: String!, zipCode: String!): Property
 }

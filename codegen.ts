@@ -11,6 +11,7 @@ const config: CodegenConfig = {
         enumsAsTypes: true,
         useTypeImports: true,
         contextType: '../context.ts#GraphQLContext',
+        scalars: { JSON: 'unknown', DateTime: { input: 'Date', output: 'Date | string' } },
       },
     },
     'apps/web/src/graphql/': {
@@ -18,6 +19,8 @@ const config: CodegenConfig = {
       documents: ['apps/web/src/**/*.{ts,tsx}', '!apps/web/src/graphql/**'],
       config: {
         documentMode: 'string',
+        // Without this the client preset types both scalars as `any`.
+        scalars: { JSON: 'unknown', DateTime: 'string' },
         enumsAsTypes: true,
         useTypeImports: true,
       },

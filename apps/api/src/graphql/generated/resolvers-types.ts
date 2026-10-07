@@ -1,7 +1,8 @@
-import type { GraphQLResolveInfo } from 'graphql';
+import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
 import type { GraphQLContext } from '../context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
+export type RequireFields<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> };
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
   ID: { input: string; output: string; }
@@ -9,13 +10,80 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
+  /** An RFC 3339 date-time string in UTC. */
+  DateTime: { input: Date; output: Date | string; }
+  /** Any JSON value. Used for the Weatherstack `current` object as it was received. */
+  JSON: { input: unknown; output: unknown; }
+};
+
+/** Key fields of Weatherstack `current`. Every other field is in `raw`. */
+export type CurrentWeather = {
+  __typename?: 'CurrentWeather';
+  feelsLike: Scalars['Int']['output'];
+  humidity: Scalars['Int']['output'];
+  /** The Weatherstack `current` object as it was received. */
+  raw: Scalars['JSON']['output'];
+  temperature: Scalars['Int']['output'];
+  weatherDescriptions: Array<Scalars['String']['output']>;
+  weatherIcons: Array<Scalars['String']['output']>;
+  windDir: Scalars['String']['output'];
+  windSpeed: Scalars['Int']['output'];
+};
+
+export type Mutation = {
+  __typename?: 'Mutation';
+  /**
+   * Validates and normalizes the address, fetches the current weather once, and stores the
+   * property. Errors: BAD_USER_INPUT, WEATHER_UNAVAILABLE, INTERNAL_SERVER_ERROR.
+   */
+  createProperty?: Maybe<Property>;
+};
+
+
+export type MutationCreatePropertyArgs = {
+  city: Scalars['String']['input'];
+  state: Scalars['String']['input'];
+  street: Scalars['String']['input'];
+  zipCode: Scalars['String']['input'];
+};
+
+export type Property = {
+  __typename?: 'Property';
+  city: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  lat: Scalars['Float']['output'];
+  long: Scalars['Float']['output'];
+  /** Two-letter US state code (50 states or DC). */
+  state: Scalars['String']['output'];
+  street: Scalars['String']['output'];
+  weatherData: WeatherData;
+  /** Five digits, kept as a string so leading zeros survive. */
+  zipCode: Scalars['String']['output'];
 };
 
 export type Query = {
   __typename?: 'Query';
-  /** Placeholder until S-01: returns ok when the API is up. */
+  /** Returns ok when the API is up. */
   health: Scalars['String']['output'];
+  /** The property with this id, or null when there is none or the id is not a UUID. */
+  property?: Maybe<Property>;
 };
+
+
+export type QueryPropertyArgs = {
+  id: Scalars['ID']['input'];
+};
+
+/** The weather snapshot taken when the property was created. */
+export type WeatherData = {
+  __typename?: 'WeatherData';
+  current: CurrentWeather;
+  units: WeatherUnits;
+};
+
+export type WeatherUnits =
+  | 'IMPERIAL';
 
 
 
@@ -91,22 +159,88 @@ export type DirectiveResolverFn<TResult = Record<PropertyKey, never>, TParent = 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
+  CurrentWeather: ResolverTypeWrapper<CurrentWeather>;
+  DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
+  Float: ResolverTypeWrapper<Scalars['Float']['output']>;
+  ID: ResolverTypeWrapper<Scalars['ID']['output']>;
+  Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
+  Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
+  Property: ResolverTypeWrapper<Property>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
+  WeatherData: ResolverTypeWrapper<WeatherData>;
+  WeatherUnits: WeatherUnits;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
   Boolean: Scalars['Boolean']['output'];
+  CurrentWeather: CurrentWeather;
+  DateTime: Scalars['DateTime']['output'];
+  Float: Scalars['Float']['output'];
+  ID: Scalars['ID']['output'];
+  Int: Scalars['Int']['output'];
+  JSON: Scalars['JSON']['output'];
+  Mutation: Record<PropertyKey, never>;
+  Property: Property;
   Query: Record<PropertyKey, never>;
   String: Scalars['String']['output'];
+  WeatherData: WeatherData;
+};
+
+export type CurrentWeatherResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['CurrentWeather'] = ResolversParentTypes['CurrentWeather']> = {
+  feelsLike?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  humidity?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  raw?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  temperature?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  weatherDescriptions?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  weatherIcons?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  windDir?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  windSpeed?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
+  name: 'DateTime';
+}
+
+export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['JSON'], any> {
+  name: 'JSON';
+}
+
+export type MutationResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
+  createProperty?: Resolver<Maybe<ResolversTypes['Property']>, ParentType, ContextType, RequireFields<MutationCreatePropertyArgs, 'city' | 'state' | 'street' | 'zipCode'>>;
+};
+
+export type PropertyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Property'] = ResolversParentTypes['Property']> = {
+  city?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  lat?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  long?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  state?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  street?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  weatherData?: Resolver<ResolversTypes['WeatherData'], ParentType, ContextType>;
+  zipCode?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   health?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  property?: Resolver<Maybe<ResolversTypes['Property']>, ParentType, ContextType, RequireFields<QueryPropertyArgs, 'id'>>;
+};
+
+export type WeatherDataResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeatherData'] = ResolversParentTypes['WeatherData']> = {
+  current?: Resolver<ResolversTypes['CurrentWeather'], ParentType, ContextType>;
+  units?: Resolver<ResolversTypes['WeatherUnits'], ParentType, ContextType>;
 };
 
 export type Resolvers<ContextType = GraphQLContext> = {
+  CurrentWeather?: CurrentWeatherResolvers<ContextType>;
+  DateTime?: GraphQLScalarType;
+  JSON?: GraphQLScalarType;
+  Mutation?: MutationResolvers<ContextType>;
+  Property?: PropertyResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
+  WeatherData?: WeatherDataResolvers<ContextType>;
 };
 
