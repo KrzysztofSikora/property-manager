@@ -10,6 +10,7 @@
     "test:unit": "vitest run -c vitest.unit.config.ts",
     "test:int": "vitest run -c vitest.int.config.ts",
     "test:mutation": "stryker run",
+    "test:mutation:properties-args": "stryker run stryker.properties-args.config.mjs --concurrency 4",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=../../.env src/db/migrate-cli.ts"
   },

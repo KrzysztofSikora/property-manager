@@ -20,5 +20,8 @@ None found. The new cases are already parametrised (`limit` bounds, blank filter
 per-field length cap).
 
 ## Gaps for the test plan
-None. `properties-args.ts` baseline is 100% (target 90%). The local `break` can be set to the
-85% from the test plan if you agree.
+None. `properties-args.ts` baseline is 100% (target 90%). Local `break` set to 85% (agreed with
+the user) in `apps/api/stryker.properties-args.config.mjs`, run with
+`pnpm --filter @property-manager/api test:mutation:properties-args`. A per-module config, because
+`thresholds.break` in `stryker.config.json` applies to every API module, and `env.ts` (84.6%) and
+`migrate-cli.ts` (76.3%) have accepted baselines below 85%.
