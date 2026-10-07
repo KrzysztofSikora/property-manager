@@ -1,0 +1,31 @@
+#!/bin/sh
+# Commit gate: format, lint, typecheck, unit tests and the secret scan.
+set -eu
+
+major=$(node -v 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/')
+if [ -z "$major" ] || [ "$major" -lt 24 ]; then
+  echo "pre-commit: Node 24 required (run \`nvm use\`)" >&2
+  exit 1
+fi
+
+# Staged files that still exist (added, copied, modified, renamed). NUL-safe via xargs -0.
+staged() {
+  git diff --cached --name-only --diff-filter=ACMR -z
+}
+
+if [ -n "$(staged | tr -d '\0')" ]; then
+  # Prettier and ESLint read the working tree, so a partially staged file would be checked
+  # in its unstaged form. Refuse instead of checking the wrong content.
+  partial=$(staged | xargs -0 git diff --name-only --)
+  if [ -n "$partial" ]; then
+    echo "pre-commit: these staged files also have unstaged changes; stage or stash them first:" >&2
+    echo "$partial" >&2
+    exit 1
+  fi
+  staged | xargs -0 pnpm exec prettier --check --ignore-unknown
+  staged | xargs -0 pnpm exec eslint --no-warn-ignored
+fi
+
+pnpm typecheck
+pnpm test:unit
+node tooling/secret-scan-cli.ts
