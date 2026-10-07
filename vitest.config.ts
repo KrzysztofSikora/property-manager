@@ -5,6 +5,7 @@ export default defineConfig({
     projects: [
       'packages/shared/vitest.config.ts',
       'apps/api/vitest.unit.config.ts',
+      'apps/api/vitest.int.config.ts',
       {
         test: {
           name: 'tooling',

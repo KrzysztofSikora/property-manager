@@ -22,7 +22,13 @@ function restrictImports(...group: string[]): Linter.RulesRecord {
 
 export default defineConfig(
   {
-    ignores: ['**/generated/**', 'apps/web/src/graphql/**', 'tooling/fixtures/**', 'reports/**'],
+    ignores: [
+      '**/generated/**',
+      'apps/web/src/graphql/**',
+      'tooling/fixtures/**',
+      'reports/**',
+      '**/.stryker-tmp/**',
+    ],
   },
   {
     files: ['**/*.{ts,tsx}'],

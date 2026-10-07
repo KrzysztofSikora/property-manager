@@ -545,7 +545,7 @@ Library facts:
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: Workspace, static rules and commit gate (a25205e)
-- [ ] Phase 2: API skeleton with config, logging, Yoga and server codegen
+- [x] Phase 2: API skeleton with config, logging, Yoga and server codegen (537d8aa)
 - [ ] Phase 3: API test harness (integration project, Testcontainers, MSW, Stryker)
 - [ ] Phase 4: Web shell
 - [ ] Phase 5: CI, env template, docs and test-plan sync
@@ -572,3 +572,18 @@ Library facts:
 - Phase 2: pnpm resolved `@graphql-codegen/cli` 7.4.4 and `typescript-resolvers` 6.1.0 (one
   patch behind *Findings*). `@vitest/mocker` warns about an unmet optional `msw ^2.4.9` peer
   (browser mocking, unused).
+- Phase 3: pnpm 12 blocked the Testcontainers install on build scripts of `ssh2`,
+  `cpu-features` and `protobufjs` (optional native speedups). `pnpm-workspace.yaml` denies
+  them in `allowBuilds` (`false`), so no third-party install script runs.
+- Phase 3: both Stryker configs list `plugins: ["@stryker-mutator/vitest-runner"]`. The default
+  `@stryker-mutator/*` glob is resolved next to `core` in pnpm's isolated store and finds no
+  runner. `packages/shared` also sets `allowEmpty: true` (it has no tests yet, like its
+  `passWithNoTests`). The API config does not, so a lost test suite still fails.
+- Phase 3: with `mutate: []` and the vitest runner's default `related` mode, a bare
+  `--dryRunOnly` on the API finds no tests and exits 1. The agent check ran as
+  `test:mutation --dryRunOnly --mutate src/config/env.ts` (15 tests, 47 mutants). A run
+  needs `--mutate` by design.
+- Phase 3: `smoke.int.test.ts` adds a TR-25 case (unmocked `fetch` rejects with an
+  `onUnhandledFrame` cause), so "MSW guards integration tests too" is proven by a test.
+  `.stryker-tmp/` is added to `.gitignore` and the ESLint ignores. `packages/shared` gets its
+  own `vitest` dev dependency for the Stryker runner.
