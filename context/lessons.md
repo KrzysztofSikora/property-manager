@@ -28,3 +28,15 @@
 - Scope: redaction and log-summary code (`adapters/weatherstack/redact.ts`, `graphql/errors.ts`,
   `db/migrate-cli.ts`, `tooling/secret-scan.ts`). Add a case where the secret sits in the
   part the filter must drop and looks like what it keeps.
+
+## A service test must be able to fail through the service, not only through a fake
+- Why: a test whose outcome depends only on the in-memory fake (or that repeats a pure-function
+  table through the service) passes whatever the service does, so it adds run time and no
+  protection. In S-02, "an address with a different %s is stored" could fail only if
+  `InMemoryPropertyRepository.existsByAddress` changed, and the case/spacing region test repeated
+  the TR-09 `regionMatchesState` table; the mutation run showed neither killed a mutant the
+  others missed.
+- Seen in: create-property-guards, review R3
+- Scope: service tests with fakes (`apps/api/src/services/*.test.ts`). Before adding a test, name
+  the service line that would make it fail. Rules owned by the repository are proved against
+  PostgreSQL (`*.int.test.ts`); pure helpers are proved by their own table.

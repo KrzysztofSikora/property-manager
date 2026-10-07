@@ -140,15 +140,6 @@ describe('PropertyService.create', () => {
     expect(repository.rows).toEqual([]);
   });
 
-  it('accepts a region that differs only in case and spacing', async () => {
-    const body = weatherstackResponse({ location: { region: '  ARIZONA ' } });
-    const { service, repository } = setup(new FakeWeatherClient(body));
-
-    const created = await service.create(address);
-
-    expect(repository.rows).toEqual([created]);
-  });
-
   it('FR-05 AC6 (service half): a failing insert propagates and nothing is stored', async () => {
     const { service, repository, weather } = setup();
     const error = new Error('insert rejected');
@@ -175,19 +166,6 @@ describe('PropertyService.create duplicates', () => {
     expect(error).toMatchObject({ code: 'PROPERTY_ALREADY_EXISTS' });
     expect(weather.calls).toEqual([]);
     expect(repository.rows).toEqual([stored]);
-  });
-
-  it.each([
-    ['street', { street: '15529 E Golden Eagle Blvd' }],
-    ['city', { city: 'Scottsdale' }],
-    ['zipCode', { zipCode: '85269' }],
-  ] as const)('an address with a different %s is stored', async (_field, override) => {
-    const { service, repository } = setup();
-    await service.create(address);
-
-    await service.create(normalizeAddress(validInput(override)));
-
-    expect(repository.rows).toHaveLength(2);
   });
 
   it('FR-08 AC2 (service half): a duplicate on insert after a clean pre-check propagates', async () => {

@@ -24,7 +24,7 @@ const ADDRESS_UNIQUE = 'properties_address_unique';
 
 // Drizzle wraps the pg error in DrizzleQueryError (`cause`); the bare error is checked too, so a
 // driver upgrade that stops wrapping still maps.
-function isAddressUniqueViolation(error: unknown): boolean {
+export function isAddressUniqueViolation(error: unknown): boolean {
   const pgError =
     error instanceof Error && !(error instanceof pg.DatabaseError) ? error.cause : error;
   return (
