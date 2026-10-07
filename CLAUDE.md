@@ -84,5 +84,7 @@ The pre-commit hook fails with "Node 24 required" otherwise.
 | Typecheck | `pnpm typecheck` |
 | Format / check | `pnpm format` / `pnpm format:check` |
 | GraphQL codegen (commit the output) | `pnpm codegen` |
+| Apply migrations to the dev DB (needs only `DATABASE_URL`) | `pnpm db:migrate` |
+| Generate a migration after changing `apps/api/src/db/schema.ts` (commit the output) | `pnpm db:generate` |
 | Mutation (one module, targets in `context/test-plan.md`) | `pnpm --filter @property-manager/<api\|web\|shared> test:mutation --mutate src/<module>.ts`; tooling: `pnpm test:mutation:tooling --mutate tooling/<file>.ts` |
 | E2E | not yet (S-06) |

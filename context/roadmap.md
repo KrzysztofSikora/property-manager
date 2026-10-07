@@ -134,7 +134,8 @@ Commits reference their issue with `Refs #<n>`; the last commit of an item uses 
 - Unknowns: OQ-04 — Weatherstack error codes and quota are UNVERIFIED; confirm against current
   Weatherstack docs while planning (see RQ-04); body shape of the HTTP 429 response; whether
   `region` for DC is "District of Columbia" (R-03); how Drizzle 0.45 surfaces the `pg` error
-  (wrapped `cause` vs. direct `code`); making the concurrent test deterministic.
+  (resolved in F-02: a `DrizzleQueryError` whose `code` is undefined, with the pg error, `code`
+  and `constraint`, on `.cause`); making the concurrent test deterministic.
 - Size: M (upper end; the plan may split it into two phases/commits)
 
 ### S-03 Query and delete properties (`query-and-delete-properties`)

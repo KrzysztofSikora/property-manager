@@ -380,7 +380,7 @@ them into exit 1. The `DrizzleQueryError.cause` finding is recorded for S-02.
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: Shared states and error codes (578325a)
-- [ ] Phase 2: Schema, migration and migrate command
+- [x] Phase 2: Schema, migration and migrate command (9759a37)
 - [ ] Phase 3: Test helpers and documentation
 
 ## Deviations
@@ -394,3 +394,15 @@ them into exit 1. The `DrizzleQueryError.cause` finding is recorded for S-02.
 - Phase 2, extra tests beyond the plan: the migrate CLI also checks that a URL or password in
   an error message is redacted (raw and percent-decoded) and that success returns 0. The
   guardrails gain `adapter → service`, since the repositories/adapters block was split.
+- Phase 3, `captureLogs`: a plain `{ write }` destination (the pattern in `app.test.ts`)
+  instead of a `Writable`, at level `trace` so leak checks see every line.
+- Phase 3, `fixtures/weatherstack.ts`: it finds `docs/samples/` by walking up to
+  `pnpm-workspace.yaml`, because Stryker runs `api-unit` from a sandbox copy of `apps/api`
+  one level deeper. It also exports `WEATHERSTACK_SAMPLE_PATH` and the `Json` types. The
+  third `weatherstackError` argument (`info`) is optional and defaults to a fixture text.
+- Phase 3, `expectNoSecret`: it serializes an `Error`'s `message`, `stack` and `cause`, which
+  `JSON.stringify` would drop.
+- Phase 3, Cookbook: besides `FakeWeatherClient`, `withBarrier` and the `weather` option,
+  `expectGraphQLError`, `test/operations.ts` and `test/msw/weatherstack.ts` are also marked
+  *(S-01)*. They did not exist either. The TR-05 / TR-06 status cells now say which half F-02
+  covers.

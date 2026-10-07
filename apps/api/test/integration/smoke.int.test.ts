@@ -1,10 +1,14 @@
 import pg from 'pg';
-import { describe, expect, inject, it } from 'vitest';
-import { createApp } from '../../src/app.ts';
-import { loadConfig } from '../../src/config/env.ts';
-import { createLogger } from '../../src/logger.ts';
+import { afterAll, describe, expect, inject, it } from 'vitest';
+import { createTestApp } from '../helpers/app.ts';
+import { countProperties, resetDb, seedProperty } from '../helpers/db.ts';
+import { expectNoSecret } from '../helpers/secrets.ts';
 
 describe('integration harness', () => {
+  const app = createTestApp();
+
+  afterAll(app.close);
+
   it('connects to the Testcontainers database', async () => {
     const client = new pg.Client({ connectionString: inject('databaseUrl') });
     await client.connect();
@@ -17,20 +21,31 @@ describe('integration harness', () => {
   });
 
   it('answers the health query in process', async () => {
-    const config = loadConfig({
-      WEATHERSTACK_KEY: 'TEST_WEATHERSTACK_KEY',
-      DATABASE_URL: inject('databaseUrl'),
-    });
-    const { yoga } = createApp({ config, logger: createLogger('silent') });
+    const result = await app.execute('{ health }');
 
-    const response = await yoga.fetch('http://localhost/graphql', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ query: '{ health }' }),
-    });
+    expect(result).toEqual({ data: { health: 'ok' } });
+    expect(app.logs()).toContainEqual(expect.objectContaining({ msg: 'graphql operation' }));
+    expectNoSecret(result, app.logs());
+  });
 
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ data: { health: 'ok' } });
+  it('seeds, counts and resets properties on the migrated database', async () => {
+    await resetDb(app.db);
+
+    const row = await seedProperty(app.db, { createdAt: new Date('2026-01-02T03:04:05Z') });
+
+    expect(row).toMatchObject({
+      street: '15528 E Golden Eagle Blvd',
+      state: 'AZ',
+      lat: 33.609,
+      long: -111.729,
+      createdAt: new Date('2026-01-02T03:04:05Z'),
+    });
+    expect(row.weatherData.units).toBe('IMPERIAL');
+    expect(row.weatherData.current).toHaveProperty('temperature', 82);
+    expect(await countProperties(app.db)).toBe(1);
+
+    await resetDb(app.db);
+    expect(await countProperties(app.db)).toBe(0);
   });
 });
 
