@@ -70,6 +70,8 @@ describe('loadConfig', () => {
     ['PORT', '0'],
     ['PORT', '65536'],
     ['PORT', '80.5'],
+    ['PORT', '8e3'],
+    ['PORT', '+80'],
     ['LOG_LEVEL', 'loud'],
     ['WEATHERSTACK_BASE_URL', 'not a url'],
     ['DATABASE_URL', 'nope'],
@@ -79,9 +81,10 @@ describe('loadConfig', () => {
     expect(message).not.toContain(KEY);
   });
 
-  it('lists every bad variable', () => {
-    const message = errorOf({ PORT: 'abc' }).message;
-    expect(message).toContain('WEATHERSTACK_KEY');
-    expect(message).toContain('PORT');
+  it('lists every bad variable, one per line', () => {
+    expect(errorOf({ PORT: 'abc' }).message.split('\n')).toEqual([
+      'Missing required environment variable: WEATHERSTACK_KEY',
+      'Invalid environment variable: PORT (expected an integer from 1 to 65535)',
+    ]);
   });
 });

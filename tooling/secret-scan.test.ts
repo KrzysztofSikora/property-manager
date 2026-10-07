@@ -36,18 +36,47 @@ describe('findSecretLeaks', () => {
     ]);
   });
 
-  it('ignores removed and context lines', () => {
+  it('ignores removed and context lines, counting only new-file lines', () => {
     const input = [
       'diff --git a/a.ts b/a.ts',
       '--- a/a.ts',
       '+++ b/a.ts',
-      '@@ -1,2 +1,1 @@',
+      '@@ -1,3 +1,3 @@',
       `-${KEY}`,
       ` ${ACCESS}${'c'.repeat(32)}`,
-      '+clean',
+      `+${KEY}`,
     ].join('\n');
 
-    expect(findSecretLeaks(input, KEY)).toEqual([]);
+    expect(findSecretLeaks(input, KEY)).toEqual([{ file: 'a.ts', line: 2, kind: 'key' }]);
+  });
+
+  it.each([
+    ['omitted counts', '@@ -3 +7 @@'],
+    ['multi-digit counts', '@@ -3,12 +7,15 @@'],
+    ['an empty old range', '@@ -3,0 +7 @@'],
+  ])('reads the new start line from a hunk header with %s', (_name, header) => {
+    const input = ['diff --git a/a.ts b/a.ts', '--- a/a.ts', '+++ b/a.ts', header, `+${KEY}`].join(
+      '\n',
+    );
+
+    expect(findSecretLeaks(input, KEY)).toEqual([{ file: 'a.ts', line: 7, kind: 'key' }]);
+  });
+
+  it('scans an added line that contains hunk-header text', () => {
+    const leaks = findSecretLeaks(
+      diff('a.md', `+see @@ -1 +9 @@ ${ACCESS}${'g'.repeat(16)}`),
+      undefined,
+    );
+
+    expect(leaks).toEqual([{ file: 'a.md', line: 1, kind: 'access_key' }]);
+  });
+
+  it('reads the file name from a header without the b/ prefix (diff.noprefix)', () => {
+    const input = ['diff --git a.ts a.ts', '--- a.ts', '+++ a.ts', '@@ -0,0 +1 @@', `+${KEY}`].join(
+      '\n',
+    );
+
+    expect(findSecretLeaks(input, KEY)).toEqual([{ file: 'a.ts', line: 1, kind: 'key' }]);
   });
 
   it('does not treat the +++ header as an added line', () => {
@@ -79,9 +108,18 @@ describe('findSecretLeaks', () => {
     expect(leaks.length > 0).toBe(flagged);
   });
 
-  it('ignores the literal-key check for an unset or short key', () => {
-    expect(findSecretLeaks(diff('a.ts', '+short'), 'short')).toEqual([]);
-    expect(findSecretLeaks(diff('a.ts', '+short'), '')).toEqual([]);
+  it('checks a literal key of exactly 8 characters', () => {
+    expect(findSecretLeaks(diff('a.ts', '+x = 12345678'), '12345678')).toEqual([
+      { file: 'a.ts', line: 1, kind: 'key' },
+    ]);
+  });
+
+  it.each([
+    ['unset', undefined],
+    ['short', 'short'],
+    ['empty', ''],
+  ])('ignores the literal-key check for an %s key', (_name, key) => {
+    expect(findSecretLeaks(diff('a.ts', '+short', '+let x = undefined;'), key)).toEqual([]);
   });
 });
 
