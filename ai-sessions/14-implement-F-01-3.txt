@@ -1,0 +1,601 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement repo-sceleton                                                      
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Phase 3 is next. Let me read the full plan sections relevant to it, plus the
+  review.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● I'll start Phase 3 by building the Testcontainers-based API integration test
+  harness, plus MSW, Stryker configs, and the compose postgres service. First
+  I'll check the current library docs before implementing.
+
+  Called context7 4 times (ctrl+o to expand)
+
+● Docs checked (Testcontainers globalSetup pattern, Stryker vitest runner
+  options). Next I'm installing the Phase 3 dependencies, then I'll write the
+  harness files.
+
+● Bash(pnpm --filter @property-manager/api add pg && pnpm --filter
+      @property-manager/api add -D @types/pg @testcontainers/postgresql
+      @stryker-mutator/core @stryker-mut…)
+  ⎿  ✓ Lockfile passes supply-chain policies (verified 11m ago)
+     [WARN] 1 deprecated subdependencies found: node-domexception@1.0.0
+     Packages: +13
+     … +59 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/package.json (+5 -0)
+      12    "dependencies": {
+      13      "graphql": "^17.0.2",
+      14      "graphql-yoga": "^5.24.2",
+      15 +    "pg": "^8.23.1",                                           
+      16      "pino": "^10.4.0",
+      17      "zod": "^4.6.5"
+      18    },
+      19    "devDependencies": {
+      20 +    "@stryker-mutator/core": "^10.0.0",                        
+      21 +    "@stryker-mutator/vitest-runner": "^10.0.0",               
+      22 +    "@testcontainers/postgresql": "^12.2.0",                   
+      23      "@types/node": "^24.19.1",
+      24 +    "@types/pg": "^8.23.1",                                    
+      25      "msw": "^3.0.2",
+      26      "vitest": "^5.0.3"
+      27    }
+  ⎿  … 1 more file changed
+  ⎿  (timeout 5m)
+
+● Install paused at pnpm's build-script gate for testcontainers' transitive deps
+  (ssh2, cpu-features, protobufjs). Since these are just optional native
+  speedups, I'll deny their build scripts explicitly in the workspace config
+  rather than allowing arbitrary scripts to run.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(pnpm approve-builds '!cpu-features' '!protobufjs' '!ssh2' 2>&1 | tail -5;
+      cat pnpm-workspace.yaml; pnpm --filter @property-manager/shared add -D
+      @stryker-mutato…)
+  ⎿  packages:
+       - apps/*
+       - packages/*
+     … +22 lines (ctrl+o to expand)
+  ⎿  Updated pnpm-workspace.yaml (+5 -0)
+       2    - apps/*
+       3    - packages/*
+       4  
+       5 +allowBuilds:                                                   
+       6 +  cpu-features: false                                          
+       7 +  protobufjs: false                                            
+       8 +  ssh2: false                                                  
+       9 +                                                               
+      10  engineStrict: true
+  ⎿  Updated pnpm-lock.yaml (+11 -1)
+      243          specifier: ^5.0.3
+      244          version: 5.0.3(@types/node@24.19.1)(msw@3.0.2(@types/n
+           ode@24.19.1)(graphql@17.0.2)(typescript@6.0.3)(vite@8.3.3(@typ
+           es/node@24.19.1)(jiti@2.7.0)(yaml@2.9.1)))(vite@8.3.3(@types/n
+           ode@24.19.1)(jiti@2.7.0)(yaml@2.9.1))
+      245  
+      246 -  packages/shared: {}                                         
+      246 +  packages/shared:                                            
+      247 +    devDependencies:                                          
+      248 +      '@stryker-mutator/core':                                
+      249 +        specifier: ^10.0.0                                    
+      250 +        version: 10.0.0(@types/node@24.19.1)                  
+      251 +      '@stryker-mutator/vitest-runner':                       
+      252 +        specifier: ^10.0.0                                    
+      253 +        version: 10.0.0(@stryker-mutator/core@10.0.0(@types/no
+          +de@24.19.1))(vitest@5.0.3(@types/node@24.19.1)(msw@3.0.2(@type
+          +s/node@24.19.1)(graphql@17.0.2)(typescript@6.0.3)(vite@8.3.3(@
+          +types/node@24.19.1)(jiti@2.7.0)(yaml@2.9.1)))(vite@8.3.3(@type
+          +s/node@24.19.1)(jiti@2.7.0)(yaml@2.9.1)))                     
+      254 +      vitest:                                                 
+      255 +        specifier: ^5.0.3                                     
+      256 +        version: 5.0.3(@types/node@24.19.1)(msw@3.0.2(@types/n
+          +ode@24.19.1)(graphql@17.0.2)(typescript@6.0.3)(vite@8.3.3(@typ
+          +es/node@24.19.1)(jiti@2.7.0)(yaml@2.9.1)))(vite@8.3.3(@types/n
+          +ode@24.19.1)(jiti@2.7.0)(yaml@2.9.1))                         
+      257  
+      258  packages:
+      259  
+  ⎿  Updated packages/shared/package.json (+5 -0)
+       9    "scripts": {
+      10      "typecheck": "tsc -p .",
+      11      "test:unit": "vitest run"
+      12 +  },                                                           
+      13 +  "devDependencies": {                                         
+      14 +    "@stryker-mutator/core": "^10.0.0",                        
+      15 +    "@stryker-mutator/vitest-runner": "^10.0.0",               
+      16 +    "vitest": "^5.0.3"                                         
+      17    }
+      18  }
+
+● Installed. Now the harness files.
+
+● Bash(mkdir -p apps/api/test/integration && cat > apps/api/vitest.int.config.ts
+      <<'EOF'
+      import { defineConfig } from 'vitest/config';…)
+  ⎿  import { describe, expect, it } from 'vitest';
+     import { createApp } from './app.ts';
+     import { loadConfig } from './config/env.ts';
+     … +41 lines (ctrl+o to expand)
+  ⎿  Created apps/api/vitest.int.config.ts (+15 -0)
+       1 +import { defineConfig } from 'vitest/config';                  
+       2 +                                                               
+       3 +export default defineConfig({                                  
+       4 +  test: {                                                      
+       5 +    name: 'api-int',                                           
+       6 +    root: import.meta.dirname,                                 
+       7 +    include: ['test/integration/**/*.int.test.ts'],            
+       8 +    globalSetup: ['test/setup/postgres.ts'],                   
+       9 +    setupFiles: ['test/setup/msw.ts'],                         
+      10 +    // One shared database: integration files must not run conc
+         +urrently.                                                      
+      11 +    fileParallelism: false,                                    
+      12 +    // The first run pulls the postgres image.                 
+      13 +    hookTimeout: 120_000,                                      
+      14 +  },                                                           
+      15 +});                                                            
+  ⎿  Created apps/api/test/setup/postgres.ts (+22 -0)
+       1 +import {                                                       
+       2 +  PostgreSqlContainer,                                         
+       3 +  type StartedPostgreSqlContainer,                             
+       4 +} from '@testcontainers/postgresql';                           
+       5 +import type { TestProject } from 'vitest/node';                
+       6 +                                                               
+       7 +declare module 'vitest' {                                      
+       8 +  export interface ProvidedContext {                           
+       9 +    databaseUrl: string;                                       
+      10 +  }                                                            
+      11 +}                                                              
+      12 +                                                               
+      13 +let container: StartedPostgreSqlContainer | undefined;         
+      14 +                                                               
+      15 +export async function setup(project: TestProject): Promise<void
+         +> {                                                            
+      16 +  container = await new PostgreSqlContainer('postgres:18-alpine
+         +').start();                                                    
+      17 +  project.provide('databaseUrl', container.getConnectionUri());
+      18 +}                                                              
+      19 +                                                               
+      20 +export async function teardown(): Promise<void> {              
+      21 +  await container?.stop();                                     
+      22 +}                                                              
+  ⎿  Created apps/api/test/integration/smoke.int.test.ts (+35 -0)
+       1 +import pg from 'pg';                                           
+       2 +import { describe, expect, inject, it } from 'vitest';         
+       3 +import { createApp } from '../../src/app.ts';                  
+       4 +import { loadConfig } from '../../src/config/env.ts';          
+       5 +import { createLogger } from '../../src/logger.ts';            
+       6 +                                                               
+       7 +describe('integration harness', () => {                        
+       8 +  it('connects to the Testcontainers database', async () => {  
+       9 +    const client = new pg.Client({ connectionString: inject('da
+         +tabaseUrl') });                                                
+      10 +    await client.connect();                                    
+      11 +    try {                                                      
+      12 +      const result = await client.query<{ one: number }>('selec
+         +t 1 as one');                                                  
+      13 +      expect(result.rows).toEqual([{ one: 1 }]);               
+      14 +    } finally {                                                
+      15 +      await client.end();                                      
+      16 +    }                                                          
+      17 +  });                                                          
+      18 +                                                               
+      19 +  it('answers the health query in process', async () => {      
+      20 +    const config = loadConfig({                                
+      21 +      WEATHERSTACK_KEY: 'TEST_WEATHERSTACK_KEY',               
+      22 +      DATABASE_URL: inject('databaseUrl'),                     
+      23 +    });                                                        
+      24 +    const { yoga } = createApp({ config, logger: createLogger('
+         +silent') });                                                   
+      25 +                                                               
+      26 +    const response = await yoga.fetch('http://localhost/graphql
+         +', {                                                           
+      27 +      method: 'POST',                                          
+      28 +      headers: { 'content-type': 'application/json' },         
+      29 +      body: JSON.stringify({ query: '{ health }' }),           
+      30 +    });                                                        
+      31 +                                                               
+      32 +    expect(response.status).toBe(200);                         
+      33 +    expect(await response.json()).toEqual({ data: { health: 'ok
+         +' } });                                                        
+      34 +  });                                                          
+      35 +});                                                            
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Bash(for d in apps/api packages/shared; do cf=vitest.unit.config.ts; [ $d =
+      packages/shared ] && cf=vitest.config.ts; cat > $d/stryker.config.json
+      <<EOF
+      {…)
+  ⎿  25:    ignores: ['**/generated/**', 'apps/web/src/graphql/**', 'toolin
+     g/fixtures/**', 'reports/**'],
+  ⎿  Created apps/api/stryker.config.json (+12 -0)
+       1 +{                                                              
+       2 +  "$schema": "./node_modules/@stryker-mutator/core/schema/stryk
+         +er-schema.json",                                               
+       3 +  "testRunner": "vitest",                                      
+       4 +  "vitest": {                                                  
+       5 +    "configFile": "vitest.unit.config.ts"                      
+       6 +  },                                                           
+       7 +  "mutate": [],                                                
+       8 +  "thresholds": { "high": 80, "low": 60, "break": null },      
+       9 +  "reporters": ["html", "json", "clear-text"],                 
+      10 +  "htmlReporter": { "fileName": "reports/mutation/mutation.html
+         +" },                                                           
+      11 +  "jsonReporter": { "fileName": "reports/mutation/mutation.json
+         +" }                                                            
+      12 +}                                                              
+  ⎿  Created packages/shared/stryker.config.json (+12 -0)
+       1 +{                                                              
+       2 +  "$schema": "./node_modules/@stryker-mutator/core/schema/stryk
+         +er-schema.json",                                               
+       3 +  "testRunner": "vitest",                                      
+       4 +  "vitest": {                                                  
+       5 +    "configFile": "vitest.config.ts"                           
+       6 +  },                                                           
+       7 +  "mutate": [],                                                
+       8 +  "thresholds": { "high": 80, "low": 60, "break": null },      
+       9 +  "reporters": ["html", "json", "clear-text"],                 
+      10 +  "htmlReporter": { "fileName": "reports/mutation/mutation.html
+         +" },                                                           
+      11 +  "jsonReporter": { "fileName": "reports/mutation/mutation.json
+         +" }                                                            
+      12 +}                                                              
+  ⎿  Updated apps/api/package.json (+3 -1)
+       7      "dev": "node --watch --env-file-if-exists=../../.env src/ma
+          in.ts",
+       8      "start": "node src/main.ts",
+       9      "typecheck": "tsc -p .",
+      10 -    "test:unit": "vitest run -c vitest.unit.config.ts"         
+      10 +    "test:unit": "vitest run -c vitest.unit.config.ts",        
+      11 +    "test:int": "vitest run -c vitest.int.config.ts",          
+      12 +    "test:mutation": "stryker run"                             
+      13    },
+      14    "dependencies": {
+      15      "graphql": "^17.0.2",
+  ⎿  Updated packages/shared/package.json (+2 -1)
+       8    },
+       9    "scripts": {
+      10      "typecheck": "tsc -p .",
+      11 -    "test:unit": "vitest run"                                  
+      11 +    "test:unit": "vitest run",                                 
+      12 +    "test:mutation": "stryker run"                             
+      13    },
+      14    "devDependencies": {
+      15      "@stryker-mutator/core": "^10.0.0",
+  ⎿  Created docker-compose.yml (+20 -0)
+       1 +services:                                                      
+       2 +  postgres:                                                    
+       3 +    image: postgres:18-alpine                                  
+       4 +    environment:                                               
+       5 +      POSTGRES_USER: postgres                                  
+       6 +      POSTGRES_PASSWORD: postgres                              
+       7 +      POSTGRES_DB: property_manager                            
+       8 +    ports:                                                     
+       9 +      - '5432:5432'                                            
+      10 +    healthcheck:                                               
+      11 +      test: ['CMD-SHELL', 'pg_isready -U postgres -d property_m
+         +anager']                                                       
+      12 +      interval: 5s                                             
+      13 +      timeout: 5s                                              
+      14 +      retries: 10                                              
+      15 +    volumes:                                                   
+      16 +      # postgres 18 keeps PGDATA in a versioned subdirectory of
+         + /var/lib/postgresql.                                          
+      17 +      - postgres-data:/var/lib/postgresql                      
+      18 +                                                               
+      19 +volumes:                                                       
+      20 +  postgres-data:                                               
+  ⎿  … 2 more files changed
+
+● Bash(sed -i "25s#'reports/\*\*'\]#'reports/**', '**/.stryker-tmp/**']#"
+      eslint.config.ts && sed -n 25p eslint.config.ts && pnpm format >/dev/null
+      && git status --sho…)
+  ⎿      ignores: ['**/generated/**', 'apps/web/src/graphql/**', 'tooling/f
+     ixtures/**', 'reports/**', '**/.stryker-tmp/**'],
+     $ prettier --write .
+     … +25 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/setup/postgres.ts (+1 -4)
+      1 -import {                                                        
+      2 -  PostgreSqlContainer,                                          
+      3 -  type StartedPostgreSqlContainer,                              
+      4 -} from '@testcontainers/postgresql';                            
+      1 +import { PostgreSqlContainer, type StartedPostgreSqlContainer } 
+        +from '@testcontainers/postgresql';                              
+      2  import type { TestProject } from 'vitest/node';
+      3  
+      4  declare module 'vitest' {
+  ⎿  Updated eslint.config.ts (+7 -1)
+      22  
+      23  export default defineConfig(
+      24    {
+      25 -    ignores: ['**/generated/**', 'apps/web/src/graphql/**', 'to
+         -oling/fixtures/**', 'reports/**'],                             
+      25 +    ignores: [                                                 
+      26 +      '**/generated/**',                                       
+      27 +      'apps/web/src/graphql/**',                               
+      28 +      'tooling/fixtures/**',                                   
+      29 +      'reports/**',                                            
+      30 +      '**/.stryker-tmp/**',                                    
+      31 +    ],                                                         
+      32    },
+      33    {
+      34      files: ['**/*.{ts,tsx}'],
+  ⎿  (timeout 5m)
+
+● Lint and typecheck pass. Running the tests (Docker needed for pnpm test).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All tests pass (41 unit, 43 total), but nothing yet verifies the plan's claim
+  that MSW guards integration tests too. I'll add that check to the smoke test
+  file, mirroring the style of the unit net-guard.test.ts.
+
+  Read 1 file (ctrl+o to expand)
+
+● Bash(cat >> apps/api/test/integration/smoke.int.test.ts <<'EOF'…)
+  ⎿  Checking formatting...
+     All matched files use Prettier code style!
+     … +5 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/smoke.int.test.ts (+10 -0)
+      33      expect(await response.json()).toEqual({ data: { health: 'ok
+          ' } });
+      34    });
+      35  });
+      36 +                                                               
+      37 +it('TR-25: an unmocked outbound request fails an integration te
+         +st too', async () => {                                         
+      38 +  const error: unknown = await fetch('https://api.weatherstack.
+         +com/current').then(                                            
+      39 +    () => undefined,                                           
+      40 +    (reason: unknown) => reason,                               
+      41 +  );                                                           
+      42 +  // The cause proves MSW blocked it, not an offline network.  
+      43 +  if (!(error instanceof TypeError)) throw new Error('expected 
+         +fetch to reject with a TypeError');                            
+      44 +  expect(String(error.cause)).toContain('onUnhandledFrame');   
+      45 +});                                                            
+  ⎿  (timeout 5m)
+
+● Now the Stryker dry runs.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The cause: pnpm's isolated layout. Stryker's default @stryker-mutator/* plugin
+  glob looks next to core in the pnpm store, and vitest-runner isn't there.
+  I'll list the plugin explicitly.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The plugin loads now. Shared has no tests yet, so Stryker stops. Checking
+  whether Stryker has an option that allows an empty run:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I'll add Stryker's allowEmpty option only to the shared config, mirroring its
+  existing passWithNoTests Vitest setting, while leaving the API config strict
+  since it has tests. I'll also add the explicit plugin to both configs.
+
+● Bash(node -e '
+      const fs=require("fs");…)
+  ⎿  {
+       "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-sche
+     ma.json",
+     … +31 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/stryker.config.json (+12 -3)
+       1  {
+       2    "$schema": "./node_modules/@stryker-mutator/core/schema/stryk
+          er-schema.json",
+       3    "testRunner": "vitest",
+       4 +  "plugins": ["@stryker-mutator/vitest-runner"],               
+       5    "vitest": {
+       6      "configFile": "vitest.unit.config.ts"
+       7    },
+       8    "mutate": [],
+       8 -  "thresholds": { "high": 80, "low": 60, "break": null },      
+       9 +  "thresholds": {                                              
+      10 +    "high": 80,                                                
+      11 +    "low": 60,                                                 
+      12 +    "break": null                                              
+      13 +  },                                                           
+      14    "reporters": ["html", "json", "clear-text"],
+      10 -  "htmlReporter": { "fileName": "reports/mutation/mutation.html
+         -" },                                                           
+      11 -  "jsonReporter": { "fileName": "reports/mutation/mutation.json
+         -" }                                                            
+      15 +  "htmlReporter": {                                            
+      16 +    "fileName": "reports/mutation/mutation.html"               
+      17 +  },                                                           
+      18 +  "jsonReporter": {                                            
+      19 +    "fileName": "reports/mutation/mutation.json"               
+      20 +  }                                                            
+      21  }
+  ⎿  Updated packages/shared/stryker.config.json (+13 -3)
+       1  {
+       2    "$schema": "./node_modules/@stryker-mutator/core/schema/stryk
+          er-schema.json",
+       3    "testRunner": "vitest",
+       4 +  "plugins": ["@stryker-mutator/vitest-runner"],               
+       5    "vitest": {
+       6      "configFile": "vitest.config.ts"
+       7    },
+       8    "mutate": [],
+       8 -  "thresholds": { "high": 80, "low": 60, "break": null },      
+       9 +  "thresholds": {                                              
+      10 +    "high": 80,                                                
+      11 +    "low": 60,                                                 
+      12 +    "break": null                                              
+      13 +  },                                                           
+      14    "reporters": ["html", "json", "clear-text"],
+      10 -  "htmlReporter": { "fileName": "reports/mutation/mutation.html
+         -" },                                                           
+      11 -  "jsonReporter": { "fileName": "reports/mutation/mutation.json
+         -" }                                                            
+      15 +  "htmlReporter": {                                            
+      16 +    "fileName": "reports/mutation/mutation.html"               
+      17 +  },                                                           
+      18 +  "jsonReporter": {                                            
+      19 +    "fileName": "reports/mutation/mutation.json"               
+      20 +  },                                                           
+      21 +  "allowEmpty": true                                           
+      22  }
+  ⎿  (timeout 10m)
+● The dry run returns no tests—likely because vitest's default "related" mode
+  only runs tests tied to mutated files, which mutate: [] leaves empty. I'll
+  verify this by pointing it at a real target.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Confirmed that targeted dry runs work fine (15 tests, 47 mutants) while
+  untargeted runs find nothing by design, matching the "a run requires --mutate"
+  rule. I'll clean up leftover temp dirs and run the full check set with a
+  target specified.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All green. Root test:unit doesn't touch Docker (still 6 files, about 1.3 s),
+  so the API int project's globalSetup only runs under pnpm test. Quick compose
+  validation:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now I'll log the deviations in the plan.
+
+● Bash(cat >> context/changes/repo-skeleton/plan.md <<'EOF'
+      - Phase 3: pnpm 12 blocked the Testcontainers install on build scripts of
+      `ssh2`,…)
+  ⎿   .gitignore                            |    3 +
+      apps/api/package.json                 |    9 +-
+      context/changes/repo-skeleton/plan.md |   17 +-
+     … +24 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/repo-skeleton/plan.md (+15 -0)
+      572  - Phase 2: pnpm resolved `@graphql-codegen/cli` 7.4.4 and `typ
+           escript-resolvers` 6.1.0 (one
+      573    patch behind *Findings*). `@vitest/mocker` warns about an un
+           met optional `msw ^2.4.9` peer
+      574    (browser mocking, unused).
+      575 +- Phase 3: pnpm 12 blocked the Testcontainers install on build
+          + scripts of `ssh2`,                                           
+      576 +  `cpu-features` and `protobufjs` (optional native speedups). 
+          +`pnpm-workspace.yaml` denies                                  
+      577 +  them in `allowBuilds` (`false`), so no third-party install s
+          +cript runs.                                                   
+      578 +- Phase 3: both Stryker configs list `plugins: ["@stryker-muta
+          +tor/vitest-runner"]`. The default                             
+      579 +  `@stryker-mutator/*` glob is resolved next to `core` in pnpm
+          +'s isolated store and finds no                                
+      580 +  runner. `packages/shared` also sets `allowEmpty: true` (it h
+          +as no tests yet, like its                                     
+      581 +  `passWithNoTests`). The API config does not, so a lost test 
+          +suite still fails.                                            
+      582 +- Phase 3: with `mutate: []` and the vitest runner's default `
+          +related` mode, a bare                                         
+      583 +  `--dryRunOnly` on the API finds no tests and exits 1. The ag
+          +ent check ran as                                              
+      584 +  `test:mutation --dryRunOnly --mutate src/config/env.ts` (15 
+          +tests, 47 mutants). A run                                     
+      585 +  needs `--mutate` by design.                                 
+      586 +- Phase 3: `smoke.int.test.ts` adds a TR-25 case (unmocked `fe
+          +tch` rejects with an                                          
+      587 +  `onUnhandledFrame` cause), so "MSW guards integration tests 
+          +too" is proven by a test.                                     
+      588 +  `.stryker-tmp/` is added to `.gitignore` and the ESLint igno
+          +res. `packages/shared` gets its                               
+      589 +  own `vitest` dev dependency for the Stryker runner.         
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Phase 3 is built and every agent check passes. Your manual check and an OK on
+  the commit are still needed.
+
+  What changed
+  - apps/api/vitest.int.config.ts (new): the api-int project. It starts Postgres
+    before the tests, runs the integration test files one at a time, and allows
+    120 s for the first image pull.
+  - apps/api/test/setup/postgres.ts (new): starts a postgres:18-alpine
+    Testcontainer, passes its URL to tests as databaseUrl, and stops it
+    afterwards.
+  - apps/api/test/integration/smoke.int.test.ts (new): runs select 1 against the
+    container, runs { health } through Yoga, and checks that an unmocked
+    outbound request fails.
+  - apps/api/stryker.config.json and packages/shared/stryker.config.json (new):
+    Stryker set up to mutate nothing unless a target is given, never fail on
+    score, and write reports to reports/mutation/.
+  - docker-compose.yml (new): a postgres service with a health check and a named
+    volume.
+  - apps/api/package.json: adds pg, @types/pg, @testcontainers/postgresql and
+    Stryker, plus test:int and test:mutation scripts.
+  - packages/shared/package.json: adds Stryker and its own vitest, plus a
+    test:mutation script.
+  - vitest.config.ts: adds the api-int project. Root test:unit still leaves it
+    out.
+  - pnpm-workspace.yaml: blocks the install scripts of three optional native
+    packages (ssh2, cpu-features, protobufjs).
+  - .gitignore and eslint.config.ts: ignore Stryker's .stryker-tmp/ folder.
+  - pnpm-lock.yaml: updated by the installs.
+  - context/changes/repo-skeleton/plan.md: the Phase 2 hash tick and the Phase 3
+    deviations.
+
+  Checks
+
+  ┌──────────────────────────────┬──────────────────────────────────────────┐
+  │            Check             │                  Result                  │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm lint / pnpm typecheck / │ ✅                                       │
+  │  pnpm format:check           │                                          │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm test:unit (no Docker)   │ ✅ 6 files, 41 tests                     │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm test (Testcontainers)   │ ✅ 7 files, 44 tests                     │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ test:mutation --dryRunOnly   │ ✅                                       │
+  │ for shared                   │                                          │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ test:mutation --dryRunOnly   │ ✅ only with --mutate src/config/env.ts  │
+  │ for API                      │ (15 tests, 47 mutants); see below        │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ docker compose config        │ ✅                                       │
+  └──────────────────────────────┴──────────────────────────────────────────┘
+
+  Deviations (logged in plan.md)
+  - Blocked install scripts: pnpm 12 stopped the Testcontainers install because
+    three dependencies have install scripts. They are optional native speedups,
+    so I blocked them in pnpm-workspace.yaml rather than letting them run.
+  - Stryker plugin: both configs name the vitest runner plugin explicitly.
+    pnpm's package layout stops Stryker from finding it on its own.
+  - API dry run needs a target: the plan's bare --dryRunOnly check exits 1 for
+    the API. With nothing to mutate (as designed), Stryker runs only tests
+    related to the mutated files, so it finds none. I ran the check with
+    --mutate src/config/env.ts instead.
+  - Empty shared package: shared's Stryker config sets allowEmpty: true because
+    it has no tests yet. The API config doesn't, so it still fails if its tests
+    go missing.
+  - Extra test: the smoke test has an unmocked-request case. Without it, nothing
+    tested the plan's claim that MSW blocks real requests in integration tests.
+
+  Your check
+  - [ ] docker compose up -d postgres, then docker compose ps should show
+    postgres as healthy after a few seconds. Then run docker compose down. If
+    something else already uses port 5432 locally, startup will fail on the
+    port.
+
+  Proposed commit (after you confirm). I'll stage only the files listed above by
+  path. The four *.txt session exports stay untracked.
+  test(repo-skeleton): add integration harness with Testcontainers, MSW guard 
+  and Stryker configs
+
+  Refs #1
+
+  Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+  Next comes Phase 4 (web shell); running /clear first is a good idea.
+
+✻ Cooked for 3m 34s · done 5:06 PM

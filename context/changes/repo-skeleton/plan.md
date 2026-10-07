@@ -547,7 +547,7 @@ Library facts:
 - [x] Phase 1: Workspace, static rules and commit gate (a25205e)
 - [x] Phase 2: API skeleton with config, logging, Yoga and server codegen (537d8aa)
 - [x] Phase 3: API test harness (integration project, Testcontainers, MSW, Stryker) (d0abb88)
-- [ ] Phase 4: Web shell
+- [x] Phase 4: Web shell (7c2a89c)
 - [ ] Phase 5: CI, env template, docs and test-plan sync
 
 ## Deviations

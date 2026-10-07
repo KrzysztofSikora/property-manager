@@ -1,0 +1,1237 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan F-01                                                                    
+
+  Read 2 files, listed 2 directories, ran 2 shell commands (ctrl+o to expand)
+
+● I've read the roadmap, tech stack, test plan and PRD for F-01. Next I'm
+  checking the local toolchain and confirming library APIs against current docs.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Now the library docs checks (Vitest 5 projects/globalSetup, codegen server
+  config, MSW 3 node setup).
+
+  Called context7 4 times (ctrl+o to expand)
+
+● Surprising hint: MSW main may rename onUnhandledRequest. Verifying against the
+  published 3.0.2 types.
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+● Confirmed: MSW 3.0.2 renamed onUnhandledRequest to onUnhandledFrame. The test
+  plan uses the old name, so I'll record this as a finding. Now checking which
+  env vars the PRD defines.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Research is done. Three choices remain that the artifacts don't settle:
+
+● User answered Claude's questions:
+  ⎿  · How should F-01's phase commits reach main? → Branch + PR (suggested)
+     · Does the Testcontainers harness start in F-01 or F-02? → F-01, smoke test
+     (suggested)
+     · Should the web shell call the API in F-01? → Status line in layout 
+     (suggested)
+
+● With all three options confirmed, I've outlined five build phases:
+  workspace/static rules setup, API skeleton, API test harness, web shell, and
+  CI/gates—each with its own proof criteria and human verification steps. I'll
+  proceed to implement these phases in order.
+
+● User answered Claude's questions:
+  ⎿  · Proceed with these 5 phases? → Move hooks earlier
+
+● Moving the pre-commit hook and the Claude editor hook into phase 1. One more
+  check before writing: how ESLint 10 loads a TypeScript config file.
+
+  Called context7 (ctrl+o to expand)
+
+● Writing the plan now.
+
+● Write(context/changes/repo-skeleton/plan.md)
+  ⎿  Wrote 479 lines to context/changes/repo-skeleton/plan.md
+       1 # Plan: repo-skeleton (F-01)
+       3 ## Goal and end state
+       4 
+       5 A pnpm workspace (`apps/api`, `apps/web`, `packages/shared`) whe
+       6 `pnpm typecheck`, `pnpm test:unit`, `pnpm test`, `pnpm codegen` 
+         and `pnpm dev` work on an empty
+         ng, and an automated test proves
+       8 that a violation fails. When F-01 is done:
+       9 
+         with code 1 and a message that
+     … +720 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I've written the F-01 plan to context/changes/repo-skeleton/plan.md and set
+  F-01's status in context/roadmap.md to planned. Nothing is committed yet.
+
+  Phases (work happens on branch feat/repo-skeleton and goes to main through one
+  PR, merged without squashing):
+  1. Workspace and commit gate: the pnpm workspace, TypeScript 6 configs, ESLint
+     with the layer rules, and Prettier. The pre-commit hook (including the
+     secret scan) and the Claude editor hook also come in here, so every later
+     commit is checked. A tooling/guardrails.test.ts suite proves that an enum,
+     a parameter property, a value-import of a type, any, a ./x.js import and a
+     resolver → repository import each fail.
+  2. API skeleton: zod-validated env config, which covers FR-14 AC3. A test
+     starts main.ts without the key and checks that it exits 1 with a message
+     naming WEATHERSTACK_KEY. Also pino with a request id, Yoga with a health
+     query, and server codegen.
+  3. API test harness: separate unit and integration test setups, a
+     Testcontainers Postgres 18 smoke test, MSW set to fail any unmocked
+     request, a Stryker config, and a Compose file with only Postgres.
+  4. Web shell: three placeholder routes, the typed execute() wrapper, and an
+     API status line that runs through codegen, TanStack Query and the Vite
+     proxy.
+  5. CI and docs: the GitHub Actions workflow, .env.example, the CLAUDE.md
+     Commands section, and syncing the test plan.
+
+  Things worth knowing:
+  - MSW 3 renamed an option. onUnhandledRequest is now onUnhandledFrame; I
+    checked this in the published msw@3.0.2 package. context/test-plan.md and
+    the roadmap still use the old name, and phase 5 corrects both.
+  - Your shell defaults to Node 20. Node 24 is installed under nvm. The plan
+    makes the install and the pre-commit hook fail with a clear message on Node
+    20, and CLAUDE.md will note nvm use.
+  - Empty env values count as unset. That way the blank WEATHERSTACK_BASE_URL=
+    in .env.example falls back to the default, which FR-14 AC1 needs.
+  - Two non-blocking unknowns: whether ESLint's typed rules work on the
+    in-memory test snippets (fallback: real fixture files), and how the client
+    codegen preset handles .ts imports in the web app (fallback: apply that
+    setting to the API output only). Both have fallbacks written into the plan.
+
+  Next step: /plan-review repo-skeleton.
+
+✻ Brewed for 5m 8s · done 4:19 PM
+
+※ recap: The F-01 repo-skeleton plan is written in five phases and the roadmap now marks it planned, with nothing committed yet. Next, run `/plan-review repo-skeleton` to get an independent review before implementing. (disable recaps in /config)
+
+❯ /plan-review repo-skeleton                                                    
+  ⎿  Running in the background as @plan-review
+
+● All background agents stopped
+
+❯ nvm alias default 24                                                          
+
+❯ Background agent "/plan-review repo-skeleton" was stopped by the user.        
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The alias is set, but a new login shell still starts on v20. Checking why:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 4 lines, removed 3 lines
+      44  Git is on `main` and clean. GitHub remote `KrzysztofSikora/prop
+          erty-manager`, issue #1.
+      45  
+      46  Local toolchain:
+      47 -- The shell's default `node` is v20.20.2. Node v24.21.0 is inst
+         -alled under nvm, so every                                      
+      48 -  command needs `nvm use` first. The pre-commit hook and the `e
+         -ngines` field must reject                                      
+      49 -  Node < 24 with a clear message, not an obscure syntax error. 
+      47 +- Node v24.21.0 is the nvm default (`nvm alias default 24`, set
+         + 2026-10-07). Shells that                                      
+      48 +  inherit an older PATH, such as this Claude Code session, whic
+         +h started on v20.20.2, still                                   
+      49 +  need `nvm use`. The pre-commit hook and the `engines` field m
+         +ust reject Node < 24 with a                                    
+      50 +  clear message, not an obscure syntax error.                  
+      51  - pnpm 12.9.1 (corepack 0.34.6), Docker 29.7, Compose v5.5.
+      52  
+      53  Latest versions on npm (2026-10-07) match `context/tech-stack.m
+          d`: vitest 5.0.3,
+
+● I ran nvm alias default 24. A new terminal now starts on Node v24.21.0; I
+  checked this with a clean shell.
+
+  This Claude Code session still has v20 on its PATH, because it was started
+  before the change, and that also applies to any shell it opens. Either restart
+  Claude Code or keep running nvm use before commands here. I updated the Node
+  note in the plan's Findings to say this.
+
+  You stopped the /plan-review repo-skeleton run before it finished, so there's
+  no review yet. Run it again when you're ready.
+✻ Worked for 20s · done 4:27 PM
+
+❯ /plan-review repo-skeleton                                                    
+  ⎿  Running in the background as @plan-review
+
+❯ agent is working?                                                             
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Yes, it's still running. /plan-review repo-skeleton started in the background
+  as @plan-review and hasn't reported back.
+
+  It hasn't written context/changes/repo-skeleton/plan-review.md yet, so for now
+  there's only plan.md. I'll pass on the verdict and findings when it finishes.
+
+✻ Cooked for 5s · done 4:30 PM
+
+● Agent "/plan-review repo-skeleton" finished · 4m 2s
+
+● The plan review finished: ready to implement with notes, no blockers. Four
+  major findings would break phase 1 or leave rules unenforced, so they should
+  be fixed in the plan before /implement. The full review is in
+  context/changes/repo-skeleton/plan-review.md.
+
+  Major (the fix I'd make for each):
+  1. Prettier blocks the first commit. It reports formatting problems in 7
+     Markdown files, including plan.md, roadmap.md and CLAUDE.md. The pre-commit
+     hook checks staged files and every phase commit stages plan.md, so the
+     first gated commit fails. Fix: put context/, docs/, ai-sessions/ and
+     CLAUDE.md in .prettierignore.
+  2. The secret scan flags its own files. plan.md itself contains
+     access_key=abc123 and a bare access_key=, and the scanner's tests need
+     realistic leaks too. Fix: only flag values that look like a real key (e.g.
+     access_key=[A-Za-z0-9]{16,}), and build any key-like strings in tests at
+     runtime.
+  3. The ESLint guardrail test fails, and so does its fallback. It lints made-up
+     paths under apps/api/src/..., and type-aware linting rejects files outside
+     any tsconfig. The fallback moves them to tooling/fixtures/, which ESLint
+     ignores and the layer rules don't match. Fix: lint the made-up paths with
+     type checking turned off (disableTypeChecked). The import and any rules
+     don't need type information.
+  4. The root config files and tooling/ are never linted or type-checked,
+     because pnpm -r skips the workspace root. That includes the secret scanner.
+     Fix: add root-level lint/typecheck steps, and exclude tooling/fixtures
+     from the root tsconfig.
+
+  Minor (7):
+  - In CI, WEATHERSTACK_KEY is set for the whole test step, so main.test.ts must
+    remove it before starting the API. Otherwise the server starts and the test
+    hangs.
+  - ESLint doesn't allow regex and group in one import pattern. They need to be
+    separate entries.
+  - Services aren't blocked from importing drizzle-orm or pg, so they could skip
+    the repository layer.
+  - The shared package's Stryker config points at a test config file that
+    doesn't exist, and its test:unit and test:mutation scripts aren't listed.
+  - Roadmap F-02 still lists the Testcontainers harness that this plan moves
+    into F-01.
+  - The plan says git is clean, which is no longer true: roadmap.md is modified
+    and context/changes/ is untracked.
+  - With the API stopped, the "unreachable" status takes several seconds to show
+    because TanStack Query retries by default. Turn retries off for the health
+    query.
+
+  Shall I apply all eleven fixes to plan.md, plus the F-02 harness note in
+  roadmap.md? Or would you rather pick which ones?
+
+✻ Cogitated for 1m 12s · done 4:31 PM
+
+❯ apply all fixes                                                               
+
+  Read 1 file (ctrl+o to expand)
+
+● Applying the eleven fixes to plan.md.
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 8 lines
+      114    (`engineStrict: true`). pnpm 12 reads settings only from thi
+           s file.
+      115  - Packages: `@property-manager/api`, `@property-manager/web`, 
+           `@property-manager/shared`.
+      116    `shared` exports `./src/index.ts` directly (no build), consu
+           med as `workspace:*`.
+      117 +- Root `lint` is a single `eslint .` from the root, so the roo
+          +t config files and `tooling/`                                 
+      118 +  are covered. Root `typecheck` is `tsc -p . && pnpm -r typech
+          +eck`. `pnpm -r` alone skips the                               
+      119 +  workspace root (review #4).                                 
+      120 +- `.prettierignore`: `context/`, `docs/`, `ai-sessions/`, `CLA
+          +UDE.md`, `pnpm-lock.yaml`,                                    
+      121 +  `**/generated/`, `apps/web/src/graphql/` and `reports/`. Pre
+          +ttier formats code and config                                 
+      122 +  only, not the hand-written Markdown artifacts, which Prettie
+          +r 3 would reflow (review #1).                                 
+      123 +- `packages/shared` scripts: `typecheck`, `test:unit` (`vitest
+          + run`), and `test:mutation`                                   
+      124 +  (`stryker run`, from phase 3). Its only Vitest config is `vi
+          +test.config.ts`.                                              
+      125  
+      126  ### TypeScript
+      127  
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      137    `jsx: react-jsx`, `types: ["vite/client"]`, and `lib` with D
+           OM. Extensionless imports are
+      138    allowed there. Erasable-only and verbatim module syntax stay
+            on.
+      139  - Root `tsconfig.json` covers the root config files (`eslint.c
+           onfig.ts`, `codegen.ts`,
+      140 -  `vitest.config.ts`) and `tooling/`.                         
+      140 +  `vitest.config.ts`) and `tooling/`, with `"exclude": ["tooli
+          +ng/fixtures"]`. The fixtures are                              
+      141 +  deliberately broken and only compiled by the guardrail test.
+      142  
+      143  ### ESLint (`eslint.config.ts`)
+      144  
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 3 lines, removed 2 lines
+      145  - Configs: `typescript-eslint` `strictTypeChecked` with `proje
+           ctService`, React hooks rules for
+      146    `apps/web`, then `eslint-config-prettier` last.
+      147  - Ignored: `**/generated/**`, `apps/web/src/graphql/**`, `tool
+           ing/fixtures/**`.
+      148 -- `restrictImports(...extra)` builds `no-restricted-imports` w
+          -ith the base pattern                                          
+      149 -  `^\.{1,2}/.*\.js$` (regex group) plus each layer's extra pat
+          -terns:                                                        
+      148 +- `restrictImports(...extra)` builds `no-restricted-imports` w
+          +ith two separate pattern objects,                             
+      149 +  because ESLint does not allow `regex` and `group` in one pat
+          +tern: `{ regex: '^\\.{1,2}/.*\\.js$' }`                       
+      150 +  for the `.js` ban, and `{ group: [...] }` for each layer's e
+          +xtra patterns:                                                
+      151  
+      152  | Files | May not import |
+      153  |-------|----------------|
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 1 line, removed 1 line
+      152  | Files | May not import |
+      153  |-------|----------------|
+      154  | `apps/api/src/graphql/**` | `**/repositories/**`, `**/adapte
+           rs/**`, `drizzle-orm*`, `pg` |
+      155 -| `apps/api/src/services/**` | `**/graphql/**`, `graphql-yoga`
+          -, `graphql` |                                                 
+      155 +| `apps/api/src/services/**` | `**/graphql/**`, `graphql-yoga`
+          +, `graphql`, `drizzle-orm*`, `pg` |                           
+      156  | `apps/api/src/repositories/**`, `apps/api/src/adapters/**` |
+            `**/services/**`, `**/graphql/**` |
+      157  
+      158    The composition root (`apps/api/src/app.ts`, `main.ts`) has 
+           only the base pattern.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Before narrowing the secret-scan pattern, I'm checking the shape of the real
+  key: only its length and character class, never the value.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+❯ One more change caused by fix 2: phase 1's human check stages a file with     
+  access_key=abc123, which the new 16+ char rule would no longer flag. Rewrite  
+  that check so the test value is generated at check time and is 16+ chars,     
+  e.g.:                                                                         
+    printf 'access_key=%s\n' "$(head -c 24 /dev/urandom | base64 | tr -dc       
+  'A-Za-z0-9' | head -c 20)" > scratch.txt                                      
+  and make sure plan.md itself contains no literal value that the new rule      
+  would flag.                                                                   
+  Also keep the literal-key check (the real WEATHERSTACK_KEY value from .env)   
+  as is.                                                                        
+                                                                                
+  Then re-run the secret-scan regex mentally against plan.md, roadmap.md,       
+  test-plan.md                                                                  
+  and CLAUDE.md and confirm none of them would be flagged. Show the diff; no    
+  commit yet                                                                    
+  (phase 1 will commit the plan files together with its changes).               
+
+● The real key is 32 lowercase hex characters, so access_key=[A-Za-z0-9]{16,}
+  catches it. Now the secret-scan, hook, and human-check edits:
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 7 lines, removed 2 lines
+      173    Leak[]`, where `Leak = { file: string; line: number; kind: '
+           key' | 'access_key' }`. It
+      174    checks only added lines (`+`) of a unified diff.
+      175    - `key`: the line contains the literal key value, if one is 
+           set and is at least 8 chars.
+      176 -  - `access_key`: `access_key=` followed by anything other tha
+          -n `[REDACTED]`,                                               
+      177 -    `%5BREDACTED%5D` or `TEST_WEATHERSTACK_KEY`.              
+      176 +  - `access_key`: the line matches `access_key=[A-Za-z0-9]{16,
+          +}`, i.e. a key-like value.                                    
+      177 +    The project's real key is 32 lowercase hex chars (checked 
+          +2026-10-07 by length and charset                              
+      178 +    only, never printed). `[REDACTED]`, `%5BREDACTED%5D`, a ba
+          +re `access_key=` and short                                    
+      179 +    placeholders don't match. `TEST_WEATHERSTACK_KEY` doesn't 
+          +match either (the `_` breaks the                              
+      180 +    run). That keeps docs, the plan and S-02's redaction tests
+          + committable (review #2).                                     
+      181 +  - Tests build key-like positive inputs at runtime (e.g. `'ac
+          +cess' + '_key=' + 'a'.repeat(32)`),                           
+      182 +    so no committed file contains a literal that the rule flag
+          +s.                                                            
+      183    - CLI entry `tooling/secret-scan-cli.ts`: reads `WEATHERSTAC
+           K_KEY` from the root `.env`
+      184      with its own line parser, never `process.env` printing. It
+            runs `git diff --cached -U0`
+      185      and prints only `file:line kind`, never the matched text. 
+           Exit 1 on any leak.
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 3 lines, removed 2 lines
+      183    - CLI entry `tooling/secret-scan-cli.ts`: reads `WEATHERSTAC
+           K_KEY` from the root `.env`
+      184      with its own line parser, never `process.env` printing. It
+            runs `git diff --cached -U0`
+      185      and prints only `file:line kind`, never the matched text. 
+           Exit 1 on any leak.
+      186 -- `tooling/secret-scan.test.ts`: tables for both kinds, a remo
+          -ved line ignored, `[REDACTED]`                                
+      187 -  and the sentinel allowed, and the key absent from the format
+          -ted output.                                                   
+      186 +- `tooling/secret-scan.test.ts`: tables for both kinds, a remo
+          +ved line ignored, `[REDACTED]`,                               
+      187 +  the sentinel and a 15-char value allowed, a 16-char value fl
+          +agged, and the key absent from                                
+      188 +  the formatted output.                                       
+      189  
+      190  ### Hooks
+      191  
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      191  
+      192  - `.githooks/pre-commit` (POSIX sh):
+      193    1. Fail with "Node 24 required (run `nvm use`)" if `node -v`
+            major < 24.
+      194 -  2. `prettier --check` and `eslint` on staged files.         
+      194 +  2. `prettier --check --ignore-unknown` and `eslint --no-warn
+          +-ignored` on staged files, so                                 
+      195 +     files in `.prettierignore` or ESLint's ignores (the `cont
+          +ext/` Markdown) pass through.                                 
+      196    3. `pnpm typecheck`, `pnpm test:unit`.
+      197    4. `node tooling/secret-scan-cli.ts`.
+      198  - `.claude/settings.json`: a `PostToolUse` hook on `Edit|Write
+           ` runs
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      197    4. `node tooling/secret-scan-cli.ts`.
+      198  - `.claude/settings.json`: a `PostToolUse` hook on `Edit|Write
+           ` runs
+      199    `node tooling/claude-format-hook.ts`. The script reads `tool
+           _input.file_path` from the stdin
+      200 -  JSON. It skips files Prettier/ESLint don't handle and files 
+          -outside the repo. It runs                                     
+      200 +  JSON. It skips files Prettier/ESLint don't handle or ignore 
+          +(the same `--ignore-unknown` /                                
+      201 +  `--no-warn-ignored` flags) and files outside the repo. It ru
+          +ns                                                            
+      202    `prettier --write` and then `eslint` on that one file. On li
+           nt errors it writes them to
+      203    stderr and exits 2, so Claude sees them. This is advisory, b
+           ecause the edit already
+      204    happened.
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 5 lines, removed 2 lines
+      357  - Agent checks: `pnpm install`, `pnpm lint`, `pnpm typecheck`,
+            `pnpm format:check`,
+      358    `pnpm test:unit`. `git config core.hooksPath` prints `.githo
+           oks`.
+      359  - Human checks:
+      360 -  - Stage a scratch file containing `access_key=abc123`. `git 
+          -commit` is blocked with only                                  
+      361 -    `file:line access_key` shown. Then unstage and delete the 
+          -file.                                                         
+      360 +  - Generate a scratch file with a random 20-char value at che
+          +ck time (nothing key-like is                                  
+      361 +    written into this plan):                                  
+      362 +    `printf 'access_key=%s\n' "$(head -c 24 /dev/urandom | bas
+          +e64 | tr -dc 'A-Za-z0-9' | head -c 20)" > scratch.txt`.       
+      363 +    Stage it. `git commit` is blocked with only `scratch.txt:1
+          + access_key` shown. Then unstage                              
+      364 +    and delete the file.                                      
+      365    - After an agent edit, the editor hook output is visible in 
+           the session.
+      366  
+      367  ### Phase 2: API skeleton with config, logging, Yoga and serve
+           r codegen
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      157  
+      158    The composition root (`apps/api/src/app.ts`, `main.ts`) has 
+           only the base pattern.
+      159  - The layer folders don't exist until S-01. The guardrail test
+            lints snippets with virtual
+      160 -  file paths in those folders.                                
+      160 +  file paths in those folders, with type-aware linting turned 
+          +off for them (see                                             
+      161 +  *Guardrails*).                                              
+      162  
+      163  ### Guardrails (`tooling/`)
+      164  
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 4 lines
+      166    - The ESLint `lintText(code, { filePath })` cases expect `no
+           -restricted-imports` for a
+      167      resolver importing `../repositories/x.ts`, a service impor
+           ting `../graphql/x.ts`, and
+      168      `import { a } from './x.js'`. They expect `@typescript-esl
+           int/no-explicit-any` for `any`.
+      169 +  - The `ESLint` instance loads the real `eslint.config.ts` wi
+          +th an `overrideConfig` applying                               
+      170 +    `tseslint.configs.disableTypeChecked`. None of these rules
+          + is type-aware, and without the                               
+      171 +    override `projectService` throws "was not found by the pro
+          +ject service" for virtual paths                               
+      172 +    (review #3).                                              
+      173    - A control case: a resolver importing a service passes.
+      174    - It spawns `tsc -p tooling/fixtures/tsconfig.json`, which e
+           xtends the base, and expects
+      175      TS1294 for `enum.ts` and `param-props.ts`, and TS1484 for 
+           `type-import.ts`.
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      285    - `mutate: []`, so a run requires `--mutate` (CLAUDE.md scop
+           e rule).
+      286    - `thresholds.break: null`, `reporters: [html, json, clear-t
+           ext]`, report under
+      287      `reports/mutation/`.
+      288 -  - The same config goes in `packages/shared/`.               
+      288 +  - `packages/shared/stryker.config.json` is the same, except 
+      289 +    `vitest.configFile: vitest.config.ts`, since shared has on
+          +ly hermetic tests (review #8).                                
+      290  - Root `vitest.config.ts`: projects = `packages/shared/vitest.
+           config.ts`,
+      291    `apps/api/vitest.unit.config.ts`, `apps/api/vitest.int.confi
+           g.ts`,
+      292    `apps/web/vitest.config.ts` and a `tooling` project.
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 4 lines, removed 1 line
+      384    - `apps/api/src/graphql/{context.ts,resolvers.ts}`, `apps/ap
+           i/src/app.ts`,
+      385      `apps/api/src/main.ts`. Contract: `createApp({ config, log
+           ger }): { yoga }`, plus
+      386      `requestId` and the child logger in the context.
+      387 -  - `apps/api/src/main.test.ts`: spawns `node src/main.ts` wit
+          -h `WEATHERSTACK_KEY` unset.                                   
+      387 +  - `apps/api/src/main.test.ts`: spawns `process.execPath src/
+          +main.ts` with a child env that                                
+      388 +    removes the key (`{ ...process.env, WEATHERSTACK_KEY: unde
+          +fined }`), because CI sets the                                
+      389 +    sentinel for the whole test step. A second case sets `WEAT
+          +HERSTACK_KEY=''`, as shipped in                               
+      390 +    `.env.example`. Both expect exit 1 and stderr naming the v
+          +ariable (review #5).                                          
+      391    - `apps/api/src/app.test.ts`: `yoga.fetch` runs `{ health }`
+            and gets `ok`.
+      392    - `vitest.config.ts`: adds the `api-unit` project. Root `pac
+           kage.json`: adds `codegen` and
+      393      `dev`.
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      41  Repo state (2026-10-07): no code yet. Present: `.nvmrc` = `24`,
+           `.gitignore`, `.env.example`
+      42  (`WEATHERSTACK_KEY=`, `WEATHERSTACK_BASE_URL=`), `.mcp.json`, `
+          .claude/skills/`, `context/`,
+      43  `docs/`, and `docs/samples/weatherstack-current.json`. There is
+           no `.claude/settings.json` yet.
+      44 -Git is on `main` and clean. GitHub remote `KrzysztofSikora/prop
+         -erty-manager`, issue #1.                                       
+      44 +Git is on `main`. The only uncommitted changes are this plan, i
+         +ts review and the roadmap                                      
+      45 +status edit, which are committed with phase 1. GitHub remote `K
+         +rzysztofSikora/property-manager`, issue #1.                    
+      46  
+      47  Local toolchain:
+      48  - Node v24.21.0 is the nvm default (`nvm alias default 24`, set
+           2026-10-07). Shells that
+
+● Now the remaining ones: retry, the risk fallback, the F-02 roadmap note, the
+  shared scripts in the phase contracts, and the services ban in Findings.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 3 lines, removed 1 line
+      311      Record<string, unknown> }[] }`.
+      312    - The response body is narrowed from `unknown` with a small 
+           zod schema, with no casts.
+      313  - `src/components/ApiStatus.tsx`: `useQuery({ queryKey: ['heal
+           th'], queryFn: () =>
+      314 -  execute(HealthDocument) })`. It shows "API: checking…", "API
+          -: ok" or "API: unreachable".                                  
+      314 +  execute(HealthDocument), retry: false })`. It shows "API: ch
+          +ecking…", "API: ok" or                                        
+      315 +  "API: unreachable". With `retry: false`, "unreachable" appea
+          +rs at once instead of after                                   
+      316 +  TanStack's default three retries (review #11).              
+      317  - `src/test/setup.ts` (jest-dom matchers, MSW with `onUnhandle
+           dFrame: 'error'`),
+      318    `src/test/msw.ts` (`server` plus `graphql.query('Health', ..
+           .)` default handler) and
+      319    `src/test/render.tsx` (`renderWithProviders(ui, { route })` 
+           with a fresh
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 4 lines, removed 3 lines
+      492    `useTypeImports`. The client preset's `importExtension` beha
+           viour under `bundler` is checked
+      493    in phase 4, with a fallback in *Design*. Not blocking.
+      494  - **Ports** (roadmap unknown): resolved. API `4000`, web `5173
+           `, Postgres `5432`.
+      495 -- **Type-aware ESLint on virtual paths in `lintText`:** `proje
+          -ctService` may refuse files                                   
+      496 -  outside any tsconfig. Fallback: the guardrail test lints rea
+          -l fixture files under                                         
+      497 -  `tooling/fixtures/apps/api/src/...`, placed in the fixtures 
+          -tsconfig. Not blocking.                                       
+      495 +- **Type-aware ESLint on virtual paths in `lintText`** (resolv
+          +ed, review #3): `projectService`                              
+      496 +  throws for files outside any tsconfig, so the guardrail test
+          + applies                                                      
+      497 +  `tseslint.configs.disableTypeChecked`. The rules under test 
+          +are not type-aware, and the                                   
+      498 +  real layer globs still apply to the virtual paths.          
+      499  - **Testcontainers in CI:** `ubuntu-latest` has Docker. The fi
+           rst container pull adds time.
+      500    This is accepted, and proven in phase 5's CI run.
+      501  - **The pre-commit hook makes commits slower** (typecheck + un
+           it tests). Accepted. Integration
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 3 lines, removed 1 line
+      474      - TR-18, TR-22, TR-23 and TR-25 become `covered (F-01)`.
+      475      - Any changed helper name is updated.
+      476    - `context/roadmap.md`: the F-01 scope wording `onUnhandledR
+           equest` becomes
+      477 -    `onUnhandledFrame`.                                       
+      477 +    `onUnhandledFrame`. The F-02 scope line "Testcontainers Po
+          +stgreSQL harness for integration                              
+      478 +    tests" becomes a note that the harness landed in F-01 and 
+          +that F-02 adds migrations to its                              
+      479 +    `globalSetup` (review #9).                                
+      480  - Proves: TR-23 (the codegen drift step in CI). CI green is th
+           e roadmap acceptance.
+      481  - Agent checks: `pnpm lint`, `pnpm typecheck`, `pnpm format:ch
+           eck`, `pnpm test`. Run
+      482    `pnpm codegen && git diff --exit-code` locally. After the pu
+           sh, the CI run is watched with
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      419    - `apps/api/src/net-guard.test.ts`: TR-25, an unmocked `fetc
+           h('https://api.weatherstack.com/current')`
+      420      rejects.
+      421    - `apps/api/stryker.config.json`, `packages/shared/stryker.c
+           onfig.json` and the
+      422 -    `test:mutation` scripts. Contract: `mutate` is empty by de
+          -fault and `break: null`.                                      
+      422 +    `test:mutation` scripts in both packages. Contract: `mutat
+          +e` is empty by default,                                       
+      423 +    `break: null`, and shared points at its `vitest.config.ts`
+          +.                                                             
+      424    - `docker-compose.yml`: the postgres service. Root `vitest.c
+           onfig.ts`: adds `api-int`.
+      425      Root `package.json`: `test` includes integration.
+      426  - Proves: TR-25 (unit). The integration harness works (integra
+           tion). TR-22's Stryker
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      353    - `eslint.config.ts`, `.prettierrc.json`, `.prettierignore`:
+            lint and format rules.
+      354      Contract: the `restrictImports` helper and the layer table
+           .
+      355    - `packages/shared/{package.json,tsconfig.json,vitest.config
+           .ts,src/index.ts}`: an empty
+      356 -    package (`export {}`) with `passWithNoTests`. Contract: ex
+          -port map `"." → ./src/index.ts`.                              
+      356 +    package (`export {}`) with `passWithNoTests`. Contract: ex
+          +port map `"." → ./src/index.ts`,                              
+      357 +    and the scripts `typecheck` and `test:unit`.              
+      358    - `vitest.config.ts` (root, projects `shared` and `tooling` 
+           for now) and
+      359      `tooling/{guardrails.test.ts,fixtures/*}`: the violation p
+           roofs.
+      360    - `tooling/secret-scan.ts`, `tooling/secret-scan-cli.ts`, `t
+           ooling/secret-scan.test.ts`:
+
+● I promised the F-02 note in roadmap.md itself, so I'll make that edit now
+  rather than defer it to phase 5:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Update(context/roadmap.md)
+  ⎿  Added 2 lines, removed 1 line
+      80  - Scope: Drizzle schema (`id`, address fields, `lat`, `long`, `
+          weather_data jsonb` holding
+      81    `{ units, current }`, `created_at timestamptz`), unique index
+           on
+      82    `lower(street) + lower(city) + state + zip`, drizzle-kit migr
+          ation and a migrate command;
+      83 -  Testcontainers PostgreSQL harness for integration tests; `pac
+         -kages/shared` with the 50 states                               
+      83 +  migrations run in the Testcontainers `globalSetup` (the harne
+         +ss itself lands in F-01, see                                   
+      84 +  `context/changes/repo-skeleton/plan.md`); `packages/shared` w
+         +ith the 50 states                                              
+      85    + DC table (code → name) and the error-code list; test helper
+          s from the test-plan Cookbook
+      86    (`createTestApp`, `resetDb`, `seedProperty`, `FakeWeatherClie
+          nt` incl. `withBarrier`,
+      87    `weatherstackResponse` / `weatherstackError` fixtures, `captu
+          reLogs`, `expectNoSecret`);
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 3 lines
+      476      - TR-18, TR-22, TR-23 and TR-25 become `covered (F-01)`.
+      477      - Any changed helper name is updated.
+      478    - `context/roadmap.md`: the F-01 scope wording `onUnhandledR
+           equest` becomes
+      479 -    `onUnhandledFrame`. The F-02 scope line "Testcontainers Po
+          -stgreSQL harness for integration                              
+      480 -    tests" becomes a note that the harness landed in F-01 and 
+          -that F-02 adds migrations to its                              
+      481 -    `globalSetup` (review #9).                                
+      479 +    `onUnhandledFrame`. (The F-02 harness wording was already 
+          +updated at planning time,                                     
+      480 +    review #9.)                                               
+      481  - Proves: TR-23 (the codegen drift step in CI). CI green is th
+           e roadmap acceptance.
+      482  - Agent checks: `pnpm lint`, `pnpm typecheck`, `pnpm format:ch
+           eck`, `pnpm test`. Run
+      483    `pnpm codegen && git diff --exit-code` locally. After the pu
+           sh, the CI run is watched with
+
+● I ran the scan rule directly against all four files, checking for access_key
+  patterns and the literal .env key, tallying counts only without exposing any
+  values.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● No hardcoded access keys were found anywhere. I did spot that test-plan.md:90
+  still references the outdated "anything other than" rule, so I'll flag that
+  for phase 5's test-plan sync.
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines
+      471      format, codegen, mutation, the `nvm use` note).
+      472    - `context/test-plan.md`:
+      473      - `onUnhandledRequest` becomes `onUnhandledFrame`.
+      474 +    - *Quality gates*, pre-commit row: the `access_key` rule b
+          +ecomes the key-like pattern                                   
+      475 +      from *Guardrails* (16+ alphanumerics), plus the literal-
+          +key check.                                                    
+      476      - The API unit and integration config names become the rea
+           l ones.
+      477      - The root projects get a line.
+      478      - TR-18, TR-22, TR-23 and TR-25 become `covered (F-01)`.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● plan.md is untracked and I didn't keep a copy from before the review, so git
+  can't diff it against that version. Here are the passages I changed, in their
+  current form:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I applied all eleven fixes, plus your change to the secret-scan human check.
+  Nothing is committed. Phase 1 will commit plan.md, plan-review.md and
+  roadmap.md together with its own changes. The roadmap.md diff is shown above.
+  plan.md is a new, untracked file and I had no copy of it from before the
+  review, so git can't diff it. Instead, the listing above shows every changed
+  line by number.
+
+  Secret scan:
+  - Rule: the scan now flags access_key= followed by 16 or more letters and
+    digits. The real key is 32 lowercase hex characters (I checked only its
+    length and character set, never the value), so the rule catches it. The
+    [REDACTED] forms and TEST_WEATHERSTACK_KEY don't match.
+  - Literal key: the check for the actual WEATHERSTACK_KEY value from .env is
+    unchanged.
+  - Human check (line 372): it now generates a random 20-character value at
+    check time, using your printf command, and expects the commit to be blocked.
+  - Tests: they build key-like strings at runtime, so no committed file contains
+    one.
+
+  The other fixes:
+  - #1: .prettierignore now lists what it excludes: context/, docs/,
+    ai-sessions/, CLAUDE.md, the lockfile and generated code. The hooks use
+    --ignore-unknown / --no-warn-ignored so ignored files pass through.
+  - #3: the guardrail test lints the made-up paths with type checking turned
+    off. The old fallback is replaced.
+  - #4: root lint is now eslint ., root typecheck is tsc -p . && pnpm -r 
+    typecheck, and the root tsconfig excludes tooling/fixtures.
+  - #5: main.test.ts removes the key from the child process's environment. I
+    added a second case with an empty value.
+  - #6: the .js ban and the layer patterns are now separate pattern entries.
+  - #7: services may no longer import drizzle-orm or pg.
+  - #8: the shared package's Stryker config points at its vitest.config.ts, and
+    its scripts are listed in the phase contracts.
+  - #9: I edited the F-02 scope line in roadmap.md now rather than in phase 5.
+  - #10: the git-state wording is corrected.
+  - #11: the health query has retry: false, so "unreachable" shows straight
+    away.
+
+  Scan check: you asked me to reason it through, but I ran the actual rule over
+  plan.md, roadmap.md, test-plan.md and CLAUDE.md instead. Nothing matches the
+  key-like pattern, and the literal key appears 0 times in each file. Every
+  access_key= in them is followed by [, a backtick or %.
+
+  One thing the scan turned up: test-plan.md:90 still describes the old rule
+  ("anything other than…"). Phase 5's test-plan sync now updates it too.
+
+  Next step: /plan-review repo-skeleton again if you want the changes
+  re-checked, or /implement repo-skeleton to start phase 1.
+
+✻ Sautéed for 1m 51s · done 4:34 PM
+
+❯ /plan-review repo-skeleton                                                    
+  ⎿  Running in the background as @plan-review
+
+● Agent "/plan-review repo-skeleton" finished · 3m 4s
+
+● The second review is in, still ready with notes. It confirms all 11 earlier
+  fixes, and the narrowed access_key rule blocks no committed file. Nothing
+  blocks implementation, but it found 3 new major issues and 7 minor ones. The
+  full review replaced the earlier one in
+  context/changes/repo-skeleton/plan-review.md.
+
+  Major (fix I'd apply):
+  1. CI's format check fails on the skill files. Prettier flags all 10
+     .claude/skills/*/SKILL.md files, so pnpm format:check would fail. Fix: add
+     .claude/ to .prettierignore.
+  2. The editor hook fails silently in this session. This session still runs
+     Node 20, where node tooling/claude-format-hook.ts crashes with a syntax
+     error. Claude Code ignores that exit code, so nothing is reported and the
+     phase 1 human check can't pass. Fix: a small wrapper that checks the Node
+     version and exits 2 with "Node 24 required" so I see it, and paths built
+     from $CLAUDE_PROJECT_DIR. Restarting Claude Code (now that the nvm default
+     is 24) also fixes it.
+  3. Several files fall outside every tsconfig. eslint . with type-aware rules
+     would reach vite.config.ts, the vitest configs and the test/ folders, and
+     throw "was not found by the project service". Fix: an explicit include in
+     each package tsconfig, plus a small Node-typed tsconfig for the web's
+     config files.
+
+  Minor:
+  - Nothing logs per request, so the phase 2 requestId check has nothing to look
+    at. Add a request log line and a test that checks it.
+  - Phase 2's vitest config references test/setup/msw.ts, which only arrives in
+    phase 3. Move the MSW setup into phase 2.
+  - The postgres:18 image needs the volume mounted at /var/lib/postgresql, not
+    /var/lib/postgresql/data.
+  - The codegen drift check misses new untracked generated files. Also check git
+    status --porcelain on the generated folders.
+  - The secret scan must skip the diff's +++ header lines. The hook should pass
+    only added or changed files to Prettier and ESLint (--diff-filter=ACMR), so
+    a staged deletion doesn't break them.
+  - CI runs twice on every PR push. Limit push runs to main.
+  - plan-review.md isn't in phase 1's file list, so the staging rule would leave
+    it out of that commit. Add it.
+
+  Shall I apply all ten?
+
+✻ Sautéed for 8s · done 4:37 PM
+
+❯ yes                                                                           
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Applying the ten fixes:
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      118  - Root `lint` is a single `eslint .` from the root, so the roo
+           t config files and `tooling/`
+      119    are covered. Root `typecheck` is `tsc -p . && pnpm -r typech
+           eck`. `pnpm -r` alone skips the
+      120    workspace root (review #4).
+      121 -- `.prettierignore`: `context/`, `docs/`, `ai-sessions/`, `CLA
+          -UDE.md`, `pnpm-lock.yaml`,                                    
+      121 +- `.prettierignore`: `.claude/` (skills Markdown, review 2 #1)
+          +, `context/`, `docs/`,                                        
+      122 +  `ai-sessions/`, `CLAUDE.md`, `pnpm-lock.yaml`,              
+      123    `**/generated/`, `apps/web/src/graphql/` and `reports/`. Pre
+           ttier formats code and config
+      124    only, not the hand-written Markdown artifacts, which Prettie
+           r 3 would reflow (review #1).
+      125  - `packages/shared` scripts: `typecheck`, `test:unit` (`vitest
+            run`), and `test:mutation`
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 8 lines
+      138  - `apps/web` extends the base but overrides `module: esnext`, 
+           `moduleResolution: bundler`,
+      139    `jsx: react-jsx`, `types: ["vite/client"]`, and `lib` with D
+           OM. Extensionless imports are
+      140    allowed there. Erasable-only and verbatim module syntax stay
+            on.
+      141 +- Every tsconfig has an explicit `include` that covers each fi
+          +le `eslint .` reaches, because                                
+      142 +  type-aware lint throws "was not found by the project service
+          +" otherwise (review 2 #3):                                    
+      143 +  - `apps/api`: `src`, `test`, `vitest.*.config.ts`.          
+      144 +  - `packages/shared`: `src`, `vitest.config.ts`.             
+      145 +  - `apps/web/tsconfig.json`: `src` (DOM, `vite/client` types)
+          +.                                                             
+      146 +  - `apps/web/tsconfig.node.json`: `vite.config.ts`, `vitest.c
+          +onfig.ts`, with                                               
+      147 +    `types: ["node"]`. `typecheck` runs both web configs.     
+      148 +  - Root: see the next item.                                  
+      149  - Root `tsconfig.json` covers the root config files (`eslint.c
+           onfig.ts`, `codegen.ts`,
+      150    `vitest.config.ts`) and `tooling/`, with `"exclude": ["tooli
+           ng/fixtures"]`. The fixtures are
+      151    deliberately broken and only compiled by the guardrail test.
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines
+      208    1. Fail with "Node 24 required (run `nvm use`)" if `node -v`
+            major < 24.
+      209    2. `prettier --check --ignore-unknown` and `eslint --no-warn
+           -ignored` on staged files, so
+      210       files in `.prettierignore` or ESLint's ignores (the `cont
+           ext/` Markdown) pass through.
+      211 +     The file list comes from `git diff --cached --name-only -
+          +-diff-filter=ACMR`, so a staged                               
+      212 +     deletion is not passed to either tool (review 2 #8).     
+      213    3. `pnpm typecheck`, `pnpm test:unit`.
+      214    4. `node tooling/secret-scan-cli.ts`.
+      215  - `.claude/settings.json`: a `PostToolUse` hook on `Edit|Write
+           ` runs
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 6 lines, removed 1 line
+      213    3. `pnpm typecheck`, `pnpm test:unit`.
+      214    4. `node tooling/secret-scan-cli.ts`.
+      215  - `.claude/settings.json`: a `PostToolUse` hook on `Edit|Write
+           ` runs
+      216 -  `node tooling/claude-format-hook.ts`. The script reads `tool
+          -_input.file_path` from the stdin                              
+      216 +  `sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"`. Th
+          +e wrapper checks that                                         
+      217 +  `node -v` is major 24 or higher. If not, it writes "editor h
+          +ook skipped: Node 24 required                                 
+      218 +  (restart Claude Code after `nvm use`)" to stderr and exits 2
+          +, so the failure is visible                                   
+      219 +  instead of silent. Claude Code ignores other non-zero codes,
+          + and Node 20 fails on `.ts`                                   
+      220 +  syntax (review 2 #2). Otherwise it runs                     
+      221 +  `node "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.ts"`. 
+          +That script reads `tool_input.file_path` from the stdin       
+      222    JSON. It skips files Prettier/ESLint don't handle or ignore 
+           (the same `--ignore-unknown` /
+      223    `--no-warn-ignored` flags) and files outside the repo. It ru
+           ns
+      224    `prettier --write` and then `eslint` on that one file. On li
+           nt errors it writes them to
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      186    - Test names start with `NFR-04` / `NFR-06`.
+      187  - `tooling/secret-scan.ts`: a pure `findSecretLeaks(diff: stri
+           ng, key: string | undefined):
+      188    Leak[]`, where `Leak = { file: string; line: number; kind: '
+           key' | 'access_key' }`. It
+      189 -  checks only added lines (`+`) of a unified diff.            
+      189 +  checks only added lines (`+`) of a unified diff, skipping th
+          +e `+++ b/<file>` header lines,                                
+      190 +  which it uses to track the current file (review 2 #8).      
+      191    - `key`: the line contains the literal key value, if one is 
+           set and is at least 8 chars.
+      192    - `access_key`: the line matches `access_key=[A-Za-z0-9]{16,
+           }`, i.e. a key-like value.
+      193      The project's real key is 32 lowercase hex chars (checked 
+           2026-10-07 by length and charset
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 4 lines
+      255    - It builds the Yoga instance with `createSchema` from `sche
+           ma.graphql` and the resolvers.
+      256    - Yoga's `context` creates `requestId = crypto.randomUUID()`
+            and a child logger
+      257      `{ requestId }`.
+      258 +  - A small Yoga plugin (`onExecute` / `onExecuteDone`) logs o
+          +ne `graphql operation` line                                   
+      259 +    per request through the child logger, with `operationName`
+          + and `durationMs`. It does not                                
+      260 +    log variables, because S-01's create input is user data. T
+          +his gives the phase 2 human                                   
+      261 +    check, and the leak tests from S-01 on, a line to inspect 
+          +(review 2 #4).                                                
+      262    - Masked errors stay at Yoga's default.
+      263    - S-01 extends it with services and adapters. Tests call `yo
+           ga.fetch` directly.
+      264  - `src/main.ts`:
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 3 lines, removed 1 line
+      344  ### Compose and env
+      345  
+      346  - `docker-compose.yml`: a `postgres` service (`postgres:18-alp
+           ine`, user/password/db matching
+      347 -  the `DATABASE_URL` default, port `5432`, a named volume and 
+          -a `pg_isready` healthcheck).                                  
+      347 +  the `DATABASE_URL` default, port `5432`, a `pg_isready` heal
+          +thcheck, and a named volume                                   
+      348 +  mounted at `/var/lib/postgresql`, not `.../data`, because th
+          +e postgres 18 image moved                                     
+      349 +  `PGDATA` under a versioned subdirectory (review 2 #6).      
+      350  - `.env.example`: all five variables with a one-line comment e
+           ach. Only `WEATHERSTACK_KEY` is
+      351    required, and the others show their default commented out.
+      352  
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      352  
+      353  ### CI (`.github/workflows/ci.yml`)
+      354  
+      355 -- Triggers: push and pull_request. One job on `ubuntu-latest`:
+      355 +- Triggers: `push` to `main` only, and `pull_request`, so a PR
+          + push runs once (review 2 #9).                                
+      356 +  One job on `ubuntu-latest`:                                 
+      357    1. checkout, `pnpm/action-setup` (reads `packageManager`), `
+           actions/setup-node` with
+      358       `node-version-file: .nvmrc` and the pnpm cache.
+      359    2. `pnpm install --frozen-lockfile`.
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 3 lines, removed 1 line
+      358       `node-version-file: .nvmrc` and the pnpm cache.
+      359    2. `pnpm install --frozen-lockfile`.
+      360    3. `pnpm lint`, `pnpm typecheck`, `pnpm format:check`.
+      361 -  4. `pnpm codegen && git diff --exit-code`.                  
+      361 +  4. `pnpm codegen`, then `git diff --exit-code` and an empty 
+      362 +     `git status --porcelain -- apps/api/src/graphql/generated
+          + apps/web/src/graphql`, so a                                  
+      363 +     newly generated untracked file also fails (review 2 #7). 
+      364    5. `pnpm test` with `env: WEATHERSTACK_KEY: TEST_WEATHERSTAC
+           K_KEY`.
+      365  - A concurrency group cancels superseded runs. Action major ve
+           rsions are checked at
+      366    implementation time.
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 1 line, removed 1 line
+      508      review #9.)
+      509  - Proves: TR-23 (the codegen drift step in CI). CI green is th
+           e roadmap acceptance.
+      510  - Agent checks: `pnpm lint`, `pnpm typecheck`, `pnpm format:ch
+           eck`, `pnpm test`. Run
+      511 -  `pnpm codegen && git diff --exit-code` locally. After the pu
+          -sh, the CI run is watched with                                
+      511 +  the codegen drift check (diff plus porcelain) locally. After
+          + the push, the CI run is watched with                         
+      512    `gh run watch`.
+      513  - Human checks: open the PR for `feat/repo-skeleton` and confi
+           rm the CI checks are green. Read
+      514    the CLAUDE.md *Commands* wording.
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines
+      376      `prepare`, and `engines.node >=24`.
+      377    - `tsconfig.base.json`, `tsconfig.json`: the compiler flags 
+           from *Design*. Contract: the
+      378      flag set every package extends.
+      379 +  - `context/changes/repo-skeleton/{plan.md,plan-review.md}`, 
+          +`context/roadmap.md`: the                                     
+      380 +    planning artifacts, committed with this phase (review 2 #1
+          +0).                                                           
+      381    - `eslint.config.ts`, `.prettierrc.json`, `.prettierignore`:
+            lint and format rules.
+      382      Contract: the `restrictImports` helper and the layer table
+           .
+      383    - `packages/shared/{package.json,tsconfig.json,vitest.config
+           .ts,src/index.ts}`: an empty
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      388    - `tooling/secret-scan.ts`, `tooling/secret-scan-cli.ts`, `t
+           ooling/secret-scan.test.ts`:
+      389      the leak matcher and CLI. Contract: `findSecretLeaks(diff,
+            key): Leak[]`.
+      390    - `.githooks/pre-commit`: the commit gate.
+      391 -  - `tooling/claude-format-hook.ts`, `.claude/settings.json`: 
+          -the editor hook.                                              
+      391 +  - `tooling/claude-format-hook.sh`, `tooling/claude-format-ho
+          +ok.ts`,                                                       
+      392 +    `.claude/settings.json`: the editor hook with its Node ver
+          +sion guard.                                                   
+      393  - Proves: NFR-04 (enum, parameter property, type import and `a
+           ny` fail), NFR-06 (layer and
+      394    `.js` rules fail, control case passes). Unit level (`tooling
+           ` project). TR-22. The
+      395    pre-commit scan is part of TR-01.
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 5 lines, removed 1 line
+      421      removes the key (`{ ...process.env, WEATHERSTACK_KEY: unde
+           fined }`), because CI sets the
+      422      sentinel for the whole test step. A second case sets `WEAT
+           HERSTACK_KEY=''`, as shipped in
+      423      `.env.example`. Both expect exit 1 and stderr naming the v
+           ariable (review #5).
+      424 -  - `apps/api/src/app.test.ts`: `yoga.fetch` runs `{ health }`
+          - and gets `ok`.                                               
+      424 +  - `apps/api/src/app.test.ts`: `yoga.fetch` runs `{ health }`
+          + and gets `ok`. With a                                        
+      425 +    logger writing to an in-memory destination, exactly one `g
+          +raphql operation` line carries a                              
+      426 +    UUID `requestId`, and two requests get different ids.     
+      427 +  - `apps/api/test/setup/msw.ts` (moved here from phase 3, rev
+          +iew 2 #5): referenced by                                      
+      428 +    `vitest.unit.config.ts`. `apps/api/src/net-guard.test.ts` 
+          +(TR-25) moves with it.                                        
+      429    - `vitest.config.ts`: adds the `api-unit` project. Root `pac
+           kage.json`: adds `codegen` and
+      430      `dev`.
+      431  - Proves:
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 2 lines
+      446  - Files:
+      447    - `apps/api/vitest.int.config.ts`, `apps/api/test/setup/post
+           gres.ts`: the `globalSetup`.
+      448      Contract: `inject('databaseUrl'): string`.
+      449 -  - `apps/api/test/setup/msw.ts`, wired into both API configs.
+          - Contract: an unmocked request                                
+      450 -    fails the test.                                           
+      449 +  - `apps/api/vitest.int.config.ts` also wires `test/setup/msw
+          +.ts` (created in phase 2).                                    
+      450 +    Contract: an unmocked request fails an integration test to
+          +o.                                                            
+      451    - `apps/api/test/integration/smoke.int.test.ts`: `pg` `selec
+           t 1` on
+      452      `inject('databaseUrl')`, and `yoga.fetch` `{ health }`.
+      453    - `apps/api/src/net-guard.test.ts`: TR-25, an unmocked `fetc
+           h('https://api.weatherstack.com/current')`
+
+● Phase 3 still lists the net-guard test and claims TR-25, so I'm moving both to
+  phase 2:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Removed 2 lines
+      450      Contract: an unmocked request fails an integration test to
+           o.
+      451    - `apps/api/test/integration/smoke.int.test.ts`: `pg` `selec
+           t 1` on
+      452      `inject('databaseUrl')`, and `yoga.fetch` `{ health }`.
+      453 -  - `apps/api/src/net-guard.test.ts`: TR-25, an unmocked `fetc
+          -h('https://api.weatherstack.com/current')`                    
+      454 -    rejects.                                                  
+      453    - `apps/api/stryker.config.json`, `packages/shared/stryker.c
+           onfig.json` and the
+      454      `test:mutation` scripts in both packages. Contract: `mutat
+           e` is empty by default,
+      455      `break: null`, and shared points at its `vitest.config.ts`
+           .
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 1 line, removed 1 line
+      455      `break: null`, and shared points at its `vitest.config.ts`
+           .
+      456    - `docker-compose.yml`: the postgres service. Root `vitest.c
+           onfig.ts`: adds `api-int`.
+      457      Root `package.json`: `test` includes integration.
+      458 -- Proves: TR-25 (unit). The integration harness works (integra
+          -tion). TR-22's Stryker                                        
+      458 +- Proves: the integration harness works (integration), and MSW
+          + guards integration tests too. TR-22's Stryker                
+      459    prerequisites are in place.
+      460  - Agent checks: `pnpm test` (Docker running), `pnpm test:unit`
+            (no Docker needed),
+      461    `pnpm --filter @property-manager/api test:mutation --dryRunO
+           nly` (the config loads; no
+
+● Update(context/changes/repo-skeleton/plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      425      logger writing to an in-memory destination, exactly one `g
+           raphql operation` line carries a
+      426      UUID `requestId`, and two requests get different ids.
+      427    - `apps/api/test/setup/msw.ts` (moved here from phase 3, rev
+           iew 2 #5): referenced by
+      428 -    `vitest.unit.config.ts`. `apps/api/src/net-guard.test.ts` 
+          -(TR-25) moves with it.                                        
+      428 +    `vitest.unit.config.ts`. `apps/api/src/net-guard.test.ts` 
+          +moves with it: TR-25, an                                      
+      429 +    unmocked `fetch('https://api.weatherstack.com/current')` r
+          +ejects.                                                       
+      430    - `vitest.config.ts`: adds the `api-unit` project. Root `pac
+           kage.json`: adds `codegen` and
+      431      `dev`.
+      432  - Proves:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Update(context/changes/repo-skeleton/plan.md)  ⎿  Added 3 lines, removed 1 line
+      434      key exits 1, and stderr names `WEATHERSTACK_KEY`.
+      435    - TR-18: an invalid `PORT` with a sentinel key → the message
+            names `PORT` and does not
+      436      contain the sentinel. The defaults apply when values are `
+           ''`.
+      437 -  - The `health` query works in process.                      
+      437 +  - The `health` query works in process, and each operation lo
+          +gs one line with its own                                      
+      438 +    `requestId`.                                              
+      439 +  - TR-25 (unit): an unmocked outbound request fails the test.
+      440  - Agent checks: `pnpm codegen` (no diff on a second run), `pnp
+           m lint`, `pnpm typecheck`,
+      441    `pnpm test:unit`.
+      442  - Human checks: with `WEATHERSTACK_KEY` set in `.env`, `pnpm -
+           -filter
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I applied all ten fixes from the second review to plan.md. Nothing is
+  committed yet; phase 1 commits the planning files.
+
+  Major:
+  1. Prettier: .claude/ is now in .prettierignore, so the skill files no longer
+     fail the format check.
+  2. Editor hook: it now runs through a small shell wrapper,
+     tooling/claude-format-hook.sh. If Node is older than 24, the wrapper prints
+     "editor hook skipped: Node 24 required (restart Claude Code after nvm 
+     use)" and exits 2, so I see the message instead of a silent failure. Paths
+     now use $CLAUDE_PROJECT_DIR.
+  3. tsconfig coverage: every tsconfig now has an explicit include covering the
+     files eslint . reaches. The web app gets a separate tsconfig.node.json with
+     Node types for vite.config.ts and vitest.config.ts, and its typecheck runs
+     both configs.
+
+  Minor:
+  4. Request logging: a small Yoga plugin logs one graphql operation line per
+  request, with requestId, operationName and durationMs. It never logs
+  variables, because from S-01 on those hold user data. app.test.ts checks that
+  each operation logs one line with a UUID request id and that two requests get
+  different ids.
+  5. MSW setup timing: test/setup/msw.ts and the TR-25 net-guard test move to
+  phase 2. Phase 3 only connects them to the integration config.
+  6. Postgres volume: it's now mounted at /var/lib/postgresql, as the postgres
+  18 image requires.
+  7. Codegen drift check: after git diff --exit-code, CI also checks git status 
+  --porcelain on the generated folders, so a new untracked generated file fails
+  too.
+  8. Secret scan and hook file list: the scan skips the +++ header lines of a
+  diff. The pre-commit hook gets its file list from --diff-filter=ACMR, so a
+  staged deletion isn't passed to Prettier or ESLint.
+  9. CI triggers: push runs are limited to main, plus pull_request, so each PR
+  push runs once.
+  10. Phase 1 commit contents: phase 1's file list now includes plan.md,
+  plan-review.md and roadmap.md.
+
+  I re-ran the secret-scan check on plan.md, plan-review.md, roadmap.md,
+  test-plan.md and CLAUDE.md. Nothing matches the key-like rule, and the real
+  key appears 0 times in each.
+
+  Before /implement repo-skeleton, restart Claude Code so this session runs Node
+  24. The editor hook needs it, and every command in phase 1 does too. If you'd
+  like another check first, run /plan-review repo-skeleton again.
+
+✻ Cogitated for 1m 27s · done 4:39 PM

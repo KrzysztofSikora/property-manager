@@ -1,0 +1,1320 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement repo-skeleton                                                      
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Next phase is 4. Let me read the plan.
+
+  Searched for 1 pattern, read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Phase 4 goal: web shell (routes, execute(), ApiStatus via codegen → TanStack
+  Query → Vite proxy). Checks: codegen stable, lint, typecheck, test:unit, web
+  build; human check via pnpm dev.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Roadmap already in-progress. Let me look at the API side, eslint config and
+  existing test setup for style.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Node 24 active. Let me check latest versions and current library APIs.
+
+  Called context7 6 times, ran 1 shell command (ctrl+o to expand)
+
+● Docs confirm the plan's shapes. Now scaffolding apps/web.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now writing the package files.
+
+● Bash(mkdir -p apps/web/src/{app,pages,lib,components,test} && cat >
+      apps/web/package.json <<'EOF'
+      {…)
+  ⎿  devDependencies:
+     + @graphql-codegen/client-preset 6.2.2
+     + eslint-plugin-react-hooks 7.1.1
+     … +9 lines (ctrl+o to expand)
+  ⎿  Created apps/web/package.json (+33 -0)
+       1 +{                                                              
+       2 +  "name": "@property-manager/web",                             
+       3 +  "version": "0.0.0",                                          
+       4 +  "private": true,                                             
+       5 +  "type": "module",                                            
+       6 +  "scripts": {                                                 
+       7 +    "dev": "vite",                                             
+       8 +    "build": "vite build",                                     
+       9 +    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.
+         +json",                                                         
+      10 +    "test:unit": "vitest run"                                  
+      11 +  },                                                           
+      12 +  "dependencies": {                                            
+      13 +    "@tanstack/react-query": "^5.104.1",                       
+      14 +    "react": "^19.3.0",                                        
+      15 +    "react-dom": "^19.3.0",                                    
+      16 +    "react-router": "^8.4.0",                                  
+      17 +    "zod": "^4.6.5"                                            
+      18 +  },                                                           
+      19 +  "devDependencies": {                                         
+      20 +    "@tailwindcss/vite": "^4.3.3",                             
+      21 +    "@testing-library/jest-dom": "^7.0.1",                     
+      22 +    "@testing-library/react": "^16.3.3",                       
+      23 +    "@types/node": "^24.19.1",                                 
+      24 +    "@types/react": "^19.3.0",                                 
+      25 +    "@types/react-dom": "^19.3.0",                             
+      26 +    "@vitejs/plugin-react": "^6.1.2",                          
+      27 +    "jsdom": "^30.1.2",                                        
+      28 +    "msw": "^3.0.2",                                           
+      29 +    "tailwindcss": "^4.3.3",                                   
+      30 +    "vite": "^8.3.3",                                          
+      31 +    "vitest": "^5.0.3"                                         
+      32 +  }                                                            
+      33 +}                                                              
+  ⎿  Updated pnpm-workspace.yaml (+6 -0)
+       8    ssh2: false
+       9  
+      10  engineStrict: true
+      11 +                                                               
+      12 +minimumReleaseAgeExclude:                                      
+      13 +  - '@graphql-codegen/client-preset@6.2.2'                     
+      14 +  - '@graphql-codegen/gql-tag-operations@6.1.1'                
+      15 +  - '@graphql-codegen/plugin-helpers@7.4.2'                    
+      16 +  - '@graphql-codegen/visitor-plugin-common@7.2.9'             
+  ⎿  Updated package.json (+2 -0)
+      20    "devDependencies": {
+      21      "@eslint/js": "^10.0.1",
+      22      "@graphql-codegen/cli": "^7.4.4",
+      23 +    "@graphql-codegen/client-preset": "^6.2.2",                
+      24      "@graphql-codegen/typescript": "^6.1.1",
+      25      "@graphql-codegen/typescript-resolvers": "^6.1.0",
+      26      "@types/node": "^24.19.1",
+      27      "eslint": "^10.12.0",
+      28      "eslint-config-prettier": "^10.1.8",
+      29 +    "eslint-plugin-react-hooks": "^7.1.1",                     
+      30      "jiti": "^2.7.0",
+      31      "prettier": "^3.9.9",
+      32      "typescript": "6.0.3",
+  ⎿  … 1 more file changed
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● pnpm auto-added a minimumReleaseAgeExclude (supply-chain bypass) for fresh
+  codegen releases. I'd rather respect the policy than bypass it — let me check
+  publish times.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All four were published today (2026-10-07). I'll revert the exclusions and let
+  pnpm resolve mature versions instead.
+
+● Bash(git checkout pnpm-workspace.yaml && pnpm remove -w
+      @graphql-codegen/client-preset 2>&1 | tail -2 && pnpm add -D -w
+      @graphql-codegen/client-preset 2>&1 | tail -4…)
+  ⎿  Updated 1 path from the index
+             affected packages, relax the policy that flagged them.
+     … +11 lines (ctrl+o to expand)
+  ⎿  Updated pnpm-workspace.yaml (+0 -6)
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The lockfile now holds the too-fresh entries. Resetting root package.json and
+  lockfile to HEAD, then pinning client-preset one patch back.
+
+● Bash(git checkout package.json pnpm-lock.yaml pnpm-workspace.yaml && pnpm add
+      -D -w @graphql-codegen/client-preset@~6.2.1
+      eslint-plugin-react-hooks@^7.1.1 2>&1 | gre…)
+  ⎿  Updated 2 paths from the index
+     Progress: resolved 3, reused 586, downloaded 0, added 3, done
+     [WARN] Issues with peer dependencies found. Run "pnpm peers check" to
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated package.json (+1 -1)
+  ⎿  Updated pnpm-lock.yaml (+19 -51)
+  ⎿  Updated apps/web/package.json (+1 -0)
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Policy respected without exclusions (client-preset 6.2.1). Normalising the
+  specifier to ^ like the other deps:
+
+● Bash(sed -i 's|"@graphql-codegen/client-preset":
+      "~6.2.1"|"@graphql-codegen/client-preset": "^6.2.1"|' package.json && pnpm
+      install 2>&1 | tail -3 && git diff --stat…)
+  ⎿  . prepare$ git config core.hooksPath .githooks
+     . prepare: Done
+     Done in 4.6s using pnpm v12.9.1
+     … +2 lines (ctrl+o to expand)
+  ⎿  Updated package.json (+1 -1)
+      20    "devDependencies": {
+      21      "@eslint/js": "^10.0.1",
+      22      "@graphql-codegen/cli": "^7.4.4",
+      23 -    "@graphql-codegen/client-preset": "~6.2.1",                
+      23 +    "@graphql-codegen/client-preset": "^6.2.1",                
+      24      "@graphql-codegen/typescript": "^6.1.1",
+      25      "@graphql-codegen/typescript-resolvers": "^6.1.0",
+      26      "@types/node": "^24.19.1",
+  ⎿  Updated pnpm-lock.yaml (+1 -1)
+      173          specifier: ^7.4.4
+      174          version: 7.4.4(@types/node@24.19.1)(graphql@17.0.2)(ty
+           pescript@6.0.3)
+      175        '@graphql-codegen/client-preset':
+      176 -        specifier: ~6.2.1                                     
+      176 +        specifier: ^6.2.1                                     
+      177          version: 6.2.1(graphql@17.0.2)
+      178        '@graphql-codegen/typescript':
+      179          specifier: ^6.1.1
+
+● Now the config files.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web &&
+      cat > tsconfig.json <<'EOF'
+      {…)
+  ⎿  Created apps/web/tsconfig.json (+11 -0)
+       1 +{                                                              
+       2 +  "extends": "../../tsconfig.base.json",                       
+       3 +  "compilerOptions": {                                         
+       4 +    "module": "esnext",                                        
+       5 +    "moduleResolution": "bundler",                             
+       6 +    "jsx": "react-jsx",                                        
+       7 +    "lib": ["esnext", "dom", "dom.iterable"],                  
+       8 +    "types": ["vite/client"]                                   
+       9 +  },                                                           
+      10 +  "include": ["src"]                                           
+      11 +}                                                              
+  ⎿  Created apps/web/tsconfig.node.json (+4 -0)
+      1 +{                                                               
+      2 +  "extends": "../../tsconfig.base.json",                        
+      3 +  "include": ["vite.config.ts", "vitest.config.ts"]             
+      4 +}                                                               
+  ⎿  Created apps/web/vite.config.ts (+12 -0)
+       1 +import tailwindcss from '@tailwindcss/vite';                   
+       2 +import react from '@vitejs/plugin-react';                      
+       3 +import { defineConfig } from 'vite';                           
+       4 +                                                               
+       5 +export default defineConfig({                                  
+       6 +  plugins: [react(), tailwindcss()],                           
+       7 +  server: {                                                    
+       8 +    port: 5173,                                                
+       9 +    strictPort: true,                                          
+      10 +    proxy: { '/graphql': 'http://localhost:4000' },            
+      11 +  },                                                           
+      12 +});                                                            
+  ⎿  Created apps/web/vitest.config.ts (+13 -0)
+       1 +import react from '@vitejs/plugin-react';                      
+       2 +import { defineConfig } from 'vitest/config';                  
+       3 +                                                               
+       4 +export default defineConfig({                                  
+       5 +  plugins: [react()],                                          
+       6 +  test: {                                                      
+       7 +    name: 'web',                                               
+       8 +    root: import.meta.dirname,                                 
+       9 +    environment: 'jsdom',                                      
+      10 +    include: ['src/**/*.test.{ts,tsx}'],                       
+      11 +    setupFiles: ['src/test/setup.ts'],                         
+      12 +  },                                                           
+      13 +});                                                            
+  ⎿  Created apps/web/index.html (+12 -0)
+       1 +<!doctype html>                                                
+       2 +<html lang="en">                                               
+       3 +  <head>                                                       
+       4 +    <meta charset="UTF-8" />                                   
+       5 +    <meta name="viewport" content="width=device-width, initial-
+         +scale=1.0" />                                                  
+       6 +    <title>Property Manager</title>                            
+       7 +  </head>                                                      
+       8 +  <body>                                                       
+       9 +    <div id="root"></div>                                      
+      10 +    <script type="module" src="/src/main.tsx"></script>        
+      11 +  </body>                                                      
+      12 +</html>                                                        
+
+● Codegen config: add the web output.
+
+● Update(codegen.ts)
+  ⎿  Added 9 lines
+      13          contextType: '../context.ts#GraphQLContext',
+      14        },
+      15      },
+      16 +    'apps/web/src/graphql/': {                                 
+      17 +      preset: 'client',                                        
+      18 +      documents: ['apps/web/src/**/*.{ts,tsx}', '!apps/web/src/
+         +graphql/**'],                                                  
+      19 +      config: {                                                
+      20 +        documentMode: 'string',                                
+      21 +        enumsAsTypes: true,                                    
+      22 +        useTypeImports: true,                                  
+      23 +      },                                                       
+      24 +    },                                                         
+      25    },
+      26    hooks: { afterAllFileWrite: ['prettier --write'] },
+      27  };
+
+● Test infrastructure, then the failing tests for execute and ApiStatus.
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src
+      && cat > test/msw.ts <<'EOF'
+      import { graphql, HttpResponse } from 'msw';…)
+  ⎿  Created apps/web/src/test/msw.ts (+9 -0)
+      1 +import { graphql, HttpResponse } from 'msw';                    
+      2 +import { setupServer } from 'msw/node';                         
+      3 +                                                                
+      4 +// Default: the API is up. Tests override per case with `server.
+        +use(...)`.                                                      
+      5 +export const handlers = [                                       
+      6 +  graphql.query('Health', () => HttpResponse.json({ data: { heal
+        +th: 'ok' } })),                                                 
+      7 +];                                                              
+      8 +                                                                
+      9 +export const server = setupServer(...handlers);                 
+  ⎿  Created apps/web/src/test/setup.ts (+17 -0)
+       1 +import '@testing-library/jest-dom/vitest';                     
+       2 +import { cleanup } from '@testing-library/react';              
+       3 +import { afterAll, afterEach, beforeAll } from 'vitest';       
+       4 +import { server } from './msw';                                
+       5 +                                                               
+       6 +beforeAll(() => {                                              
+       7 +  server.listen({ onUnhandledFrame: 'error' });                
+       8 +});                                                            
+       9 +                                                               
+      10 +afterEach(() => {                                              
+      11 +  cleanup();                                                   
+      12 +  server.resetHandlers();                                      
+      13 +});                                                            
+      14 +                                                               
+      15 +afterAll(() => {                                               
+      16 +  server.close();                                              
+      17 +});                                                            
+  ⎿  Created apps/web/src/test/render.tsx (+13 -0)
+       1 +import { QueryClient, QueryClientProvider } from '@tanstack/rea
+         +ct-query';                                                     
+       2 +import { render } from '@testing-library/react';               
+       3 +import type { ReactElement } from 'react';                     
+       4 +import { MemoryRouter } from 'react-router';                   
+       5 +                                                               
+       6 +export function renderWithProviders(ui: ReactElement, { route =
+         + '/' }: { route?: string } = {}) {                             
+       7 +  const queryClient = new QueryClient({ defaultOptions: { queri
+         +es: { retry: false } } });                                     
+       8 +  return render(                                               
+       9 +    <QueryClientProvider client={queryClient}>                 
+      10 +      <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter
+         +>                                                              
+      11 +    </QueryClientProvider>,                                    
+      12 +  );                                                           
+      13 +}                                                              
+  ⎿  Created apps/web/src/lib/execute.test.ts (+50 -0)
+       1 +import { graphql, HttpResponse } from 'msw';                   
+       2 +import { describe, expect, it } from 'vitest';                 
+       3 +import { HealthDocument } from '../graphql/graphql';           
+       4 +import { server } from '../test/msw';                          
+       5 +import { execute, GraphQLRequestError } from './execute';      
+       6 +                                                               
+       7 +describe('execute', () => {                                    
+       8 +  it('returns the data of a successful response', async () => {
+       9 +    await expect(execute(HealthDocument)).resolves.toEqual({ he
+         +alth: 'ok' });                                                 
+      10 +  });                                                          
+      11 +                                                               
+      12 +  it('throws GraphQLRequestError with the errors of an errors p
+         +ayload', async () => {                                         
+      13 +    server.use(                                                
+      14 +      graphql.query('Health', () =>                            
+      15 +        HttpResponse.json({ errors: [{ message: 'boom', extensi
+         +ons: { code: 'X' } }] }),                                      
+      16 +      ),                                                       
+      17 +    );                                                         
+      18 +                                                               
+      19 +    const error = await execute(HealthDocument).catch((e: unkno
+         +wn) => e);                                                     
+      20 +                                                               
+      21 +    expect(error).toBeInstanceOf(GraphQLRequestError);         
+      22 +    expect(error).toMatchObject({                              
+      23 +      status: 200,                                             
+      24 +      errors: [{ message: 'boom', extensions: { code: 'X' } }],
+      25 +    });                                                        
+      26 +  });                                                          
+      27 +                                                               
+      28 +  it('throws GraphQLRequestError with the status on HTTP 500', 
+         +async () => {                                                  
+      29 +    server.use(graphql.query('Health', () => new HttpResponse('
+         +down', { status: 500 })));                                     
+      30 +                                                               
+      31 +    const error = await execute(HealthDocument).catch((e: unkno
+         +wn) => e);                                                     
+      32 +                                                               
+      33 +    expect(error).toBeInstanceOf(GraphQLRequestError);         
+      34 +    expect(error).toMatchObject({ status: 500, errors: [] });  
+      35 +  });                                                          
+      36 +                                                               
+      37 +  it('sends the operation as a POST to /graphql', async () => {
+      38 +    let seen: { method: string; path: string } | undefined;    
+      39 +    server.use(                                                
+      40 +      graphql.query('Health', ({ request }) => {               
+     … 10 more lines (ctrl+o to expand)
+  ⎿  Created apps/web/src/components/ApiStatus.test.tsx (+23 -0)
+       1 +import { screen } from '@testing-library/react';               
+       2 +import { graphql, HttpResponse } from 'msw';                   
+       3 +import { describe, expect, it } from 'vitest';                 
+       4 +import { server } from '../test/msw';                          
+       5 +import { renderWithProviders } from '../test/render';          
+       6 +import { ApiStatus } from './ApiStatus';                       
+       7 +                                                               
+       8 +describe('ApiStatus', () => {                                  
+       9 +  it('shows checking, then ok when the health query succeeds', 
+         +async () => {                                                  
+      10 +    renderWithProviders(<ApiStatus />);                        
+      11 +                                                               
+      12 +    expect(screen.getByText('API: checking…')).toBeInTheDocumen
+         +t();                                                           
+      13 +    expect(await screen.findByText('API: ok')).toBeInTheDocumen
+         +t();                                                           
+      14 +  });                                                          
+      15 +                                                               
+      16 +  it('shows unreachable on a network error', async () => {     
+      17 +    server.use(graphql.query('Health', () => HttpResponse.error
+         +()));                                                          
+      18 +                                                               
+      19 +    renderWithProviders(<ApiStatus />);                        
+      20 +                                                               
+      21 +    expect(await screen.findByText('API: unreachable')).toBeInT
+         +heDocument();                                                  
+      22 +  });                                                          
+      23 +});                                                            
+
+● Now the ApiStatus stub with the document (so codegen has something to
+  generate), and routes tests.
+
+● Bash(cat > app/routes.test.tsx <<'EOF'
+      import { screen } from '@testing-library/react';…)
+  ⎿  ❯ Generate
+     ✔ Generate
+     ✔ Generate to apps/api/src/graphql/generated/resolvers-types.ts
+     … +21 lines (ctrl+o to expand)
+  ⎿  Created apps/web/src/app/routes.test.tsx (+23 -0)
+       1 +import { screen } from '@testing-library/react';               
+       2 +import { describe, expect, it } from 'vitest';                 
+       3 +import { renderWithProviders } from '../test/render';          
+       4 +import { AppRoutes } from './routes';                          
+       5 +                                                               
+       6 +describe('AppRoutes', () => {                                  
+       7 +  it.each([                                                    
+       8 +    ['/', 'Properties'],                                       
+       9 +    ['/properties/new', 'New property'],                       
+      10 +    ['/properties/abc-123', 'Property abc-123'],               
+      11 +    ['/no/such/page', 'Page not found'],                       
+      12 +  ])('%s renders the "%s" heading', async (route, heading) => {
+      13 +    renderWithProviders(<AppRoutes />, { route });             
+      14 +                                                               
+      15 +    expect(await screen.findByRole('heading', { level: 1, name:
+         + heading })).toBeInTheDocument();                              
+      16 +  });                                                          
+      17 +                                                               
+      18 +  it('renders the API status line in the layout', async () => {
+      19 +    renderWithProviders(<AppRoutes />);                        
+      20 +                                                               
+      21 +    expect(await screen.findByText('API: ok')).toBeInTheDocumen
+         +t();                                                           
+      22 +  });                                                          
+      23 +});                                                            
+  ⎿  Created apps/web/src/components/ApiStatus.tsx (+12 -0)
+       1 +import { graphql } from '../graphql';                          
+       2 +                                                               
+       3 +// Placeholder until S-04: proves codegen → execute() → TanStac
+         +k Query → Vite proxy.                                          
+       4 +export const HealthQuery = graphql(`                           
+       5 +  query Health {                                               
+       6 +    health                                                     
+       7 +  }                                                            
+       8 +`);                                                            
+       9 +                                                               
+      10 +export function ApiStatus() {                                  
+      11 +  return null;                                                 
+      12 +}                                                              
+  ⎿  Created apps/web/src/graphql/gql.ts (+32 -0)
+       1 +/* eslint-disable */                                           
+       2 +import * as types from './graphql.ts';                         
+       3 +                                                               
+       4 +                                                               
+       5 +                                                               
+       6 +/**                                                            
+       7 + * Map of all GraphQL operations in the project.               
+       8 + *                                                             
+       9 + * This map has several performance disadvantages:             
+      10 + * 1. It is not tree-shakeable, so it will include all operatio
+         +ns in the project.                                             
+      11 + * 2. It is not minifiable, so the string of a GraphQL query wi
+         +ll be multiple times inside the bundle.                        
+      12 + * 3. It does not support dead code elimination, so it will add
+         + unused operations.                                            
+      13 + *                                                             
+      14 + * Therefore it is highly recommended to use the babel or swc p
+         +lugin for production.                                          
+      15 + * Learn more about it here: https://the-guild.dev/graphql/code
+         +gen/plugins/presets/preset-client#reducing-bundle-size         
+      16 + */                                                            
+      17 +type Documents = {                                             
+      18 +    "\n  query Health {\n    health\n  }\n": typeof types.Healt
+         +hDocument,                                                     
+      19 +};                                                             
+      20 +const documents: Documents = {                                 
+      21 +    "\n  query Health {\n    health\n  }\n": types.HealthDocume
+         +nt,                                                            
+      22 +};                                                             
+      23 +                                                               
+      24 +/**                                                            
+      25 + * The graphql function is used to parse GraphQL queries into a
+         + document that can be used by GraphQL clients.                 
+      26 + */                                                            
+      27 +export function graphql(source: "\n  query Health {\n    health
+         +\n  }\n"): typeof import('./graphql.ts').HealthDocument;       
+      28 +                                                               
+      29 +                                                               
+      30 +export function graphql(source: string) {                      
+      31 +  return (documents as any)[source] ?? {};                     
+      32 +}                                                              
+  ⎿  Created apps/web/src/graphql/index.ts (+3 -0)
+      1 +/* eslint-disable */                                            
+      2 +export * from "./fragment-masking.ts";                          
+      3 +export * from "./gql.ts";                                       
+      4   No newline at end of file
+  ⎿  Created apps/web/src/graphql/fragment-masking.ts (+83 -0)
+       1 +/* eslint-disable */                                           
+       2 +import type { ResultOf, DocumentTypeDecoration } from '@graphql
+         +-typed-document-node/core';                                    
+       3 +import type { Incremental, TypedDocumentString } from './graphq
+         +l.ts';                                                         
+       4 +                                                               
+       5 +                                                               
+       6 +export type FragmentType<TDocumentType extends DocumentTypeDeco
+         +ration<any, any>> = TDocumentType extends DocumentTypeDecoratio
+         +n<                                                             
+       7 +  infer TType,                                                 
+       8 +  any                                                          
+       9 +>                                                              
+      10 +  ? [TType] extends [{ ' $fragmentName'?: infer TKey }]        
+      11 +    ? TKey extends string                                      
+      12 +      ? { ' $fragmentRefs'?: { [key in TKey]: TType } }        
+      13 +      : never                                                  
+      14 +    : never                                                    
+      15 +  : never;                                                     
+      16 +                                                               
+      17 +// return non-nullable if `fragmentType` is non-nullable       
+      18 +export function useFragment<TType>(                            
+      19 +  _documentNode: DocumentTypeDecoration<TType, any>,           
+      20 +  fragmentType: FragmentType<DocumentTypeDecoration<TType, any>
+         +>                                                              
+      21 +): TType;                                                      
+      22 +// return nullable if `fragmentType` is undefined              
+      23 +export function useFragment<TType>(                            
+      24 +  _documentNode: DocumentTypeDecoration<TType, any>,           
+      25 +  fragmentType: FragmentType<DocumentTypeDecoration<TType, any>
+         +> | undefined                                                  
+      26 +): TType | undefined;                                          
+      27 +// return nullable if `fragmentType` is nullable               
+      28 +export function useFragment<TType>(                            
+      29 +  _documentNode: DocumentTypeDecoration<TType, any>,           
+      30 +  fragmentType: FragmentType<DocumentTypeDecoration<TType, any>
+         +> | null                                                       
+      31 +): TType | null;                                               
+      32 +// return nullable if `fragmentType` is nullable or undefined  
+      33 +export function useFragment<TType>(                            
+      34 +  _documentNode: DocumentTypeDecoration<TType, any>,           
+      35 +  fragmentType: FragmentType<DocumentTypeDecoration<TType, any>
+         +> | null | undefined                                           
+      36 +): TType | null | undefined;                                   
+      37 +// return array of non-nullable if `fragmentType` is array of n
+         +on-nullable                                                    
+      38 +export function useFragment<TType>(                            
+      39 +  _documentNode: DocumentTypeDecoration<TType, any>,           
+      40 +  fragmentType: Array<FragmentType<DocumentTypeDecoration<TType
+         +, any>>>                                                       
+     … 43 more lines (ctrl+o to expand)
+  ⎿  … 1 more file changed
+
+● Codegen's .ts imports work fine with bundler + allowImportingTsExtensions, so
+  the fallback plan isn't needed. I'll add @graphql-typed-document-node/core as
+  a direct dependency for web since the output imports it.
+
+● Bash(pnpm add -D --filter @property-manager/web
+      @graphql-typed-document-node/core 2>&1 | tail -2; git diff --stat
+      pnpm-workspace.yaml; cat > /tmp/claude-1000/-home-k…)
+  ⎿  [WARN] Issues with peer dependencies found. Run "pnpm peers check" to
+     list them.
+     Done in 590ms using pnpm v12.9.1
+     … +30 lines (ctrl+o to expand)
+  ⎿  Updated pnpm-lock.yaml (+3 -0)
+      267          specifier: ^4.6.5
+      268          version: 4.6.5
+      269      devDependencies:
+      270 +      '@graphql-typed-document-node/core':                    
+      271 +        specifier: ^3.2.0                                     
+      272 +        version: 3.2.0(graphql@17.0.2)                        
+      273        '@tailwindcss/vite':
+      274          specifier: ^4.3.3
+      275          version: 4.3.3(vite@8.3.3(@types/node@24.19.1)(jiti@2.
+           7.0)(yaml@2.9.1))
+  ⎿  Updated apps/web/package.json (+1 -0)
+      17      "zod": "^4.6.5"
+      18    },
+      19    "devDependencies": {
+      20 +    "@graphql-typed-document-node/core": "^3.2.0",             
+      21      "@tailwindcss/vite": "^4.3.3",
+      22      "@testing-library/dom": "^10.4.2",
+      23      "@testing-library/jest-dom": "^7.0.1",
+  ⎿  Updated vitest.config.ts (+1 -0)
+       6        'packages/shared/vitest.config.ts',
+       7        'apps/api/vitest.unit.config.ts',
+       8        'apps/api/vitest.int.config.ts',
+       9 +      'apps/web/vitest.config.ts',                             
+      10        {
+      11          test: {
+      12            name: 'tooling',
+  ⎿  Updated package.json (+1 -1)
+      12      "typecheck": "tsc -p . && pnpm -r typecheck",
+      13      "format": "prettier --write .",
+      14      "format:check": "prettier --check .",
+      15 -    "test:unit": "vitest run --project shared --project api-uni
+         -t --project tooling",                                          
+      15 +    "test:unit": "vitest run --project shared --project api-uni
+         +t --project web --project tooling",                            
+      16      "test": "vitest run",
+      17      "prepare": "git config core.hooksPath .githooks",
+      18      "codegen": "graphql-codegen"
+
+● MSW 3 moved graphql and HttpResponse into the msw/graphql and msw/http
+  subpaths (the docs snippet above shows this). Fixing the imports so the tests
+  fail for the right reason:
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src
+      && for f in test/msw.ts lib/execute.test.ts components/ApiStatus.test.tsx;
+      do sed -i "s|…)
+  ⎿   FAIL  |web| src/app/routes.test.tsx [ apps/web/src/app/routes.test.ts
+     x ]
+      FAIL  |web| src/components/ApiStatus.test.tsx [ apps/web/src/componen
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/test/msw.ts (+2 -1)
+      1 -import { graphql, HttpResponse } from 'msw';                    
+      1 +import { graphql } from 'msw/graphql';                          
+      2 +import { HttpResponse } from 'msw/http';                        
+      3  import { setupServer } from 'msw/node';
+      4  
+      5  // Default: the API is up. Tests override per case with `server.
+         use(...)`.
+  ⎿  Updated apps/web/src/lib/execute.test.ts (+2 -1)
+      1 -import { graphql, HttpResponse } from 'msw';                    
+      1 +import { graphql } from 'msw/graphql';                          
+      2 +import { HttpResponse } from 'msw/http';                        
+      3  import { describe, expect, it } from 'vitest';
+      4  import { HealthDocument } from '../graphql/graphql';
+      5  import { server } from '../test/msw';
+  ⎿  Updated apps/web/src/components/ApiStatus.test.tsx (+2 -1)
+      1  import { screen } from '@testing-library/react';
+      2 -import { graphql, HttpResponse } from 'msw';                    
+      2 +import { graphql } from 'msw/graphql';                          
+      3 +import { HttpResponse } from 'msw/http';                        
+      4  import { describe, expect, it } from 'vitest';
+      5  import { server } from '../test/msw';
+      6  import { renderWithProviders } from '../test/render';
+  ⎿  You've hit your usage limit, so I've stopped partway through Phase 4 (web 
+     shell). Nothing is committed, and the web tests don't run yet.
+
+     **Done (all uncommitted):**
+     - `apps/web/package.json` with React 19, React Router 8, TanStack Query, 
+     Tailwind 4, Vite 8, Vitest, jsdom, Testing Library, MSW 3 and 
+     `@graphql-typed-document-node/core`, all installed.
+     - `apps/web/{tsconfig.json, tsconfig.node.json, vite.config.ts, 
+     vitest.config.ts, index.html}`.
+     - `codegen.ts` now also generates the web client output into 
+     `apps/web/src/graphql/`. The generated files use `.ts` imports and resolve 
+     fine with `bundler` resolution, so the plan's fallback isn't needed.
+     - A `web` entry in the root `vitest.config.ts`, and `--project web` added 
+     to `test:unit` in `package.json`.
+     - Root dev dependencies: `@graphql-codegen/client-preset ^6.2.1` and 
+     `eslint-plugin-react-hooks ^7.1.1`.
+     - Test helpers: `src/test/{setup.ts, msw.ts, render.tsx}`.
+     - Tests written first: `lib/execute.test.ts`, 
+     `components/ApiStatus.test.tsx`, `app/routes.test.tsx`.
+     - `components/ApiStatus.tsx` holds the `Health` document and an empty 
+     component for now.
+
+     **Deviations to log in the plan:**
+     - I pinned `@graphql-codegen/client-preset` to 6.2.1. Version 6.2.2 and 
+     three of its dependencies were published today, so they fall inside pnpm's 
+     minimum release age. pnpm had quietly added a `minimumReleaseAgeExclude` 
+     bypass to `pnpm-workspace.yaml`. I reverted that file and the lockfile and 
+     reinstalled, so no bypass is committed.
+     - MSW 3 doesn't export `graphql` or `HttpResponse` from the root `msw` 
+     package. I moved the imports to `msw/graphql` and `msw/http`, but the tests
+     still fail with `graphql.query is not a function`.
+
+     **Left to do:**
+     1. Find the right MSW 3 `graphql` API by looking in 
+     `apps/web/node_modules/msw/lib` (it may be `graphql.link(...)` or a renamed
+     handler) and fix the three test files.
+     2. Watch the tests fail for the right reason, then write `lib/execute.ts` 
+     with zod narrowing and `GraphQLRequestError`, `ApiStatus`, `main.tsx`, 
+     `index.css`, `app/{routes,Layout}.tsx` and the four pages.
+     3. Add the React hooks rules for `apps/web` to `eslint.config.ts`.
+     4. Run the checks: `pnpm codegen` (output stable), `pnpm lint`, `pnpm 
+     typecheck`, `pnpm test:unit` and `pnpm --filter @property-manager/web 
+     build`.
+     5. Your manual check: run `pnpm dev`, open `http://localhost:5173` and 
+     confirm it shows "API: ok" and the three routes render. Then stop the API 
+     and confirm the status line shows "API: unreachable".
+     6. Log the deviations, then commit with explicit paths only. The session 
+     `.txt` files in the repo root stay out of the commit.
+
+     When your limit resets, run `/implement repo-skeleton` (after `/clear`) to 
+     pick up from step 1.
+     /upgrade or /usage-credits to finish what you’re working on.
+
+● Usage limit reached · continuing automatically at 5:40pm · esc to 
+  cancel
+
+✻ Churned for 3m 7s · done 5:13 PM
+
+● Usage limit reset · continuing automatically
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● MSW 3 only exposes graphql.link(url). I'll export a link scoped to /graphql
+  from test/msw.ts and use it in the tests.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src
+      && cat > test/msw.ts <<'EOF'
+      import { graphql } from 'msw/graphql';…)
+  ⎿  components/ApiStatus.test.tsx:2:import { HttpResponse } from 'msw/http
+     ';
+     components/ApiStatus.test.tsx:4:import { api, server } from '../test/m
+     … +27 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/test/msw.ts (+4 -3)
+       2  import { HttpResponse } from 'msw/http';
+       3  import { setupServer } from 'msw/node';
+       4  
+       5 +// MSW 3 scopes GraphQL handlers to an endpoint. Relative to th
+         +e jsdom origin, like the app.                                  
+       6 +export const api = graphql.link('/graphql');                   
+       7 +                                                               
+       8  // Default: the API is up. Tests override per case with `server
+          .use(...)`.
+       6 -export const handlers = [                                      
+       7 -  graphql.query('Health', () => HttpResponse.json({ data: { hea
+         -lth: 'ok' } })),                                               
+       8 -];                                                             
+       9 +export const handlers = [api.query('Health', () => HttpResponse
+         +.json({ data: { health: 'ok' } }))];                           
+      10  
+      11  export const server = setupServer(...handlers);
+  ⎿  Updated apps/web/src/lib/execute.test.ts (+4 -5)
+      1 -import { graphql } from 'msw/graphql';                          
+      1  import { HttpResponse } from 'msw/http';
+      2  import { describe, expect, it } from 'vitest';
+      3  import { HealthDocument } from '../graphql/graphql';
+      5 -import { server } from '../test/msw';                           
+      4 +import { api, server } from '../test/msw';                      
+      5  import { execute, GraphQLRequestError } from './execute';
+      6  
+      7  describe('execute', () => {
+     ...
+      11  
+      12    it('throws GraphQLRequestError with the errors of an errors p
+          ayload', async () => {
+      13      server.use(
+      15 -      graphql.query('Health', () =>                            
+      14 +      api.query('Health', () =>                                
+      15          HttpResponse.json({ errors: [{ message: 'boom', extensi
+          ons: { code: 'X' } }] }),
+      16        ),
+      17      );
+     ...
+      26    });
+      27  
+      28    it('throws GraphQLRequestError with the status on HTTP 500', 
+          async () => {
+      30 -    server.use(graphql.query('Health', () => new HttpResponse('
+         -down', { status: 500 })));                                     
+      29 +    server.use(api.query('Health', () => new HttpResponse('down
+         +', { status: 500 })));                                         
+      30  
+      31      const error = await execute(HealthDocument).catch((e: unkno
+          wn) => e);
+      32  
+     ...
+      37    it('sends the operation as a POST to /graphql', async () => {
+      38      let seen: { method: string; path: string } | undefined;
+      39      server.use(
+      41 -      graphql.query('Health', ({ request }) => {               
+      40 +      api.query('Health', ({ request }) => {                   
+      41          seen = { method: request.method, path: new URL(request.
+          url).pathname };
+      42          return HttpResponse.json({ data: { health: 'ok' } });
+      43        }),
+  ⎿  Updated apps/web/src/components/ApiStatus.test.tsx (+2 -3)
+      1  import { screen } from '@testing-library/react';
+      2 -import { graphql } from 'msw/graphql';                          
+      2  import { HttpResponse } from 'msw/http';
+      3  import { describe, expect, it } from 'vitest';
+      5 -import { server } from '../test/msw';                           
+      4 +import { api, server } from '../test/msw';                      
+      5  import { renderWithProviders } from '../test/render';
+      6  import { ApiStatus } from './ApiStatus';
+      7  
+     ...
+      14    });
+      15  
+      16    it('shows unreachable on a network error', async () => {
+      18 -    server.use(graphql.query('Health', () => HttpResponse.error
+         -()));                                                          
+      17 +    server.use(api.query('Health', () => HttpResponse.error()))
+         +;                                                              
+      18  
+      19      renderWithProviders(<ApiStatus />);
+      20  
+
+● Failing for the right reasons (missing modules, empty component). Now the
+  implementation.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src
+      && cat > lib/execute.ts <<'EOF'
+      import { z } from 'zod';…)
+  ⎿  12:export class TypedDocumentString<TResult, TVariables>
+     13-  extends String
+     14-  implements DocumentTypeDecoration<TResult, TVariables>
+     … +12 lines (ctrl+o to expand)
+  ⎿  Created apps/web/src/lib/execute.ts (+57 -0)
+       1 +import { z } from 'zod';                                       
+       2 +import type { TypedDocumentString } from '../graphql/graphql'; 
+       3 +                                                               
+       4 +const graphQLErrorSchema = z.object({                          
+       5 +  message: z.string(),                                         
+       6 +  extensions: z.record(z.string(), z.unknown()).optional(),    
+       7 +});                                                            
+       8 +                                                               
+       9 +const responseSchema = z.object({                              
+      10 +  data: z.unknown().optional(),                                
+      11 +  errors: z.array(graphQLErrorSchema).optional(),              
+      12 +});                                                            
+      13 +                                                               
+      14 +export type GraphQLErrorEntry = z.infer<typeof graphQLErrorSche
+         +ma>;                                                           
+      15 +                                                               
+      16 +export class GraphQLRequestError extends Error {               
+      17 +  readonly status: number;                                     
+      18 +  readonly errors: readonly GraphQLErrorEntry[];               
+      19 +                                                               
+      20 +  constructor(status: number, errors: readonly GraphQLErrorEntr
+         +y[]) {                                                         
+      21 +    super(errors[0]?.message ?? `GraphQL request failed with HT
+         +TP ${String(status)}`);                                        
+      22 +    this.name = 'GraphQLRequestError';                         
+      23 +    this.status = status;                                      
+      24 +    this.errors = errors;                                      
+      25 +  }                                                            
+      26 +}                                                              
+      27 +                                                               
+      28 +// The document's result type is a codegen contract: the schema
+         + guarantees `data` matches it.                                 
+      29 +function asResult<TResult>(                                    
+      30 +  _document: TypedDocumentString<TResult, unknown>,            
+      31 +  data: unknown,                                               
+      32 +): TResult {                                                   
+      33 +  return data as TResult;                                      
+      34 +}                                                              
+      35 +                                                               
+      36 +export async function execute<TResult, TVariables>(            
+      37 +  document: TypedDocumentString<TResult, TVariables>,          
+      38 +  ...[variables]: TVariables extends Record<string, never> ? []
+         + : [TVariables]                                                
+      39 +): Promise<TResult> {                                          
+      40 +  const response = await fetch('/graphql', {                   
+     … 17 more lines (ctrl+o to expand)
+
+● Since the plan requires avoiding casts, I'll replace the as assertion with a
+  type predicate that performs a real runtime check on the GraphQL data object
+  instead.
+
+● Bash(python3 - <<'EOF'
+      p='lib/execute.ts'…)
+  ⎿  ?? apps/web/src/graphql/
+      Test Files  3 passed (3)
+           Tests  11 passed (11)
+  ⎿  Updated apps/web/src/lib/execute.ts (+8 -8)
+      25    }
+      26  }
+      27  
+      28 -// The document's result type is a codegen contract: the schema
+         - guarantees `data` matches it.                                 
+      29 -function asResult<TResult>(                                    
+      30 -  _document: TypedDocumentString<TResult, unknown>,            
+      31 -  data: unknown,                                               
+      32 -): TResult {                                                   
+      33 -  return data as TResult;                                      
+      28 +// A GraphQL `data` payload is always an object. Its fields are
+         + typed by the codegen document,                                
+      29 +// which the schema guarantees, so the runtime check stops at t
+         +he object shape.                                               
+      30 +function isResult<TResult>(data: unknown): data is TResult {   
+      31 +  return typeof data === 'object' && data !== null;            
+      32  }
+      33  
+      34  export async function execute<TResult, TVariables>(
+     ...
+      48    const parsed = responseSchema.safeParse(body);
+      49    const errors = parsed.success ? (parsed.data.errors ?? []) : 
+          [];
+      50  
+      53 -  if (!response.ok || !parsed.success || errors.length > 0 || p
+         -arsed.data.data == null) {                                     
+      51 +  const data = parsed.success ? parsed.data.data : undefined;  
+      52 +                                                               
+      53 +  if (!response.ok || errors.length > 0 || !isResult<TResult>(d
+         +ata)) {                                                        
+      54      throw new GraphQLRequestError(response.status, errors);
+      55    }
+      56 -  return asResult(document, parsed.data.data);                 
+      56 +  return data;                                                 
+      57  }
+  ⎿  Updated apps/web/src/components/ApiStatus.tsx (+16 -2)
+       1 +import { useQuery } from '@tanstack/react-query';              
+       2  import { graphql } from '../graphql';
+       3 +import { execute } from '../lib/execute';                      
+       4  
+       5  // Placeholder until S-04: proves codegen → execute() → TanStac
+          k Query → Vite proxy.
+       4 -export const HealthQuery = graphql(`                           
+       6 +const HealthQuery = graphql(`                                  
+       7    query Health {
+       8      health
+       9    }
+      10  `);
+      11  
+      12  export function ApiStatus() {
+      11 -  return null;                                                 
+      13 +  const { isPending, isError } = useQuery({                    
+      14 +    queryKey: ['health'],                                      
+      15 +    queryFn: () => execute(HealthQuery),                       
+      16 +    // Show "unreachable" at once instead of after TanStack's d
+         +efault three retries.                                          
+      17 +    retry: false,                                              
+      18 +  });                                                          
+      19 +                                                               
+      20 +  const label = isPending ? 'checking…' : isError ? 'unreachabl
+         +e' : 'ok';                                                     
+      21 +  return (                                                     
+      22 +    <p role="status" className="text-sm text-gray-500">        
+      23 +      API: {label}                                             
+      24 +    </p>                                                       
+      25 +  );                                                           
+      26  }
+  ⎿  Created apps/web/src/app/Layout.tsx (+21 -0)
+       1 +import { Link, Outlet } from 'react-router';                   
+       2 +import { ApiStatus } from '../components/ApiStatus';           
+       3 +                                                               
+       4 +export function Layout() {                                     
+       5 +  return (                                                     
+       6 +    <div className="mx-auto max-w-4xl p-6">                    
+       7 +      <header className="mb-6 flex items-center justify-between
+         + border-b pb-4">                                               
+       8 +        <nav className="flex gap-4">                           
+       9 +          <Link to="/" className="font-semibold">              
+      10 +            Properties                                         
+      11 +          </Link>                                              
+      12 +          <Link to="/properties/new">New property</Link>       
+      13 +        </nav>                                                 
+      14 +        <ApiStatus />                                          
+      15 +      </header>                                                
+      16 +      <main>                                                   
+      17 +        <Outlet />                                             
+      18 +      </main>                                                  
+      19 +    </div>                                                     
+      20 +  );                                                           
+      21 +}                                                              
+  ⎿  Created apps/web/src/app/routes.tsx (+19 -0)
+       1 +import { Route, Routes } from 'react-router';                  
+       2 +import { CreatePage } from '../pages/CreatePage';              
+       3 +import { DetailsPage } from '../pages/DetailsPage';            
+       4 +import { ListPage } from '../pages/ListPage';                  
+       5 +import { NotFoundPage } from '../pages/NotFoundPage';          
+       6 +import { Layout } from './Layout';                             
+       7 +                                                               
+       8 +export function AppRoutes() {                                  
+       9 +  return (                                                     
+      10 +    <Routes>                                                   
+      11 +      <Route element={<Layout />}>                             
+      12 +        <Route index element={<ListPage />} />                 
+      13 +        <Route path="properties/new" element={<CreatePage />} /
+         +>                                                              
+      14 +        <Route path="properties/:id" element={<DetailsPage />} 
+         +/>                                                             
+      15 +        <Route path="*" element={<NotFoundPage />} />          
+      16 +      </Route>                                                 
+      17 +    </Routes>                                                  
+      18 +  );                                                           
+      19 +}                                                              
+  ⎿  Created apps/web/src/pages/ListPage.tsx (+3 -0)
+      1 +export function ListPage() {                                    
+      2 +  return <h1 className="text-2xl font-bold">Properties</h1>;    
+      3 +}                                                               
+  ⎿  … 5 more files changed
+
+● All 11 web tests pass, and relative fetch('/graphql') works under jsdom. Next:
+  React hooks lint rules for apps/web.
+
+● Update(eslint.config.ts)
+  ⎿  Added 4 lines
+      42      rules: restrictImports(),
+      43    },
+      44    {
+      45 +    files: ['apps/web/src/**/*.{ts,tsx}'],                     
+      46 +    extends: [reactHooks.configs.flat['recommended-latest']],  
+      47 +  },                                                           
+      48 +  {                                                            
+      49      files: ['apps/api/src/graphql/**/*.ts'],
+      50      rules: restrictImports('**/repositories/**', '**/adapters/*
+          *', 'drizzle-orm*', 'pg'),
+      51    },
+  ⎿  PostToolUse:Edit hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (eslint.config.ts):
+
+     Oops! Something went wrong! :(
+
+     ESLint: 10.12.0
+
+     ReferenceError: reactHooks is not defined
+         at /home/krzysztof/projects/taskTreeCover/property-manager/eslint.confi
+     g.ts:46:15
+         at async Function.import 
+     (/home/krzysztof/projects/taskTreeCover/property-manager/node_modules/.pnpm
+     /jiti@2.7.0/node_modules/jiti/dist/jiti.cjs:1:187718)
+         at async loadTypeScriptConfigFileWithJiti (/home/krzysztof/projects/tas
+     kTreeCover/property-manager/node_modules/.pnpm/eslint@10.12.0_jiti@2.7.0/no
+     de_modules/eslint/lib/config/config-loader.js:169:17)
+         at async loadConfigFile (/home/krzysztof/projects/taskTreeCover/propert
+     y-manager/node_modules/.pnpm/eslint@10.12.0_jiti@2.7.0/node_modules/eslint/
+     lib/config/config-loader.js:265:11)
+         at async ConfigLoader.calculateConfigArray (/home/krzysztof/projects/ta
+     skTreeCover/property-manager/node_modules/.pnpm/eslint@10.12.0_jiti@2.7.0/n
+     ode_modules/eslint/lib/config/config-loader.js:594:23)
+         at async #calculateConfigArray (/home/krzysztof/projects/taskTreeCover/
+     property-manager/node_modules/.pnpm/eslint@10.12.0_jiti@2.7.0/node_modules/
+     eslint/lib/config/config-loader.js:369:19)
+         at async Promise.all (index 0)
+         at async findFiles (/home/krzysztof/projects/taskTreeCover/property-man
+     ager/node_modules/.pnpm/eslint@10.12.0_jiti@2.7.0/node_modules/eslint/lib/e
+     slint/eslint-helpers.js:637:25)
+         at async ESLint.lintFiles (/home/krzysztof/projects/taskTreeCover/prope
+     rty-manager/node_modules/.pnpm/eslint@10.12.0_jiti@2.7.0/node_modules/eslin
+     t/lib/eslint/eslint.js:1025:21)
+         at async Object.execute 
+     (/home/krzysztof/projects/taskTreeCover/property-manager/node_modules/.pnpm
+     /eslint@10.12.0_jiti@2.7.0/node_modules/eslint/lib/cli.js:386:14)
+         at async main 
+     (/home/krzysztof/projects/taskTreeCover/property-manager/node_modules/.pnpm
+     /eslint@10.12.0_jiti@2.7.0/node_modules/eslint/bin/eslint.js:191:19)
+
+● Update(eslint.config.ts)
+  ⎿  Added 1 line
+      2  import prettier from 'eslint-config-prettier';
+      3  import type { Linter } from 'eslint';
+      4  import { defineConfig } from 'eslint/config';
+      5 +import reactHooks from 'eslint-plugin-react-hooks';             
+      6  import tseslint from 'typescript-eslint';
+      7  
+      8  // Node type stripping runs `.ts` files as they are, so a `./x.j
+         s` specifier fails at runtime.
+
+● That hook error came from the first edit, before the import was added. Now
+  running the full agent checks:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I found three issues: a lint rule needs TResult tied to the document
+  parameter, the project service can't see tsconfig.node.json since
+  vite.config.ts/vitest.config.ts aren't discovered, and MSW 3 mistypes GraphQL
+  resolver bodies. I'll fix these by linking the type predicate, making
+  tsconfig.json a solution file referencing tsconfig.app.json and
+  tsconfig.node.json, and using a plain Response for the HTTP 500 case.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web &&
+      python3 - <<'EOF'
+      p='src/lib/execute.ts'…)
+  ⎿      "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.jso
+     n",
+     $ eslint .
+     … +9 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/lib/execute.ts (+5 -2)
+      27  
+      28  // A GraphQL `data` payload is always an object. Its fields are
+           typed by the codegen document,
+      29  // which the schema guarantees, so the runtime check stops at t
+          he object shape.
+      30 -function isResult<TResult>(data: unknown): data is TResult {   
+      30 +function isResultOf<TResult>(                                  
+      31 +  _document: TypedDocumentString<TResult, never>,              
+      32 +  data: unknown,                                               
+      33 +): data is TResult {                                           
+      34    return typeof data === 'object' && data !== null;
+      35  }
+      36  
+     ...
+      53  
+      54    const data = parsed.success ? parsed.data.data : undefined;
+      55  
+      53 -  if (!response.ok || errors.length > 0 || !isResult<TResult>(d
+         -ata)) {                                                        
+      56 +  if (!response.ok || errors.length > 0 || !isResultOf(document
+         +, data)) {                                                     
+      57      throw new GraphQLRequestError(response.status, errors);
+      58    }
+      59    return data;
+  ⎿  Updated apps/web/src/lib/execute.test.ts (+1 -1)
+      26    });
+      27  
+      28    it('throws GraphQLRequestError with the status on HTTP 500', 
+          async () => {
+      29 -    server.use(api.query('Health', () => new HttpResponse('down
+         -', { status: 500 })));                                         
+      29 +    server.use(api.query('Health', () => new Response('down', {
+         + status: 500 })));                                             
+      30  
+      31      const error = await execute(HealthDocument).catch((e: unkno
+          wn) => e);
+      32  
+  ⎿  Updated apps/web/tsconfig.json (+2 -9)
+       1  {
+       2 -  "extends": "../../tsconfig.base.json",                       
+       3 -  "compilerOptions": {                                         
+       4 -    "module": "esnext",                                        
+       5 -    "moduleResolution": "bundler",                             
+       6 -    "jsx": "react-jsx",                                        
+       7 -    "lib": ["esnext", "dom", "dom.iterable"],                  
+       8 -    "types": ["vite/client"]                                   
+       9 -  },                                                           
+      10 -  "include": ["src"]                                           
+       2 +  "files": [],                                                 
+       3 +  "references": [{ "path": "./tsconfig.app.json" }, { "path": "
+         +./tsconfig.node.json" }]                                       
+       4  }
+  ⎿  Created apps/web/tsconfig.app.json (+11 -0)
+       1 +{                                                              
+       2 +  "extends": "../../tsconfig.base.json",                       
+       3 +  "compilerOptions": {                                         
+       4 +    "module": "esnext",                                        
+       5 +    "moduleResolution": "bundler",                             
+       6 +    "jsx": "react-jsx",                                        
+       7 +    "lib": ["esnext", "dom", "dom.iterable"],                  
+       8 +    "types": ["vite/client"]                                   
+       9 +  },                                                           
+      10 +  "include": ["src"]                                           
+      11 +}                                                              
+  ⎿  Updated apps/web/package.json (+1 -1)
+       6    "scripts": {
+       7      "dev": "vite",
+       8      "build": "vite build",
+       9 -    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.
+         -json",                                                         
+       9 +    "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.n
+         +ode.json",                                                     
+      10      "test:unit": "vitest run"
+      11    },
+      12    "dependencies": {
+
+● Lint and typecheck are green. Next: unit tests, codegen stability, the web
+  build and a format check.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● All checks are green, and dist/ is gitignored. Before handing over the manual
+  check, I'll do a quick smoke test of the dev proxy (the API loads .env itself;
+  I don't read the key).
+
+  Ran 1 shell command (ctrl+o to expand)
+● The proxy chain works: {"data":{"health":"ok"}} through :5173, and deep links
+  serve the SPA. (Exit 144 was pkill matching its own shell.) Checking nothing
+  is left running:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now logging the deviations in the plan.
+
+● Bash(cat >> context/changes/repo-skeleton/plan.md <<'EOF'
+      - Phase 4: `@graphql-codegen/client-preset` is `^6.2.1` (locked 6.2.1).
+      6.2.2 and three of its…)
+  ⎿  Updated context/changes/repo-skeleton/plan.md (+21 -0)
+      587    `onUnhandledFrame` cause), so "MSW guards integration tests 
+           too" is proven by a test.
+      588    `.stryker-tmp/` is added to `.gitignore` and the ESLint igno
+           res. `packages/shared` gets its
+      589    own `vitest` dev dependency for the Stryker runner.
+      590 +- Phase 4: `@graphql-codegen/client-preset` is `^6.2.1` (locke
+          +d 6.2.1). 6.2.2 and three of its                              
+      591 +  `@graphql-codegen/*` dependencies were published on 2026-10-
+          +07, inside pnpm's                                             
+      592 +  `minimumReleaseAge`. pnpm auto-added a `minimumReleaseAgeExc
+          +lude` bypass; it was reverted, so                             
+      593 +  the policy has no exclusions.                               
+      594 +- Phase 4: the client preset's `.ts` relative imports work und
+          +er `bundler` resolution                                       
+      595 +  (`allowImportingTsExtensions` from the base), so the *Codege
+          +n* fallback is not needed. The                                
+      596 +  output imports `@graphql-typed-document-node/core`, added as
+          + a web dev dependency.                                        
+      597 +  `@testing-library/dom` is added as the peer of `@testing-lib
+          +rary/react`.                                                  
+      598 +- Phase 4: MSW 3 has no top-level `graphql.query`, only `graph
+          +ql.link(url).query(...)`, and                                 
+      599 +  imports come from `msw/graphql` and `msw/http`. `src/test/ms
+          +w.ts` exports                                                 
+      600 +  `api = graphql.link('/graphql')`; tests use `api.query(...)`
+          +. A GraphQL resolver's body is                                
+      601 +  typed, so the HTTP 500 case returns a plain `Response`.     
+      602 +- Phase 4: `apps/web/tsconfig.json` is a solution file referen
+          +cing `tsconfig.app.json` (`src`)                              
+      603 +  and `tsconfig.node.json` (Vite/Vitest configs). The ESLint p
+          +roject service only discovers                                 
+      604 +  files named `tsconfig.json`, so a standalone `tsconfig.node.
+          +json` left the configs                                        
+      605 +  "not found by the project service". `typecheck` runs the two
+          + leaf configs.                                                
+      606 +- Phase 4: `execute()` checks the envelope with zod and narrow
+          +s `data` with a type predicate                                
+      607 +  `isResultOf(document, data)` (an object check) instead of an
+          + `as` cast. Field shapes come from                            
+      608 +  the codegen document type. A missing or non-object `data` al
+          +so throws `GraphQLRequestError`.                              
+      609 +- Phase 4: React hooks lint is `eslint-plugin-react-hooks` `co
+          +nfigs.flat['recommended-latest']`                             
+      610 +  on `apps/web/src/**`. `ApiStatus` renders with `role="status
+          +"`.                                                           
+
+● Phase 4 (web shell) is built, and every automated check passes. It needs your
+  manual check before I commit.
+
+  Your check:
+  - [ ] Run pnpm dev, open http://localhost:5173 and confirm the header shows
+    "API: ok".
+  - [ ] Open /, /properties/new and /properties/abc-123. The headings should be
+    "Properties", "New property" and "Property abc-123". Also try a made-up path
+    like /nope: it should show "Page not found".
+  - [ ] Stop the API, keep the web server running and reload. The status line
+    should show "API: unreachable".
+
+  I did a quick smoke test of the dev servers already: a POST to :5173/graphql
+  returned {"data":{"health":"ok"}} through the Vite proxy. I haven't checked
+  anything in a browser.
+
+  Automated checks:
+
+  ┌─────────────────────────────────────┬───────────────────────────────────┐
+  │                Check                │              Result               │
+  ├─────────────────────────────────────┼───────────────────────────────────┤
+  │ pnpm codegen                        │ ✅ two runs give identical output │
+  ├─────────────────────────────────────┼───────────────────────────────────┤
+  │ pnpm lint                           │ ✅                                │
+  ├─────────────────────────────────────┼───────────────────────────────────┤
+  │ pnpm typecheck                      │ ✅                                │
+  ├─────────────────────────────────────┼───────────────────────────────────┤
+  │ pnpm test:unit                      │ ✅ 52 tests pass, 11 of them new  │
+  │                                     │ web tests                         │
+  ├─────────────────────────────────────┼───────────────────────────────────┤
+  │ pnpm --filter @property-manager/web │ ✅                                │
+  │  build                              │                                   │
+  ├─────────────────────────────────────┼───────────────────────────────────┤
+  │ pnpm format:check                   │ ✅                                │
+  └─────────────────────────────────────┴───────────────────────────────────┘
+
+  What changed:
+  - apps/web setup: package.json, index.html, vite.config.ts (port 5173,
+    /graphql forwarded to :4000), vitest.config.ts (jsdom), and three tsconfigs.
+  - src/main.tsx and src/index.css: the app entry point and the Tailwind import.
+  - src/app/routes.tsx and Layout.tsx: the four routes, plus a layout with
+    navigation and the API status line.
+  - src/pages/: List, Create, Details and NotFound placeholder pages.
+  - src/lib/execute.ts: the typed GraphQL fetch and GraphQLRequestError.
+  - src/components/ApiStatus.tsx: the Health query and the status line.
+  - src/graphql/: the generated client code, committed.
+  - src/test/: shared setup, MSW handlers and renderWithProviders.
+  - Root files: codegen.ts (web output), eslint.config.ts (React hooks rules for
+    web), vitest.config.ts (the web test project), package.json (test:unit
+    includes web, plus 2 dev dependencies), pnpm-lock.yaml.
+
+  Deviations (logged in plan.md):
+  - Codegen version: I pinned client-preset to 6.2.1. Version 6.2.2 and three of
+    its dependencies came out today, inside pnpm's minimum release age. pnpm
+    had silently added an exclusion to get around the policy, and I removed it.
+  - MSW 3 API: GraphQL mocks only work through graphql.link('/graphql'), and
+    imports come from msw/graphql and msw/http.
+  - Web tsconfig: tsconfig.json is now a parent file that points to
+    tsconfig.app.json and tsconfig.node.json. Without that, ESLint couldn't find
+    the Vite and Vitest config files.
+  - No casts in execute(): the response is checked with zod, and data goes
+    through a type guard that checks it is an object, instead of an as cast. The
+    plan's codegen fallback wasn't needed, because the .ts imports in the
+    generated code already work.
+
+  Commit, once you confirm. I'll stage only the files above plus plan.md, by
+  explicit path. The five session .txt files in the repo root stay out. Proposed
+  message:
+
+  feat(repo-skeleton): add web shell with routes, typed execute and API status
+
+  Refs #1
+
+  Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+  After that, Phase 5 is next: CI, the env template, docs and syncing the test
+  plan.
+
+✻ Cogitated for 2m 23s · done 5:43 PM
+
+※ recap: Phase 4 of the repo skeleton, the web shell, is built and all automated checks pass, but nothing is committed yet. Next: run `pnpm dev` and check that localhost:5173 shows "API: ok" and the routes render, then confirm so I can commit. (disable recaps in /config)
+
+❯ manual test pass                                                              
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Pre-commit gate passed. Ticking the phase:
+
+● Bash(sed -i 's|^- \[ \] Phase 4: Web shell$|- [x] Phase 4: Web shell
+      (7c2a89c)|' context/changes/repo-skeleton/plan.md && grep -n "Phase 4:
+      Web" context/changes/repo…)
+  ⎿  550:- [x] Phase 4: Web shell (7c2a89c)
+  ⎿  Updated context/changes/repo-skeleton/plan.md (+1 -1)
+      547  - [x] Phase 1: Workspace, static rules and commit gate (a25205
+           e)
+      548  - [x] Phase 2: API skeleton with config, logging, Yoga and ser
+           ver codegen (537d8aa)
+      549  - [x] Phase 3: API test harness (integration project, Testcont
+           ainers, MSW, Stryker) (d0abb88)
+      550 -- [ ] Phase 4: Web shell                                      
+      550 +- [x] Phase 4: Web shell (7c2a89c)                            
+      551  - [ ] Phase 5: CI, env template, docs and test-plan sync
+      552  
+      553  ## Deviations
+
+● Phase 4 is committed as 7c2a89c (feat(repo-skeleton): add web shell with 
+  routes, typed execute and API status, Refs #1). I took your pass as approval
+  of the commit message I proposed. If you want it worded differently, I can
+  amend it.
+
+  - Pre-commit gate: passed with no skips (format, lint, typecheck, 52 unit
+    tests, secret scan).
+  - Staged files: only this phase's files and plan.md, by explicit path. The
+    five session .txt files in the repo root are still untracked and untouched.
+  - Progress: Phase 4 is ticked as - [x] Phase 4: Web shell (7c2a89c). That edit
+    is uncommitted and goes into the Phase 5 commit.
+
+  Next: Phase 5 adds CI, completes .env.example, fills in the CLAUDE.md Commands
+  section, and updates test-plan.md and the roadmap wording. Run /clear first,
+  since this context is long, then /implement repo-skeleton.
+
+✻ Cooked for 23s · done 7:09 PM
