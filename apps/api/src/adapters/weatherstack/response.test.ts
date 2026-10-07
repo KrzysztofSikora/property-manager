@@ -34,6 +34,8 @@ describe('parseWeatherstackResponse', () => {
     ['lat not numeric', { location: { lat: 'north' } }],
     ['lat empty', { location: { lat: '' } }],
     ['lat a number', { location: { lat: 33.609 } }],
+    ['lat with a leading letter', { location: { lat: 'N33.6' } }],
+    ['lat with a trailing letter', { location: { lat: '33.6N' } }],
     ['lon missing', { location: { lon: undefined } }],
     ['region empty', { location: { region: '' } }],
     ['region missing', { location: { region: undefined } }],
@@ -55,10 +57,17 @@ describe('parseWeatherstackResponse', () => {
     );
   });
 
-  it('a success: false body is unavailable', () => {
-    expect(() => parseWeatherstackResponse(weatherstackError(615, 'request_failed'))).toThrow(
-      WeatherUnavailableError,
-    );
+  it.each([
+    [
+      'with an error',
+      weatherstackError(615, 'request_failed'),
+      { code: 615, type: 'request_failed' },
+    ],
+    ['without an error', { success: false }, {}],
+  ])('a success: false body %s is unavailable, with the code as cause', (_case, body, expected) => {
+    const error = catchError(() => parseWeatherstackResponse(body));
+
+    expect(error.cause).toEqual({ weatherstackError: expected });
   });
 
   it.each([null, 'ok', []])('a body of %j is unavailable', (body) => {

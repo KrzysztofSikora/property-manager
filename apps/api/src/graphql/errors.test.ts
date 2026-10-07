@@ -50,6 +50,14 @@ describe('badUserInput', () => {
       ],
     });
   });
+
+  it('names a nested field by its dotted path', () => {
+    const error = badUserInput([{ path: ['filter', 'state'], message: 'must be 2 letters' }]);
+
+    expect(error.extensions['fields']).toEqual([
+      { field: 'filter.state', message: 'must be 2 letters' },
+    ]);
+  });
 });
 
 describe('createMaskError', () => {

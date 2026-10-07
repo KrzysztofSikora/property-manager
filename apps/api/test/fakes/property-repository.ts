@@ -18,7 +18,10 @@ export class InMemoryPropertyRepository implements PropertyRepository {
     const stored: Property = {
       ...structuredClone(property),
       id: crypto.randomUUID(),
-      weatherData: { units: 'IMPERIAL', current: toCurrentWeather(property.weatherData.current) },
+      weatherData: {
+        units: property.weatherData.units,
+        current: toCurrentWeather(property.weatherData.current),
+      },
       createdAt: new Date(),
     };
     this.rows.push(stored);
