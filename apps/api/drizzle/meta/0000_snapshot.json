@@ -1,0 +1,143 @@
+{
+  "id": "6def95ca-8fd2-4501-b27e-26be2ea4bc36",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.properties": {
+      "name": "properties",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "uuidv7()"
+        },
+        "street": {
+          "name": "street",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "zip_code": {
+          "name": "zip_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lat": {
+          "name": "lat",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "long": {
+          "name": "long",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weather_data": {
+          "name": "weather_data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "properties_address_unique": {
+          "name": "properties_address_unique",
+          "columns": [
+            {
+              "expression": "lower(\"street\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(\"city\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "zip_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "properties_state_format": {
+          "name": "properties_state_format",
+          "value": "\"properties\".\"state\" ~ '^[A-Z]{2}$'"
+        },
+        "properties_zip_code_format": {
+          "name": "properties_zip_code_format",
+          "value": "\"properties\".\"zip_code\" ~ '^[0-9]{5}$'"
+        },
+        "properties_lat_range": {
+          "name": "properties_lat_range",
+          "value": "\"properties\".\"lat\" BETWEEN -90 AND 90"
+        },
+        "properties_long_range": {
+          "name": "properties_long_range",
+          "value": "\"properties\".\"long\" BETWEEN -180 AND 180"
+        },
+        "properties_weather_data_shape": {
+          "name": "properties_weather_data_shape",
+          "value": "jsonb_typeof(\"properties\".\"weather_data\") = 'object' AND \"properties\".\"weather_data\" ? 'units' AND \"properties\".\"weather_data\" ? 'current'"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

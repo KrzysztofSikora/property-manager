@@ -1,0 +1,220 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement property-schema                                                    
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I'll add the US states table (50 states + DC) and FR-10 error codes to
+  packages/shared, along with unit tests, then verify with pnpm vitest run 
+  --project shared, typecheck, and lint—no human checks needed for this phase.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(sed -n 234,240p context/prd.md; cat packages/shared/vitest.config.ts
+      packages/shared/tsconfig.json; ls apps/api/src/config; head -30
+      apps/api/src/config/env.tes…)
+  ⎿  | `WEATHER_UNAVAILABLE` | Any other weather failure (FR-06) | Weather
+     could not be fetched, property not saved, try again later |
+     | `WEATHER_LOCATION_MISMATCH` | Region ≠ submitted state (FR-05 AC4) |
+     … +51 lines (ctrl+o to expand)
+  ⎿  Updated context/roadmap.md (+1 -1)
+      10  | ID | Issue | change-id | Type | Covers | Depends on | Size | 
+          Status |
+      11  |----|-------|-----------|------|--------|------------|------|-
+          -------|
+      12  | F-01 | #1 | repo-skeleton | foundation | FR-14 AC3, NFR-04, N
+          FR-06 | - | M | done |
+      13 -| F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08
+         - groundwork) | F-01 | S | planned |                            
+      13 +| F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08
+         + groundwork) | F-01 | S | in-progress |                        
+      14  | S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1
+          –AC3, AC6), FR-07, FR-10 | F-02 | M | todo |
+      15  | S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5)
+          , FR-06, FR-08, FR-10 | S-01 | M | todo |
+      16  | S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-0
+          2, FR-03, FR-04, FR-09, FR-10 | S-01 | M | todo |
+
+● Now the tests first.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/packages/share
+      d/src && cat > states.test.ts <<'EOF'
+      import { describe, expect, it } from 'vitest';…)
+  ⎿   ❯ src/states.test.ts:2:1
+           1| import { describe, expect, it } from 'vitest';
+           2| import { isStateCode, stateName, US_STATES } from './states.t
+     … +12 lines (ctrl+o to expand)
+  ⎿  Created packages/shared/src/states.test.ts (+42 -0)
+       1 +import { describe, expect, it } from 'vitest';                 
+       2 +import { isStateCode, stateName, US_STATES } from './states.ts'
+         +;                                                              
+       3 +                                                               
+       4 +describe('US_STATES', () => {                                  
+       5 +  it('TR-09: holds the 50 states plus DC', () => {             
+       6 +    expect(Object.keys(US_STATES)).toHaveLength(51);           
+       7 +  });                                                          
+       8 +                                                               
+       9 +  it('TR-09: every entry is a 2-letter upper-case code with a n
+         +on-empty name', () => {                                        
+      10 +    for (const [code, name] of Object.entries(US_STATES)) {    
+      11 +      expect(code).toMatch(/^[A-Z]{2}$/);                      
+      12 +      expect(name.trim()).not.toBe('');                        
+      13 +    }                                                          
+      14 +  });                                                          
+      15 +                                                               
+      16 +  it('TR-09: has no duplicate names', () => {                  
+      17 +    expect(new Set(Object.values(US_STATES)).size).toBe(51);   
+      18 +  });                                                          
+      19 +});                                                            
+      20 +                                                               
+      21 +describe('isStateCode', () => {                                
+      22 +  it.each(['AZ', 'DC', 'AL', 'WY'])('accepts %s', (value) => { 
+      23 +    expect(isStateCode(value)).toBe(true);                     
+      24 +  });                                                          
+      25 +                                                               
+      26 +  it.each(['PR', 'XX', 'az', 'Arizona', '', 'toString', 'constr
+         +uctor'])(                                                      
+      27 +    'rejects %j',                                              
+      28 +    (value) => {                                               
+      29 +      expect(isStateCode(value)).toBe(false);                  
+      30 +    },                                                         
+      31 +  );                                                           
+      32 +});                                                            
+      33 +                                                               
+      34 +describe('stateName', () => {                                  
+      35 +  it('maps DC to District of Columbia', () => {                
+      36 +    expect(stateName('DC')).toBe('District of Columbia');      
+      37 +  });                                                          
+      38 +                                                               
+      39 +  it('maps AZ to Arizona', () => {                             
+      40 +    expect(stateName('AZ')).toBe('Arizona');                   
+     … 2 more lines (ctrl+o to expand)
+  ⎿  Created packages/shared/src/errors.test.ts (+16 -0)
+       1 +import { describe, expect, it } from 'vitest';                 
+       2 +import { ERROR_CODES } from './errors.ts';                     
+       3 +                                                               
+       4 +describe('ERROR_CODES', () => {                                
+       5 +  it('FR-10: lists the error contract codes in table order', ()
+         + => {                                                          
+       6 +    expect(ERROR_CODES).toEqual([                              
+       7 +      'BAD_USER_INPUT',                                        
+       8 +      'PROPERTY_ALREADY_EXISTS',                               
+       9 +      'PROPERTY_NOT_FOUND',                                    
+      10 +      'WEATHER_QUOTA_EXCEEDED',                                
+      11 +      'WEATHER_UNAVAILABLE',                                   
+      12 +      'WEATHER_LOCATION_MISMATCH',                             
+      13 +      'INTERNAL_SERVER_ERROR',                                 
+      14 +    ]);                                                        
+      15 +  });                                                          
+      16 +});                                                            
+
+● The tests fail because the modules don't exist yet, which is the expected
+  failure. Next, the implementation.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(source ~/.nvm/nvm.sh && nvm use >/dev/null && pnpm exec prettier --write
+      packages/shared/src >/dev/null && pnpm format:check 2>&1 | tail -3 && pnpm
+      lint >/dev/n…)
+  ⎿  $ prettier --check .
+     Checking formatting...
+     All matched files use Prettier code style!
+     … +3 lines (ctrl+o to expand)
+  ⎿  Updated packages/shared/src/states.test.ts (+3 -6)
+      23      expect(isStateCode(value)).toBe(true);
+      24    });
+      25  
+      26 -  it.each(['PR', 'XX', 'az', 'Arizona', '', 'toString', 'constr
+         -uctor'])(                                                      
+      27 -    'rejects %j',                                              
+      28 -    (value) => {                                               
+      29 -      expect(isStateCode(value)).toBe(false);                  
+      30 -    },                                                         
+      31 -  );                                                           
+      26 +  it.each(['PR', 'XX', 'az', 'Arizona', '', 'toString', 'constr
+         +uctor'])('rejects %j', (value) => {                            
+      27 +    expect(isStateCode(value)).toBe(false);                    
+      28 +  });                                                          
+      29  });
+      30  
+      31  describe('stateName', () => {
+
+● All agent checks pass, and Phase 1 has no human checks, so it's ready to
+  commit. The commit message and which files to stage need your approval first.
+
+● User answered Claude's questions:
+  ⎿  · Commit Phase 1 with this message?
+
+     feat(property-schema): add US states table and FR-10 error codes to shared
+
+     Refs #2 → Commit as proposed
+     · These files were already dirty or untracked before this run: 
+     context/roadmap.md (the /plan status change and RQ-02 note, plus my 
+     in-progress edit), context/changes/property-schema/plan-review.md, and the 
+     *-F-0x.txt files in the repo root. Should any of them go into this commit? 
+     → context/roadmap.md, plan-review.md
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(sed -i 's/^- \[ \] Phase 1: Shared states and error codes$/- [x] Phase 1:
+      Shared states and error codes (578325a)/'
+      context/changes/property-schema/plan.md && g…)
+  ⎿  382:- [x] Phase 1: Shared states and error codes (578325a)
+  ⎿  Updated context/changes/property-schema/plan.md (+1 -1)
+      379  
+      380  ## Progress
+      381  <!-- One line per phase. /implement ticks it and appends the c
+           ommit hash. -->
+      382 -- [ ] Phase 1: Shared states and error codes                  
+      382 +- [x] Phase 1: Shared states and error codes (578325a)        
+      383  - [ ] Phase 2: Schema, migration and migrate command
+      384  - [ ] Phase 3: Test helpers and documentation
+      385  
+
+● Phase 1 is done and committed as 578325a (feat(property-schema): add US states
+  table and FR-10 error codes to shared, Refs #2).
+
+  What changed
+  - packages/shared/src/states.ts: US_STATES holds the 50 states plus DC, and
+    adds StateCode, isStateCode and stateName. isStateCode is case-sensitive and
+    ignores built-in object names, so toString and constructor return false.
+  - packages/shared/src/errors.ts: ERROR_CODES lists the 7 FR-10 codes in table
+    order, plus the ErrorCode type.
+  - packages/shared/src/index.ts: re-exports both files.
+  - packages/shared/src/states.test.ts: checks there are 51 codes, each a
+    2-letter upper-case code with a name, and no names repeat. Also checks which
+    inputs isStateCode accepts and rejects, and that DC maps to District of
+    Columbia and AZ to Arizona.
+  - packages/shared/src/errors.test.ts: checks that the list exactly matches
+    FR-10.
+  - context/roadmap.md: F-02 status is now in-progress. As you asked, this
+    commit also includes the earlier /plan edits to this file and
+    plan-review.md.
+  - context/changes/property-schema/plan.md: Phase 1 is ticked with its hash.
+    That edit isn't committed yet and will go in with Phase 2.
+
+  Checks
+  - Tests first: both test files failed before the code existed, because the
+    modules couldn't be imported.
+  - pnpm vitest run --project shared: 17 tests pass.
+  - pnpm typecheck: passes.
+  - pnpm lint: passes.
+  - pnpm format:check: passes after Prettier reformatted one test file.
+  - The pre-commit hook passed (87 hermetic tests).
+
+  Deviations: none. The tests check a few extra things the plan didn't ask for:
+  no names repeat, isStateCode rejects '', toString and constructor, and AZ maps
+  to Arizona.
+
+  Left alone: merge-F-01.txt, mutation-F-01.txt, plan-F-02.txt and
+  plan-review-F-02.txt in the repo root are still untracked.
+
+  Next: Phase 2 (schema, migration and migrate command). Run /clear first, then
+  /implement property-schema.
+
+✻ Sautéed for 1m 28s · done 8:07 PM

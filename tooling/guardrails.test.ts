@@ -23,6 +23,10 @@ describe('NFR-06: layer and import rules', () => {
     ['service → resolver', 'apps/api/src/services/x.ts', '../graphql/resolvers.ts'],
     ['service → graphql-yoga', 'apps/api/src/services/x.ts', 'graphql-yoga'],
     ['repository → service', 'apps/api/src/repositories/x.ts', '../services/x.ts'],
+    ['resolver → db', 'apps/api/src/graphql/resolvers.ts', '../db/schema.ts'],
+    ['service → db', 'apps/api/src/services/x.ts', '../db/schema.ts'],
+    ['adapter → db', 'apps/api/src/adapters/x.ts', '../db/schema.ts'],
+    ['adapter → service', 'apps/api/src/adapters/x.ts', '../services/x.ts'],
     ['relative .js import', 'apps/api/src/app.ts', './x.js'],
     ['relative .js import in a layer', 'apps/api/src/services/x.ts', './y.js'],
   ])('NFR-06 rejects %s', async (_name, filePath, specifier) => {
@@ -35,6 +39,12 @@ describe('NFR-06: layer and import rules', () => {
     const code = "import { a } from '../services/x.ts';\nexport const b = a;\n";
 
     expect(await ruleIds(code, 'apps/api/src/graphql/resolvers.ts')).toEqual([]);
+  });
+
+  it('NFR-06 control: a repository may import the db schema', async () => {
+    const code = "import { a } from '../db/schema.ts';\nexport const b = a;\n";
+
+    expect(await ruleIds(code, 'apps/api/src/repositories/x.ts')).toEqual([]);
   });
 });
 

@@ -46,17 +46,35 @@ export default defineConfig(
     files: ['apps/web/src/**/*.{ts,tsx}'],
     extends: [reactHooks.configs.flat['recommended-latest']],
   },
+  // `src/db/**` (schema, client, migrations) is persistence: only repositories import it.
   {
     files: ['apps/api/src/graphql/**/*.ts'],
-    rules: restrictImports('**/repositories/**', '**/adapters/**', 'drizzle-orm*', 'pg'),
+    rules: restrictImports(
+      '**/repositories/**',
+      '**/adapters/**',
+      '**/db/**',
+      'drizzle-orm*',
+      'pg',
+    ),
   },
   {
     files: ['apps/api/src/services/**/*.ts'],
-    rules: restrictImports('**/graphql/**', 'graphql-yoga', 'graphql', 'drizzle-orm*', 'pg'),
+    rules: restrictImports(
+      '**/graphql/**',
+      '**/db/**',
+      'graphql-yoga',
+      'graphql',
+      'drizzle-orm*',
+      'pg',
+    ),
   },
   {
-    files: ['apps/api/src/repositories/**/*.ts', 'apps/api/src/adapters/**/*.ts'],
+    files: ['apps/api/src/repositories/**/*.ts'],
     rules: restrictImports('**/services/**', '**/graphql/**'),
+  },
+  {
+    files: ['apps/api/src/adapters/**/*.ts'],
+    rules: restrictImports('**/services/**', '**/graphql/**', '**/db/**'),
   },
   prettier,
 );

@@ -1,0 +1,1241 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement property-schema                                                    
+
+  Read 3 files, ran 3 shell commands (ctrl+o to expand)
+
+● Bash is getting no verdict from the auto-mode check right now, so I'll read
+  the files I need with Read and try Bash again later.
+
+  Read 7 files, ran 5 shell commands (ctrl+o to expand)
+
+● Phase 3 (test helpers and docs) is next. I'm writing the helper files and
+  their tests now. After that I'll run pnpm test, typecheck, lint and format.
+
+  Read 1 file (ctrl+o to expand)
+
+● Write(apps/api/test/helpers/secrets.ts)
+  ⎿  Wrote 24 lines to apps/api/test/helpers/secrets.ts
+       1 import { expect } from 'vitest';
+       2 
+         s search for it.
+       4 export const TEST_WEATHERSTACK_KEY = 'TEST_WEATHERSTACK_KEY';
+       5 
+         leaked URL would sit.
+       7 function revealErrors(_key: string, value: unknown): unknown {
+       8   if (!(value instanceof Error)) return value;
+         e.stack, cause: value.cause };
+      10 }
+     … +21 lines (ctrl+o to expand)
+  ⎿  PostToolUse:Write hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/test/helpers/secrets.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/test/helpe
+     rs/secrets.ts
+       13:46  error  Passing a string to String() does not change the type or 
+     value of the string  @typescript-eslint/no-unnecessary-type-conversion
+
+     ✖ 1 problem (1 error, 0 warnings)
+
+● Write(apps/api/test/helpers/logs.ts)
+  ⎿  Wrote 23 lines to apps/api/test/helpers/logs.ts
+       1 import type { Logger } from 'pino';
+       2 import { createLogger } from '../../src/logger.ts';
+       3 
+       5 
+       6 export type CapturedLogs = { logger: Logger; lines: () => LogLin
+         e[] };
+       7 
+       9   return typeof value === 'object' && value !== null && !Array.i
+         sArray(value);
+      10 }
+     … +17 lines (ctrl+o to expand)
+
+● Write(apps/api/test/fixtures/property.ts)
+  ⎿  Wrote 13 lines to apps/api/test/fixtures/property.ts
+       1 // S-01 replaces this with the type inferred from the address zo
+       2 export type PropertyInput = { street: string; city: string; stat
+         e: string; zipCode: string };
+       3 
+         rides: "valid input except X".
+       5 export function validInput(overrides: Partial<PropertyInput> = {
+       6   return {
+       7     street: '15528 E Golden Eagle Blvd',
+       8     city: 'Fountain Hills',
+      10     zipCode: '85268',
+     … +7 lines (ctrl+o to expand)
+
+● Update(apps/api/test/helpers/secrets.ts)
+  ⎿  Added 4 lines, removed 1 line
+      10  }
+      11  
+      12  function serialize(value: unknown): string {
+      13 -  return typeof value === 'string' ? value : String(JSON.string
+         -ify(value, revealErrors));                                     
+      13 +  if (typeof value === 'string') return value;                 
+      14 +  // The lib types say string, but undefined and functions seri
+         +alize to undefined.                                            
+      15 +  const json: string | undefined = JSON.stringify(value, reveal
+         +Errors);                                                       
+      16 +  return json ?? String(value);                                
+      17  }
+      18  
+      19  // Pass a GraphQL result, log lines, an error: anything a calle
+          r or an operator could see.
+  ⎿  PostToolUse:Edit hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/test/helpers/secrets.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/test/helpe
+     rs/secrets.ts
+       16:10  error  Unnecessary conditional, expected left-hand side of `??` 
+     operator to be possibly null or undefined  
+     @typescript-eslint/no-unnecessary-condition
+
+     ✖ 1 problem (1 error, 0 warnings)
+
+● Update(apps/api/test/helpers/secrets.ts)
+  ⎿  Added 3 lines, removed 3 lines
+      11  
+      12  function serialize(value: unknown): string {
+      13    if (typeof value === 'string') return value;
+      14 -  // The lib types say string, but undefined and functions seri
+         -alize to undefined.                                            
+      15 -  const json: string | undefined = JSON.stringify(value, reveal
+         -Errors);                                                       
+      16 -  return json ?? String(value);                                
+      14 +  // These have no JSON form (stringify returns undefined) and 
+         +hold no text to leak.                                          
+      15 +  if (value === undefined || typeof value === 'function' || typ
+         +eof value === 'symbol') return '';                             
+      16 +  return JSON.stringify(value, revealErrors);                  
+      17  }
+      18  
+      19  // Pass a GraphQL result, log lines, an error: anything a calle
+          r or an operator could see.
+
+● Now the Weatherstack fixtures.
+
+● Write(apps/api/test/fixtures/weatherstack.ts)
+  ⎿  Wrote 64 lines to apps/api/test/fixtures/weatherstack.ts
+       1 import { existsSync, readFileSync } from 'node:fs';
+       2 import { dirname, join } from 'node:path';
+       4 
+       5 export type Json = string | number | boolean | null | Json[] | J
+         sonObject;
+       7 export type JsonObject = { [key: string]: Json };
+       8 
+       9 // `undefined` removes the key, so the "missing field" cases can
+      10 export type JsonOverrides = { [key: string]: Json | JsonOverride
+         s | undefined };
+     … +70 lines (ctrl+o to expand)
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(apps/api/test/fixtures/weatherstack.ts)
+  ⎿  Added 1 line, removed 1 line
+       9  // `undefined` removes the key, so the "missing field" cases ca
+          n be built.
+      10  export type JsonOverrides = { [key: string]: Json | JsonOverrid
+          es | undefined };
+      11  
+      12 -function isJsonObject(value: unknown): value is JsonObject {   
+      12 +function isPlainObject(value: unknown): value is JsonObject & J
+         +sonOverrides {                                                 
+      13    return typeof value === 'object' && value !== null && !Array.
+          isArray(value);
+      14  }
+      15  
+  ⎿  PostToolUse:Edit hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/test/fixtures/weatherstack.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/test/fixtu
+     res/weatherstack.ts
+       12:10  error  'isPlainObject' is defined but never used         
+     @typescript-eslint/no-unused-vars
+       32:8   error  Unsafe call of a type that could not be resolved  
+     @typescript-eslint/no-unsafe-call
+       46:7   error  Unsafe call of a type that could not be resolved  
+     @typescript-eslint/no-unsafe-call
+       46:30  error  Unsafe call of a type that could not be resolved  
+     @typescript-eslint/no-unsafe-call
+
+     ✖ 4 problems (4 errors, 0 warnings)
+
+● Update(apps/api/test/fixtures/weatherstack.ts)
+  ⎿  Added 1 line, removed 1 line
+      29  
+      30  function loadSample(): JsonObject {
+      31    const parsed: unknown = JSON.parse(readFileSync(SAMPLE_PATH, 
+          'utf8'));
+      32 -  if (!isJsonObject(parsed)) throw new Error('weatherstack fixt
+         -ure: sample is not an object');                                
+      32 +  if (!isPlainObject(parsed)) throw new Error('weatherstack fix
+         +ture: sample is not an object');                               
+      33    return parsed;
+      34  }
+      35  
+  ⎿  PostToolUse:Edit hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/test/fixtures/weatherstack.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/test/fixtu
+     res/weatherstack.ts
+       46:7   error  Unsafe call of a type that could not be resolved  
+     @typescript-eslint/no-unsafe-call
+       46:30  error  Unsafe call of a type that could not be resolved  
+     @typescript-eslint/no-unsafe-call
+
+     ✖ 2 problems (2 errors, 0 warnings)
+
+● Update(apps/api/test/fixtures/weatherstack.ts)
+  ⎿  Added 7 lines, removed 3 lines
+      41        delete result[key];
+      42        continue;
+      43      }
+      44 -    const current = result[key];                               
+      45 -    result[key] =                                              
+      46 -      isJsonObject(value) && isJsonObject(current) ? merge(curr
+         -ent, value) : (value as Json);                                 
+      44 +    if (isPlainObject(value)) {                                
+      45 +      // Merging into `{}` also strips `undefined` from an over
+         +ride that replaces a scalar.                                   
+      46 +      const current = result[key];                             
+      47 +      result[key] = merge(isPlainObject(current) ? current : {}
+         +, value);                                                      
+      48 +    } else {                                                   
+      49 +      result[key] = value;                                     
+      50 +    }                                                          
+      51    }
+      52    return result;
+      53  }
+
+● Those were intermediate states between edits; the final lint result follows
+  the last edit. Now the tests for these helpers.
+
+● Write(apps/api/test/helpers/secrets.test.ts)
+  ⎿  Wrote 62 lines to apps/api/test/helpers/secrets.test.ts
+       1 import { describe, expect, it } from 'vitest';
+       2 import { expectNoSecret, TEST_WEATHERSTACK_KEY } from './secrets
+         .ts';
+       3 
+       4 function failureOf(run: () => void): Error {
+       6     run();
+       7   } catch (error) {
+       8     if (error instanceof Error) return error;
+       9     throw new Error('expected an Error', { cause: error });
+      10   }
+     … +64 lines (ctrl+o to expand)
+
+● Write(apps/api/test/helpers/logs.test.ts)
+  ⎿  Wrote 32 lines to apps/api/test/helpers/logs.test.ts
+      1 import { describe, expect, it } from 'vitest';
+      2 import { captureLogs } from './logs.ts';
+      3 
+      4 describe('captureLogs', () => {
+      5   it('returns each written line parsed, with its fields', () => {
+      6     const { logger, lines } = captureLogs();
+      7 
+      8     logger.child({ requestId: 'r-1' }).info({ outcome: 'executed'
+         }, 'graphql operation');
+      9     logger.debug('details');
+     … +24 lines (ctrl+o to expand)
+
+● Write(apps/api/test/fixtures/weatherstack.test.ts)  ⎿  Wrote 73 lines to apps/api/test/fixtures/weatherstack.test.ts
+       1 import { readFileSync } from 'node:fs';
+       2 import { describe, expect, it } from 'vitest';
+         erstack.ts';
+       4 
+       5 const sample: unknown = JSON.parse(
+         rrent.json', import.meta.url), 'utf8'),
+       7 );
+       8 
+      10   it('deep-equals the recorded sample without overrides', () => 
+         {
+     … +75 lines (ctrl+o to expand)
+  ⎿  PostToolUse:Write hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/test/fixtures/weatherstack.test.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/test/fixtu
+     res/weatherstack.test.ts
+       66:56  error  Unsafe assignment of an `any` value  
+     @typescript-eslint/no-unsafe-assignment
+
+     ✖ 1 problem (1 error, 0 warnings)
+
+● Write(apps/api/test/fixtures/property.test.ts)
+  ⎿  Wrote 20 lines to apps/api/test/fixtures/property.test.ts
+       1 import { describe, expect, it } from 'vitest';
+       2 import { validInput } from './property.ts';
+       3 
+       4 describe('validInput', () => {
+       5   it('is the PRD canonical address', () => {
+       6     expect(validInput()).toEqual({
+       7       street: '15528 E Golden Eagle Blvd',
+       8       city: 'Fountain Hills',
+       9       state: 'AZ',
+      10       zipCode: '85268',
+     … +10 lines (ctrl+o to expand)
+
+● Bash(sed -i 's/^const SAMPLE_PATH = /export const WEATHERSTACK_SAMPLE_PATH =
+      /; s/readFileSync(SAMPLE_PATH,/readFileSync(WEATHERSTACK_SAMPLE_PATH,/'
+      apps/api/test/fi…)
+  ⎿  28:export const WEATHERSTACK_SAMPLE_PATH = join(workspaceRoot(), 'docs
+     /samples/weatherstack-current.json');
+     31:  const parsed: unknown = JSON.parse(readFileSync(WEATHERSTACK_SAMP
+     … +24 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/fixtures/weatherstack.ts (+2 -2)
+      25    return dir;
+      26  }
+      27  
+      28 -const SAMPLE_PATH = join(workspaceRoot(), 'docs/samples/weather
+         -stack-current.json');                                          
+      28 +export const WEATHERSTACK_SAMPLE_PATH = join(workspaceRoot(), '
+         +docs/samples/weatherstack-current.json');                      
+      29  
+      30  function loadSample(): JsonObject {
+      31 -  const parsed: unknown = JSON.parse(readFileSync(SAMPLE_PATH, 
+         -'utf8'));                                                      
+      31 +  const parsed: unknown = JSON.parse(readFileSync(WEATHERSTACK_
+         +SAMPLE_PATH, 'utf8'));                                         
+      32    if (!isPlainObject(parsed)) throw new Error('weatherstack fix
+          ture: sample is not an object');
+      33    return parsed;
+      34  }
+
+● Update(apps/api/test/fixtures/weatherstack.test.ts)
+  ⎿  Added 15 lines, removed 11 lines
+       1  import { readFileSync } from 'node:fs';
+       2  import { describe, expect, it } from 'vitest';
+       3 -import { weatherstackError, weatherstackResponse } from './weat
+         -herstack.ts';                                                  
+       3 +import {                                                       
+       4 +  WEATHERSTACK_SAMPLE_PATH,                                    
+       5 +  weatherstackError,                                           
+       6 +  weatherstackResponse,                                        
+       7 +} from './weatherstack.ts';                                    
+       8  
+       5 -const sample: unknown = JSON.parse(                            
+       6 -  readFileSync(                                                
+       7 -    new URL('../../../../docs/samples/weatherstack-current.json
+         -', import.meta.url),                                           
+       8 -    'utf8',                                                    
+       9 -  ),                                                           
+      10 -);                                                             
+       9 +const sample: unknown = JSON.parse(readFileSync(WEATHERSTACK_SA
+         +MPLE_PATH, 'utf8'));                                           
+      10  
+      11  describe('weatherstackResponse', () => {
+      12 +  it('reads docs/samples/weatherstack-current.json', () => {   
+      13 +    expect(WEATHERSTACK_SAMPLE_PATH).toMatch(/docs\/samples\/we
+         +atherstack-current\.json$/);                                   
+      14 +  });                                                          
+      15 +                                                               
+      16    it('deep-equals the recorded sample without overrides', () =>
+           {
+      17      expect(weatherstackResponse()).toEqual(sample);
+      18 +    expect(weatherstackResponse()).toHaveProperty('location.reg
+         +ion', 'Arizona');                                              
+      19    });
+      20  
+      21    it('TR-03: changes only the overridden path', () => {
+      22      const body = weatherstackResponse({ location: { region: 'Ne
+          vada' } });
+      23 +    const { location: expectedLocation, ...expectedRest } = wea
+         +therstackResponse();                                           
+      24 +    const { location, ...rest } = body;                        
+      25  
+      20 -    expect(body).toEqual({                                     
+      21 -      ...weatherstackResponse(),                               
+      22 -      location: { ...(weatherstackResponse().location as object
+         -), region: 'Nevada' },                                         
+      23 -    });                                                        
+      26 +    expect(location).toEqual({ ...Object(expectedLocation), reg
+         +ion: 'Nevada' });                                              
+      27 +    expect(rest).toEqual(expectedRest);                        
+      28    });
+      29  
+      30    it('TR-03: removes a key whose override is undefined', () => 
+          {
+  ⎿  PostToolUse:Edit hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/test/fixtures/weatherstack.test.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/test/fixtu
+     res/weatherstack.test.ts
+       70:56  error  Unsafe assignment of an `any` value  
+     @typescript-eslint/no-unsafe-assignment
+
+     ✖ 1 problem (1 error, 0 warnings)
+
+● Update(apps/api/test/fixtures/weatherstack.test.ts)
+  ⎿  Added 6 lines, removed 4 lines
+      65  
+      66  describe('weatherstackError', () => {
+      67    it('builds a success: false body with the code and type', () 
+          => {
+      68 -    expect(weatherstackError(104, 'usage_limit_reached')).toEqu
+         -al({                                                           
+      69 -      success: false,                                          
+      70 -      error: { code: 104, type: 'usage_limit_reached', info: ex
+         -pect.any(String) },                                            
+      71 -    });                                                        
+      68 +    const body = weatherstackError(104, 'usage_limit_reached');
+      69 +                                                               
+      70 +    expect(body).toHaveProperty('success', false);             
+      71 +    expect(body).toHaveProperty('error.code', 104);            
+      72 +    expect(body).toHaveProperty('error.type', 'usage_limit_reac
+         +hed');                                                         
+      73 +    expect(body).toHaveProperty('error.info');                 
+      74    });
+      75  
+      76    it('uses the given info text', () => {
+
+● Update(apps/api/test/fixtures/weatherstack.test.ts)
+  ⎿  Added 4 lines, removed 1 line
+      23      const { location: expectedLocation, ...expectedRest } = wea
+          therstackResponse();
+      24      const { location, ...rest } = body;
+      25  
+      26 -    expect(location).toEqual({ ...Object(expectedLocation), reg
+         -ion: 'Nevada' });                                              
+      26 +    if (typeof expectedLocation !== 'object' || expectedLocatio
+         +n === null) {                                                  
+      27 +      throw new Error('sample has no location object');        
+      28 +    }                                                          
+      29 +    expect(location).toEqual({ ...expectedLocation, region: 'Ne
+         +vada' });                                                      
+      30      expect(rest).toEqual(expectedRest);
+      31    });
+      32  
+  ⎿  PostToolUse:Edit hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/test/fixtures/weatherstack.test.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/test/fixtu
+     res/weatherstack.test.ts
+       29:32  error  Using the spread operator on an array in an object will 
+     result in a list of indices  @typescript-eslint/no-misused-spread
+
+     ✖ 1 problem (1 error, 0 warnings)
+
+● Update(apps/api/test/fixtures/weatherstack.test.ts)
+  ⎿  Added 5 lines, removed 1 line
+      23      const { location: expectedLocation, ...expectedRest } = wea
+          therstackResponse();
+      24      const { location, ...rest } = body;
+      25  
+      26 -    if (typeof expectedLocation !== 'object' || expectedLocatio
+         -n === null) {                                                  
+      26 +    if (                                                       
+      27 +      typeof expectedLocation !== 'object' ||                  
+      28 +      expectedLocation === null ||                             
+      29 +      Array.isArray(expectedLocation)                          
+      30 +    ) {                                                        
+      31        throw new Error('sample has no location object');
+      32      }
+      33      expect(location).toEqual({ ...expectedLocation, region: 'Ne
+          vada' });
+
+● Now widen the api-unit include and run the new hermetic tests.
+
+● Update(apps/api/vitest.unit.config.ts)
+  ⎿  Added 1 line, removed 1 line
+       4    test: {
+       5      name: 'api-unit',
+       6      root: import.meta.dirname,
+       7 -    include: ['src/**/*.test.ts'],                             
+       7 +    include: ['src/**/*.test.ts', 'test/**/*.test.ts'],        
+       8      exclude: ['**/*.int.test.ts'],
+       9      setupFiles: ['test/setup/msw.ts'],
+      10    },
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Unit tests pass. Now seedProperty and createTestApp.
+
+● Write(apps/api/test/helpers/db.ts)
+  ⎿  Added 35 lines
+       1  import { count, sql } from 'drizzle-orm';
+       2  import type { Database } from '../../src/db/client.ts';
+       3  import { properties } from '../../src/db/schema.ts';
+       4 +import type { NewPropertyRow, PropertyRow } from '../../src/db/
+         +schema.ts';                                                    
+       5 +import { validInput } from '../fixtures/property.ts';          
+       6 +import { weatherstackResponse } from '../fixtures/weatherstack.
+         +ts';                                                           
+       7 +import type { JsonObject } from '../fixtures/weatherstack.ts'; 
+       8  
+       9  export async function resetDb(db: Database): Promise<void> {
+      10    await db.execute(sql`TRUNCATE ${properties}`);
+     ...
+      14    const [row] = await db.select({ n: count() }).from(properties
+          );
+      15    return row?.n ?? 0;
+      16  }
+      17 +                                                               
+      18 +function objectAt(body: JsonObject, key: string): JsonObject { 
+      19 +  const value = body[key];                                     
+      20 +  if (typeof value !== 'object' || value === null || Array.isAr
+         +ray(value)) {                                                  
+      21 +    throw new Error(`seedProperty: sample has no "${key}" objec
+         +t`);                                                           
+      22 +  }                                                            
+      23 +  return value;                                                
+      24 +}                                                              
+      25 +                                                               
+      26 +// A full valid row from `validInput()` and the recorded sample
+         +. Inserts through the table, not                               
+      27 +// the repository, so seeding does not depend on the code under
+         + test. Pass `createdAt` when                                   
+      28 +// order matters.                                              
+      29 +export async function seedProperty(                            
+      30 +  db: Database,                                                
+      31 +  overrides: Partial<NewPropertyRow> = {},                     
+      32 +): Promise<PropertyRow> {                                      
+      33 +  const sample = weatherstackResponse();                       
+      34 +  const location = objectAt(sample, 'location');               
+      35 +  const [row] = await db                                       
+      36 +    .insert(properties)                                        
+      37 +    .values({                                                  
+      38 +      ...validInput(),                                         
+      39 +      lat: Number(location.lat),                               
+      40 +      long: Number(location.lon),                              
+      41 +      weatherData: { units: 'IMPERIAL', current: objectAt(sampl
+         +e, 'current') },                                               
+      42 +      ...overrides,                                            
+      43 +    })                                                         
+      44 +    .returning();                                              
+      45 +  if (row === undefined) throw new Error('seedProperty: insert 
+         +returned no row');                                             
+      46 +  return row;                                                  
+      47 +}                                                              
+
+● Write(apps/api/test/helpers/app.ts)
+  ⎿  Wrote 53 lines to apps/api/test/helpers/app.ts
+       1 import { inject } from 'vitest';
+       2 import { createApp } from '../../src/app.ts';
+       3 import { loadConfig } from '../../src/config/env.ts';
+       4 import { createDb } from '../../src/db/client.ts';
+       5 import type { Database } from '../../src/db/client.ts';
+       7 import type { LogLine } from './logs.ts';
+       8 import { TEST_WEATHERSTACK_KEY } from './secrets.ts';
+       9 
+      10 export type ExecuteResult = { data?: unknown; errors?: unknown[]
+          };
+     … +47 lines (ctrl+o to expand)
+
+● Now the smoke test: health switches to createTestApp, plus the
+  seed/count/reset case.
+
+● Write(apps/api/test/integration/smoke.int.test.ts)
+  ⎿  Added 29 lines, removed 15 lines
+       1  import pg from 'pg';
+       2 -import { describe, expect, inject, it } from 'vitest';         
+       3 -import { createApp } from '../../src/app.ts';                  
+       4 -import { loadConfig } from '../../src/config/env.ts';          
+       5 -import { createLogger } from '../../src/logger.ts';            
+       2 +import { afterAll, describe, expect, inject, it } from 'vitest'
+         +;                                                              
+       3 +import { createTestApp } from '../helpers/app.ts';             
+       4 +import { countProperties, resetDb, seedProperty } from '../help
+         +ers/db.ts';                                                    
+       5 +import { expectNoSecret } from '../helpers/secrets.ts';        
+       6  
+       7  describe('integration harness', () => {
+       8 +  const app = createTestApp();                                 
+       9 +                                                               
+      10 +  afterAll(app.close);                                         
+      11 +                                                               
+      12    it('connects to the Testcontainers database', async () => {
+      13      const client = new pg.Client({ connectionString: inject('da
+          tabaseUrl') });
+      14      await client.connect();
+     ...
+      21    });
+      22  
+      23    it('answers the health query in process', async () => {
+      20 -    const config = loadConfig({                                
+      21 -      WEATHERSTACK_KEY: 'TEST_WEATHERSTACK_KEY',               
+      22 -      DATABASE_URL: inject('databaseUrl'),                     
+      23 -    });                                                        
+      24 -    const { yoga } = createApp({ config, logger: createLogger('
+         -silent') });                                                   
+      24 +    const result = await app.execute('{ health }');            
+      25  
+      26 -    const response = await yoga.fetch('http://localhost/graphql
+         -', {                                                           
+      27 -      method: 'POST',                                          
+      28 -      headers: { 'content-type': 'application/json' },         
+      29 -      body: JSON.stringify({ query: '{ health }' }),           
+      26 +    expect(result).toEqual({ data: { health: 'ok' } });        
+      27 +    expect(app.logs()).toContainEqual(expect.objectContaining({
+         + msg: 'graphql operation' }));                                 
+      28 +    expectNoSecret(result, app.logs());                        
+      29 +  });                                                          
+      30 +                                                               
+      31 +  it('seeds, counts and resets properties on the migrated datab
+         +ase', async () => {                                            
+      32 +    await resetDb(app.db);                                     
+      33 +                                                               
+      34 +    const row = await seedProperty(app.db, { createdAt: new Dat
+         +e('2026-01-02T03:04:05Z') });                                  
+      35 +                                                               
+      36 +    expect(row).toMatchObject({                                
+      37 +      street: '15528 E Golden Eagle Blvd',                     
+      38 +      state: 'AZ',                                             
+      39 +      lat: 33.609,                                             
+      40 +      long: -111.729,                                          
+      41 +      weatherData: { units: 'IMPERIAL', current: expect.objectC
+         +ontaining({ temperature: 82 }) },                              
+      42 +      createdAt: new Date('2026-01-02T03:04:05Z'),             
+      43      });
+      44 +    expect(await countProperties(app.db)).toBe(1);             
+      45  
+      32 -    expect(response.status).toBe(200);                         
+      33 -    expect(await response.json()).toEqual({ data: { health: 'ok
+         -' } });                                                        
+      46 +    await resetDb(app.db);                                     
+      47 +    expect(await countProperties(app.db)).toBe(0);             
+      48    });
+      49  });
+      50  
+  ⎿  PostToolUse:Write hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/test/integration/smoke.int.test.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/test/integ
+     ration/smoke.int.test.ts
+       41:41  error  Unsafe assignment of an `any` value  
+     @typescript-eslint/no-unsafe-assignment
+
+     ✖ 1 problem (1 error, 0 warnings)
+
+● Update(apps/api/test/integration/smoke.int.test.ts)
+  ⎿  Added 2 lines, removed 1 line
+      38        state: 'AZ',
+      39        lat: 33.609,
+      40        long: -111.729,
+      41 -      weatherData: { units: 'IMPERIAL', current: expect.objectC
+         -ontaining({ temperature: 82 }) },                              
+      41        createdAt: new Date('2026-01-02T03:04:05Z'),
+      42      });
+      43 +    expect(row.weatherData.units).toBe('IMPERIAL');            
+      44 +    expect(row.weatherData.current).toHaveProperty('temperature
+         +', 82);                                                        
+      45      expect(await countProperties(app.db)).toBe(1);
+      46  
+      47      await resetDb(app.db);
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All green. Quick check that the leak tests can fail: I'll break expectNoSecret
+  for a moment, then restore it.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Restored. Now the docs: test-plan, CLAUDE.md, roadmap.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Update(context/test-plan.md)
+  ⎿  Added 3 lines, removed 1 line
+      127  - **Fixtures from one source.** `docs/samples/weatherstack-cur
+           rent.json` is the only recorded
+      128    response. The builder `weatherstackResponse(overrides)` in
+      129    `apps/api/test/fixtures/weatherstack.ts` derives every varia
+           nt from it (other region,
+      130 -  missing field, error bodies). Error bodies are built by `wea
+          -therstackError(code, type)`.                                  
+      130 +  missing field, error bodies). Overrides deep-merge (arrays a
+          +nd scalars replace), and an                                   
+      131 +  `undefined` value removes the key. Error bodies are built by
+      132 +  `weatherstackError(code, type, info?)`.                     
+      133  - **The canonical valid input** is the PRD's: `15528 E Golden 
+           Eagle Blvd, Fountain Hills, AZ
+      134    85268`, with region `Arizona` (`validInput()` in `apps/api/t
+           est/fixtures/property.ts`).
+      135    Other addresses are derived through overrides, so tests read
+            as "valid input except X".
+
+● Update(context/test-plan.md)
+  ⎿  Added 2 lines, removed 1 line
+      134    85268`, with region `Arizona` (`validInput()` in `apps/api/t
+           est/fixtures/property.ts`).
+      135    Other addresses are derived through overrides, so tests read
+            as "valid input except X".
+      136  - **Sentinel key.** Tests set `WEATHERSTACK_KEY` to the consta
+           nt `TEST_WEATHERSTACK_KEY`
+      137 -  (a recognisable fake, not a real key). Leak assertions searc
+          -h for that string. The real key                               
+      137 +  (a recognisable fake, not a real key), exported from `apps/a
+          +pi/test/helpers/secrets.ts`.                                  
+      138 +  Leak assertions (`expectNoSecret`) search for that string. T
+          +he real key                                                   
+      139    is never loaded in tests: Vitest does not read `.env`.
+      140  - **Database.** Testcontainers starts one `postgres:18-alpine`
+            container per test run (Vitest
+      141    `globalSetup`), runs the drizzle-kit migrations once, and pa
+           sses the connection URL through
+● Update(context/test-plan.md)
+  ⎿  Added 4 lines, removed 2 lines
+      141    `globalSetup`), runs the drizzle-kit migrations once, and pa
+           sses the connection URL through
+      142    `provide`/`inject`. Each integration test file truncates `pr
+           operties` in `beforeEach`. Test
+      143    files that use the database run serially (`fileParallelism: 
+           false` in the integration
+      144 -  project), so truncation cannot race. Rows are seeded through
+          - the repository (`seedProperty`)                              
+      145 -  with explicit `createdAt` when order matters.               
+      144 +  project), so truncation cannot race. Rows are seeded with `s
+          +eedProperty`                                                  
+      145 +  (`apps/api/test/helpers/db.ts`), which inserts through the D
+          +rizzle table, not the                                         
+      146 +  repository, so seeding does not depend on the code under tes
+          +t. Pass `createdAt` explicitly                                
+      147 +  when order matters.                                         
+      148  - **Time.** Ordering tests set `createdAt` explicitly instead 
+           of sleeping. Tie-break tests give
+      149    many rows the same `createdAt`.
+      150  - **Network.** MSW `setupServer` with `onUnhandledFrame: 'erro
+           r'` (MSW 3's name) in the API and web Vitest
+
+● Update(context/test-plan.md)
+  ⎿  Added 3 lines, removed 2 lines
+      150  - **Network.** MSW `setupServer` with `onUnhandledFrame: 'erro
+           r'` (MSW 3's name) in the API and web Vitest
+      151    setup. `server.resetHandlers()` after each test. Testcontain
+           ers talks to Docker over a
+      152    socket, which MSW does not intercept.
+      153 -- **Logs.** `captureLogs()` gives a pino logger writing to an 
+          -in-memory stream and returns the                              
+      154 -  parsed lines, so tests assert on log content without touchin
+          -g stdout.                                                     
+      153 +- **Logs.** `captureLogs()` (`apps/api/test/helpers/logs.ts`) 
+          +gives a pino logger at level                                  
+      154 +  `trace` writing to an in-memory stream, and `lines()` return
+          +s the parsed lines, so tests                                  
+      155 +  assert on log content without touching stdout.              
+      156  - **Web.** `renderWithProviders` creates a fresh `QueryClient`
+            per test with `retry: false`, so
+      157    cached data and retries never cross tests.
+      158  - **E2E.** The Compose stack starts with a fresh database volu
+           me. Each spec creates the data it
+
+● Update(context/test-plan.md)
+  ⎿  Added 4 lines
+      171  `apps/api/test/setup/postgres.ts`), `web` (`apps/web/vitest.co
+           nfig.ts`, jsdom) and `tooling`
+      172  (`tooling/*.test.ts`). `pnpm test:unit` runs all but `api-int`
+           ; `pnpm test` runs all. The API
+      173  MSW setup is `apps/api/test/setup/msw.ts`, the web one `apps/w
+           eb/src/test/setup.ts`.
+      174 +`api-unit` also runs the hermetic helper tests in `apps/api/te
+          +st/**/*.test.ts`.                                             
+      175  
+      176 +Helpers marked *(S-01)* below do not exist yet. They land with
+          + the `WeatherClient` port in                                  
+      177 +S-01.                                                         
+      178 +                                                              
+      179  ### Add a unit test
+      180  
+      181  For pure logic: validation, normalization, mapping, error clas
+           sification, UI components.
+
+● Update(context/test-plan.md)
+  ⎿  Added 1 line, removed 1 line
+      188     copying a test.
+      189  5. Assert the result the caller sees: the returned value, the 
+           parsed object, the thrown domain
+      190     error's `code`. Do not assert on private helpers or call or
+           der inside the unit.
+      191 -6. Adapter tests: start from `apps/api/test/msw/weatherstack.t
+          -s` handlers. Override per test                                
+      191 +6. Adapter tests: start from `apps/api/test/msw/weatherstack.t
+          +s` handlers *(S-01)*. Override per test                       
+      192     with `server.use(http.get('*/current', () => HttpResponse.j
+           son(...)))` (imports from
+      193     `msw/http` in MSW 3). To check the
+      194     request, read it inside the handler and assert on `url.sear
+           chParams` (compare `access_key`
+
+● Update(context/test-plan.md)
+  ⎿  Added 17 lines, removed 14 lines
+      208  replaced.
+      209  
+      210  1. Create `apps/api/test/integration/<feature>.int.test.ts`.
+      211 -2. Call `const app = createTestApp({ weather: new FakeWeatherC
+          -lient(weatherstackResponse()) })`                             
+      212 -   from `apps/api/test/helpers/app.ts`. It wires the real comp
+          -osition root with the test                                    
+      213 -   database from `inject('databaseUrl')`, the fake weather cli
+          -ent and a captured logger.                                    
+      211 +2. Call `const app = createTestApp()` from `apps/api/test/help
+          +ers/app.ts`, and                                              
+      212 +   `afterAll(app.close)`. It wires the real composition root w
+          +ith the test database from                                    
+      213 +   `inject('databaseUrl')`, the sentinel key and a captured lo
+          +gger, and returns                                             
+      214 +   `{ db, execute, logs, close }`. *(S-01)* adds the `weather`
+          + option:                                                      
+      215 +   `createTestApp({ weather: new FakeWeatherClient(weatherstac
+          +kResponse()) })`.                                             
+      216  3. In `beforeEach`, call `await resetDb(app.db)`. Seed with `s
+           eedProperty(app.db, {...})` when
+      215 -   the test needs existing rows.                              
+      216 -4. Execute operations with `await app.execute(CREATE_PROPERTY,
+          - variables)`. It sends the                                    
+      217 -   request through `yoga.fetch` and returns `{ data, errors }`
+          -. Use the typed documents from                                
+      218 -   `apps/api/test/operations.ts`.                             
+      217 +   the test needs existing rows; it returns the inserted row. 
+      218 +4. Execute operations with `await app.execute(document, variab
+          +les)`. It sends the request                                   
+      219 +   through `yoga.fetch` and returns `{ data, errors }`. Use th
+          +e typed documents from                                        
+      220 +   `apps/api/test/operations.ts` *(S-01)*.                    
+      221  5. Assert, in this order:
+      222     - the GraphQL result (`data`, or `errors[0].extensions.code
+           ` with `expectGraphQLError(result,
+      221 -     'PROPERTY_ALREADY_EXISTS')`);                            
+      223 +     'PROPERTY_ALREADY_EXISTS')` *(S-01)*);                   
+      224     - the database state (`countProperties(app.db)` or a read t
+           hrough the repository);
+      223 -   - weather calls (`expect(app.weather.calls).toHaveLength(n)
+          -`);                                                           
+      224 -   - for failure cases, no leak: `expectNoSecret(result, app.l
+          -ogs())`.                                                      
+      225 -6. For adapter failures end to end, use `createTestApp({ weath
+          -er: 'msw' })`, which wires the                                
+      226 -   real `WeatherClient` against the MSW handlers instead of th
+          -e fake.                                                       
+      227 -7. For races (FR-08 AC2), use `FakeWeatherClient.withBarrier(2
+          -)`, which holds calls until two                               
+      228 -   have arrived, then fire both operations with `Promise.all`.
+      225 +   - weather calls (`expect(app.weather.calls).toHaveLength(n)
+          +` *(S-01)*);                                                  
+      226 +   - for failure cases, no leak: `expectNoSecret(result, app.l
+          +ogs())` from                                                  
+      227 +     `apps/api/test/helpers/secrets.ts`.                      
+      228 +6. For adapter failures end to end, use `createTestApp({ weath
+          +er: 'msw' })` *(S-01)*, which                                 
+      229 +   wires the real `WeatherClient` against the MSW handlers ins
+          +tead of the fake.                                             
+      230 +7. For races (FR-08 AC2), use `FakeWeatherClient.withBarrier(2
+          +)` *(S-01)*, which holds calls                                
+      231 +   until two have arrived, then fire both operations with `Pro
+          +mise.all`.                                                    
+      232  8. Run `pnpm test` (Docker must be running).
+      233  
+      234  ### Add an e2e test
+
+● Now the TR-05/TR-06 rows, CLAUDE.md and the roadmap note.
+
+● Bash(python3 - <<'EOF'
+      import re…)
+  ⎿  Traceback (most recent call last):
+       File "<stdin>", line 24, in <module>
+     AssertionError: 0
+     … +9 lines (ctrl+o to expand)
+  ⎿  Updated context/test-plan.md (+2 -2)
+      29  | TR-02 | Weatherstack error payloads are misclassified: HTTP 2
+          00 with `success: false` is treated as success, or code 104 is 
+          not mapped to `WEATHER_QUOTA_EXCEEDED` (FR-06 AC1, AC2, R-01). 
+          Weatherstack reports errors in a 200 body, which is easy to mis
+          s. | H | M | U (MSW) | Adapter tests, one `it.each` table: 104 
+          → quota; 101, 105 → unavailable + config log entry; 615, unknow
+          n code → unavailable; `success: false` without `error` → unavai
+          lable. Bodies follow the documented shape (OQ-04, verified in t
+          he S-02 plan). | planned (S-02) |
+      30  | TR-03 | A response with a changed or partial shape (missing `
+          current`, a missing key field, `lat`/`lon` not numeric) is stor
+          ed as a broken record, or crashes later on the details page (FR
+          -06 AC5, R-04, NFR-08). | H | M | U | Adapter schema tests: the
+           recorded sample `docs/samples/weatherstack-current.json` parse
+          s (contract test). Then each key field removed one at a time (`
+          it.each`) → `WEATHER_UNAVAILABLE`. Non-numeric `lat` → unavaila
+          ble. Missing `astro` / `air_quality` / non-key fields → success
+          . | planned (S-01 happy path, S-02 failures) |
+      31  | TR-04 | A Weatherstack call is made where it must not be: a d
+          uplicate, invalid input, a query, a delete, or a retry (C-03, B
+          -N2, FR-01 AC6, FR-04 AC3, FR-07 AC1, FR-08 AC1, FR-09 AC3). Ev
+          ery extra call spends quota (R-01). | H | M | I | `FakeWeatherC
+          lient.calls` asserted in every resolver-level integration test:
+           exactly 1 on a successful create, 0 on validation failure, dup
+          licate, `properties`, `property` and `deleteProperty`. Adapter 
+          test: exactly one HTTP request on timeout, 5xx and 429 (no retr
+          y, FR-06 AC3). | planned (S-01 – S-03) |
+      32 -| TR-05 | A failed create leaves a partial or orphan row: the s
+         -ave runs before the region check, or a DB error happens mid-way
+         - (FR-05 AC5, AC6, NFR-08). | H | L | I | For every failure code
+         -: property count before = after. The DB rejecting the save (rep
+         -ository fake that throws) → `INTERNAL_SERVER_ERROR` with no row
+         -. Schema: `NOT NULL` on every required column, an insert with a
+         - null is rejected (F-02 acceptance). | planned (F-02, S-01, S-0
+         -2) |                                                           
+      33 -| TR-06 | Two concurrent creates of the same address both pass 
+         -the pre-check and both get stored (FR-08 AC2). This is a race, 
+         -so it shows up rarely and stays hidden. | M | M | I | Testconta
+         -iners: `FakeWeatherClient` holds both calls behind a barrier un
+         -til both have passed the pre-check, then releases them. `Promis
+         -e.all` of two `createProperty` calls → exactly one success, one
+         - `PROPERTY_ALREADY_EXISTS`, count 1. Repository test: the pg `2
+         -3505` error on insert maps to the domain duplicate error. | pla
+         -nned (F-02 index, S-02) |                                      
+      32 +| TR-05 | A failed create leaves a partial or orphan row: the s
+         +ave runs before the region check, or a DB error happens mid-way
+         + (FR-05 AC5, AC6, NFR-08). | H | L | I | For every failure code
+         +: property count before = after. The DB rejecting the save (rep
+         +ository fake that throws) → `INTERNAL_SERVER_ERROR` with no row
+         +. Schema: `NOT NULL` on every required column, an insert with a
+         + null is rejected, and the CHECKs reject out-of-range or malfor
+         +med values (F-02, `schema.int.test.ts`). | schema half covered 
+         +(F-02); planned (S-01, S-02) |                                 
+      33 +| TR-06 | Two concurrent creates of the same address both pass 
+         +the pre-check and both get stored (FR-08 AC2). This is a race, 
+         +so it shows up rarely and stays hidden. | M | M | I | Testconta
+         +iners: `FakeWeatherClient` holds both calls behind a barrier un
+         +til both have passed the pre-check, then releases them. `Promis
+         +e.all` of two `createProperty` calls → exactly one success, one
+         + `PROPERTY_ALREADY_EXISTS`, count 1. Repository test: the pg `2
+         +3505` error on insert maps to the domain duplicate error (Drizz
+         +le 0.45 puts the pg error on `DrizzleQueryError.cause`). Storag
+         +e half: two rows differing only in `street`/`city` case violate
+         + `properties_address_unique` (F-02, `schema.int.test.ts`). | st
+         +orage half covered (F-02); planned (S-02) |                    
+      34  | TR-07 | Address normalization differs between the duplicate c
+          heck, the unique index and the stored value, so `"15528 e golde
+          n eagle  blvd"` is not caught as a duplicate, or a valid addres
+          s is wrongly blocked (FR-05 AC3, FR-08 AC1, FR-08 AC3). | M | M
+           | U + I | U: `normalizeAddress` table (trim, collapse inner wh
+          itespace, state upper-case, case kept for display). I: FR-08 AC
+          1 variant through the API; FR-08 AC3 delete-then-recreate succe
+          eds. | planned (S-01, S-02, S-03) |
+      35  | TR-08 | Input validation lets bad data through or rejects val
+          id data: ZIP+4, 4-digit zip, leading-zero zip turned into a num
+          ber, territories, full state names, blank or overlong street/ci
+          ty (FR-07 AC1 – AC5, A-01 – A-03). | M | M | U + I | U: shared 
+          address schema in `packages/shared`, `it.each` with the PRD's e
+          xact examples plus boundary lengths (200/201 street, 100/101 ci
+          ty after trimming). I: one resolver test with several invalid f
+          ields → one `BAD_USER_INPUT` listing all fields in `extensions.
+          fields`, 0 weather calls. FR-07 AC2 `"02108"` stored and return
+          ed as the string `"02108"`. | planned (S-01) |
+      36  | TR-09 | The region check gives a false result: case or whites
+          pace in `region`, DC as "District of Columbia" (R-03), or a mis
+          sing state in the code → name table, so a valid address is reje
+          cted or a mismatch is stored (FR-05 AC4). | M | M | U + I | U: 
+          `regionMatchesState` table (exact, different case, padded, DC, 
+          mismatch). U: the states table has exactly 51 entries and every
+           code maps to a name. I: FR-05 AC4 → `WEATHER_LOCATION_MISMATCH
+          ` whose message names "AZ"/"Arizona" and "California", count un
+          changed. | planned (S-02) |
+  ⎿  Updated CLAUDE.md (+2 -0)
+      84  | Typecheck | `pnpm typecheck` |
+      85  | Format / check | `pnpm format` / `pnpm format:check` |
+      86  | GraphQL codegen (commit the output) | `pnpm codegen` |
+      87 +| Apply migrations to the dev DB (needs only `DATABASE_URL`) | 
+         +`pnpm db:migrate` |                                            
+      88 +| Generate a migration after changing `apps/api/src/db/schema.t
+         +s` (commit the output) | `pnpm db:generate` |                  
+      89  | Mutation (one module, targets in `context/test-plan.md`) | `p
+          npm --filter @property-manager/<api\|web\|shared> test:mutation
+           --mutate src/<module>.ts`; tooling: `pnpm test:mutation:toolin
+          g --mutate tooling/<file>.ts` |
+      90  | E2E | not yet (S-06) |
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/roadmap.md'…)
+  ⎿  diff --git a/CLAUDE.md b/CLAUDE.md
+     index f7b8dbb..ed9d133 100644
+     --- a/CLAUDE.md
+     … +23 lines (ctrl+o to expand)
+  ⎿  Updated context/roadmap.md (+2 -1)
+      134  - Unknowns: OQ-04 — Weatherstack error codes and quota are UNV
+           ERIFIED; confirm against current
+      135    Weatherstack docs while planning (see RQ-04); body shape of 
+           the HTTP 429 response; whether
+      136    `region` for DC is "District of Columbia" (R-03); how Drizzl
+           e 0.45 surfaces the `pg` error
+      137 -  (wrapped `cause` vs. direct `code`); making the concurrent t
+          -est deterministic.                                            
+      137 +  (resolved in F-02: a `DrizzleQueryError` whose `code` is und
+          +efined, with the pg error, `code`                             
+      138 +  and `constraint`, on `.cause`); making the concurrent test d
+          +eterministic.                                                 
+      139  - Size: M (upper end; the plan may split it into two phases/co
+           mmits)
+      140  
+      141  ### S-03 Query and delete properties (`query-and-delete-proper
+           ties`)
+
+● Docs updated. Now the project checks.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(source ~/.nvm/nvm.sh && nvm use >/dev/null && pnpm prettier --write
+      apps/api/test/fixtures/weatherstack.ts >/dev/null && cd apps/api && pnpm
+      exec tsc -p . 2>&1…)
+  ⎿  test/fixtures/weatherstack.ts(52,7): error TS2322: Type 'string | numb
+     er | boolean | Json[] | JsonOverrides | null' is not assignable to typ
+     e 'Json'.
+     … +3 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/fixtures/weatherstack.ts (+4 -1)
+      25    return dir;
+      26  }
+      27  
+      28 -export const WEATHERSTACK_SAMPLE_PATH = join(workspaceRoot(), '
+         -docs/samples/weatherstack-current.json');                      
+      28 +export const WEATHERSTACK_SAMPLE_PATH = join(                  
+      29 +  workspaceRoot(),                                             
+      30 +  'docs/samples/weatherstack-current.json',                    
+      31 +);                                                             
+      32  
+      33  function loadSample(): JsonObject {
+      34    const parsed: unknown = JSON.parse(readFileSync(WEATHERSTACK_
+          SAMPLE_PATH, 'utf8'));
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(apps/api/test/fixtures/weatherstack.ts)
+  ⎿  Added 6 lines, removed 1 line
+       9  // `undefined` removes the key, so the "missing field" cases ca
+          n be built.
+      10  export type JsonOverrides = { [key: string]: Json | JsonOverrid
+          es | undefined };
+      11  
+      12 -function isPlainObject(value: unknown): value is JsonObject & J
+         -sonOverrides {                                                 
+      12 +function isPlainObject(value: unknown): value is JsonObject {  
+      13    return typeof value === 'object' && value !== null && !Array.
+          isArray(value);
+      14  }
+      15  
+      16 +// Narrower input type than `isPlainObject`, so the false branc
+         +h leaves only `Json` scalars and arrays.                       
+      17 +function isOverrideObject(value: Json | JsonOverrides): value i
+         +s JsonOverrides {                                              
+      18 +  return isPlainObject(value);                                 
+      19 +}                                                              
+      20 +                                                               
+      21  // Walk up to the workspace root instead of a fixed `../../..`:
+           Stryker runs the tests from a
+      22  // sandbox copy of `apps/api`, one level deeper, without `docs/
+          `.
+      23  function workspaceRoot(): string {
+  ⎿  PostToolUse:Edit hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/test/fixtures/weatherstack.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/test/fixtu
+     res/weatherstack.ts
+       17:10  error  'isOverrideObject' is defined but never used  
+     @typescript-eslint/no-unused-vars
+
+     ✖ 1 problem (1 error, 0 warnings)
+
+● Update(apps/api/test/fixtures/weatherstack.ts)
+  ⎿  Added 1 line, removed 1 line
+      49        delete result[key];
+      50        continue;
+      51      }
+      52 -    if (isPlainObject(value)) {                                
+      52 +    if (isOverrideObject(value)) {                             
+      53        // Merging into `{}` also strips `undefined` from an over
+          ride that replaces a scalar.
+      54        const current = result[key];
+      55        result[key] = merge(isPlainObject(current) ? current : {}
+          , value);
+
+● Update(apps/api/test/fixtures/weatherstack.ts)
+  ⎿  Added 1 line, removed 1 line
+      13    return typeof value === 'object' && value !== null && !Array.
+          isArray(value);
+      14  }
+      15  
+      16 -// Narrower input type than `isPlainObject`, so the false branc
+         -h leaves only `Json` scalars and arrays.                       
+      16 +// A narrower input type than `isPlainObject`: the false branch
+         + keeps only scalars and arrays.                                
+      17  function isOverrideObject(value: Json | JsonOverrides): value i
+          s JsonOverrides {
+      18    return isPlainObject(value);
+      19  }
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All green: typecheck, lint, format and pnpm test (18 files, 149 tests). Last
+  agent check: the Cookbook helper names.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Every Cookbook name exists except the ones marked (S-01). Logging deviations
+  in the plan:
+
+● Bash(cat >> context/changes/property-schema/plan.md <<'EOF'
+      - Phase 3, `captureLogs`: a plain `{ write }` destination (the pattern in
+      `app.test.ts`)…)
+  ⎿  9759a37 feat(property-schema): add properties schema, first migration
+     and db:migrate
+     Refs #2
+     … +27 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/property-schema/plan.md (+12 -0)
+      394  - Phase 2, extra tests beyond the plan: the migrate CLI also c
+           hecks that a URL or password in
+      395    an error message is redacted (raw and percent-decoded) and t
+           hat success returns 0. The
+      396    guardrails gain `adapter → service`, since the repositories/
+           adapters block was split.
+      397 +- Phase 3, `captureLogs`: a plain `{ write }` destination (the
+          + pattern in `app.test.ts`)                                    
+      398 +  instead of a `Writable`, at level `trace` so leak checks see
+          + every line.                                                  
+      399 +- Phase 3, `fixtures/weatherstack.ts`: it finds `docs/samples/
+          +` by walking up to                                            
+      400 +  `pnpm-workspace.yaml`, because Stryker runs `api-unit` from 
+          +a sandbox copy of `apps/api`                                  
+      401 +  one level deeper. It also exports `WEATHERSTACK_SAMPLE_PATH`
+          + and the `Json` types. The                                    
+      402 +  third `weatherstackError` argument (`info`) is optional and 
+          +defaults to a fixture text.                                   
+      403 +- Phase 3, `expectNoSecret`: it serializes an `Error`'s `messa
+          +ge`, `stack` and `cause`, which                               
+      404 +  `JSON.stringify` would drop.                                
+      405 +- Phase 3, Cookbook: besides `FakeWeatherClient`, `withBarrier
+          +` and the `weather` option,                                   
+      406 +  `expectGraphQLError`, `test/operations.ts` and `test/msw/wea
+          +therstack.ts` are also marked                                 
+      407 +  *(S-01)*. They did not exist either. The TR-05 / TR-06 statu
+          +s cells now say which half F-02                               
+      408 +  covers.                                                     
+
+● Phase 3 is built and every agent check passes. Before I commit, one check is
+  yours.
+
+  To check
+  - [ ] Read the updated Cookbook for accuracy: context/test-plan.md → Test data
+    and isolation and Cookbook. Run git diff context/test-plan.md to see only
+    the changes. Things to confirm:
+    - The helper paths and names match what was built.
+    - The (S-01) markers are right.
+    - The new status cells in TR-05 and TR-06.
+
+  What changed
+  - apps/api/test/helpers/secrets.ts: TEST_WEATHERSTACK_KEY and expectNoSecret.
+    A failure message names only which argument leaked, never the matched text.
+  - apps/api/test/helpers/logs.ts: captureLogs() returns { logger, lines() }
+    with the parsed pino lines.
+  - apps/api/test/helpers/db.ts: adds seedProperty. It inserts straight into the
+    table, building the row from validInput() and the recorded weather sample,
+    and returns the new row.
+  - apps/api/test/helpers/app.ts: createTestApp() returns { db, execute, logs, 
+    close }.
+  - apps/api/test/fixtures/property.ts: validInput(), the PRD's example address.
+  - apps/api/test/fixtures/weatherstack.ts: weatherstackResponse(overrides)
+    deep-merges overrides into the sample, and undefined removes a key.
+    weatherstackError(code, type, info?) builds an error body.
+  - Four hermetic test files: helpers/{secrets,logs}.test.ts and
+    fixtures/{weatherstack,property}.test.ts.
+  - apps/api/vitest.unit.config.ts: the api-unit project now also runs
+    test/**/*.test.ts.
+  - apps/api/test/integration/smoke.int.test.ts: the health test now uses
+    createTestApp. A new case covers seed → count → reset. The select 1 and
+    TR-25 cases are unchanged.
+  - context/test-plan.md: Cookbook and Test data updated as built, (S-01)
+    markers added, TR-05 and TR-06 updated.
+  - CLAUDE.md: pnpm db:migrate and pnpm db:generate added to Commands.
+  - context/roadmap.md: the S-02 Unknowns note says the pg error is found on
+    DrizzleQueryError.cause.
+  - context/changes/property-schema/plan.md: the Phase 2 hash tick and the Phase
+    3 deviations.
+
+  Checks
+  - pnpm test (Docker running): 18 files, 149 tests, all pass.
+  - pnpm typecheck, pnpm lint and pnpm format:check pass.
+  - Making expectNoSecret a no-op for a moment failed 4 of its 5 tests; it's
+    restored.
+  - Every Cookbook helper name exists in apps/api/test/, except those marked
+    (S-01).
+
+  Deviations (logged in plan.md)
+  - captureLogs uses a plain { write } stream, the same pattern as app.test.ts,
+    at level trace.
+  - The fixture finds docs/samples/ by walking up to pnpm-workspace.yaml.
+    Stryker runs the tests from a copy of apps/api one folder deeper, where a
+    fixed ../../.. path would break.
+  - expectNoSecret also checks an Error's message, stack and cause, which
+    JSON.stringify would otherwise drop.
+  - Besides the items the plan named, three more Cookbook entries are marked
+    (S-01): expectGraphQLError, test/operations.ts and test/msw/weatherstack.ts.
+    None of them exist yet.
+
+  Proposed commit (staging only the files above by path):
+  feat(property-schema): add test helpers and document them in the Cookbook
+
+  Refs #2
+  The untracked *-F-0*.txt files in the repo root are not mine, and I'll leave
+  them alone.
+
+  Confirm the Cookbook check and approve or edit the message, and I'll commit.
+  After that comes a docs(property-schema): close plan commit for the hash tick,
+  then /review property-schema.
+
+✻ Cogitated for 6m 35s · done 8:21 PM
+
+❯ confirm                                                                       
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Committed. Now tick Phase 3 with the hash.
+
+● Bash(sed -i 's/^- \[ \] Phase 3: Test helpers and documentation$/- [x] Phase
+      3: Test helpers and documentation (5cc911b)/'
+      context/changes/property-schema/plan.md &&…)  ⎿  diff --git a/context/changes/property-schema/plan.md b/context/changes
+     /property-schema/plan.md
+     index 1607c03..c12ad4a 100644
+     … +12 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/property-schema/plan.md (+1 -1)
+      381  <!-- One line per phase. /implement ticks it and appends the c
+           ommit hash. -->
+      382  - [x] Phase 1: Shared states and error codes (578325a)
+      383  - [x] Phase 2: Schema, migration and migrate command (9759a37)
+      384 -- [ ] Phase 3: Test helpers and documentation                 
+      384 +- [x] Phase 3: Test helpers and documentation (5cc911b)       
+      385  
+      386  ## Deviations
+      387  
+
+● I committed Phase 3 as 5cc911b, feat(property-schema): add test helpers and 
+  document them in the Cookbook (Refs #2). The pre-commit hook passed: format
+  check, typecheck, and the hermetic tests (16 files, 119 tests). Only the 16
+  phase files were staged; the untracked *-F-0*.txt files in the repo root are
+  left alone.
+
+  I've ticked Phase 3 in plan.md as (5cc911b), but that edit isn't committed
+  yet. All three phases of property-schema are now done.
+
+  Next:
+  1. Commit the tick on its own:
+  docs(property-schema): close plan
+
+  Refs #2
+     I kept Refs #2 rather than Closes #2 because review and the mutation check
+     are still to come. For F-01, Closes #1 went on the last commit, which came
+     from the mutation check.
+  2. Run /review property-schema. Consider running /clear first, since this
+     context is long.
+
+  Should I make the close-plan commit with that message?
+
+✻ Cogitated for 21s · done 8:22 PM

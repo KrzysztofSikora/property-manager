@@ -29,8 +29,8 @@ Status: `planned` until the owning roadmap item lands, then `covered` or `gap`.
 | TR-02 | Weatherstack error payloads are misclassified: HTTP 200 with `success: false` is treated as success, or code 104 is not mapped to `WEATHER_QUOTA_EXCEEDED` (FR-06 AC1, AC2, R-01). Weatherstack reports errors in a 200 body, which is easy to miss. | H | M | U (MSW) | Adapter tests, one `it.each` table: 104 → quota; 101, 105 → unavailable + config log entry; 615, unknown code → unavailable; `success: false` without `error` → unavailable. Bodies follow the documented shape (OQ-04, verified in the S-02 plan). | planned (S-02) |
 | TR-03 | A response with a changed or partial shape (missing `current`, a missing key field, `lat`/`lon` not numeric) is stored as a broken record, or crashes later on the details page (FR-06 AC5, R-04, NFR-08). | H | M | U | Adapter schema tests: the recorded sample `docs/samples/weatherstack-current.json` parses (contract test). Then each key field removed one at a time (`it.each`) → `WEATHER_UNAVAILABLE`. Non-numeric `lat` → unavailable. Missing `astro` / `air_quality` / non-key fields → success. | planned (S-01 happy path, S-02 failures) |
 | TR-04 | A Weatherstack call is made where it must not be: a duplicate, invalid input, a query, a delete, or a retry (C-03, B-N2, FR-01 AC6, FR-04 AC3, FR-07 AC1, FR-08 AC1, FR-09 AC3). Every extra call spends quota (R-01). | H | M | I | `FakeWeatherClient.calls` asserted in every resolver-level integration test: exactly 1 on a successful create, 0 on validation failure, duplicate, `properties`, `property` and `deleteProperty`. Adapter test: exactly one HTTP request on timeout, 5xx and 429 (no retry, FR-06 AC3). | planned (S-01 – S-03) |
-| TR-05 | A failed create leaves a partial or orphan row: the save runs before the region check, or a DB error happens mid-way (FR-05 AC5, AC6, NFR-08). | H | L | I | For every failure code: property count before = after. The DB rejecting the save (repository fake that throws) → `INTERNAL_SERVER_ERROR` with no row. Schema: `NOT NULL` on every required column, an insert with a null is rejected (F-02 acceptance). | planned (F-02, S-01, S-02) |
-| TR-06 | Two concurrent creates of the same address both pass the pre-check and both get stored (FR-08 AC2). This is a race, so it shows up rarely and stays hidden. | M | M | I | Testcontainers: `FakeWeatherClient` holds both calls behind a barrier until both have passed the pre-check, then releases them. `Promise.all` of two `createProperty` calls → exactly one success, one `PROPERTY_ALREADY_EXISTS`, count 1. Repository test: the pg `23505` error on insert maps to the domain duplicate error. | planned (F-02 index, S-02) |
+| TR-05 | A failed create leaves a partial or orphan row: the save runs before the region check, or a DB error happens mid-way (FR-05 AC5, AC6, NFR-08). | H | L | I | For every failure code: property count before = after. The DB rejecting the save (repository fake that throws) → `INTERNAL_SERVER_ERROR` with no row. Schema: `NOT NULL` on every required column, an insert with a null is rejected, and the CHECKs reject out-of-range or malformed values (F-02, `schema.int.test.ts`). | schema half covered (F-02); planned (S-01, S-02) |
+| TR-06 | Two concurrent creates of the same address both pass the pre-check and both get stored (FR-08 AC2). This is a race, so it shows up rarely and stays hidden. | M | M | I | Testcontainers: `FakeWeatherClient` holds both calls behind a barrier until both have passed the pre-check, then releases them. `Promise.all` of two `createProperty` calls → exactly one success, one `PROPERTY_ALREADY_EXISTS`, count 1. Repository test: the pg `23505` error on insert maps to the domain duplicate error (Drizzle 0.45 puts the pg error on `DrizzleQueryError.cause`). Storage half: two rows differing only in `street`/`city` case violate `properties_address_unique` (F-02, `schema.int.test.ts`). | storage half covered (F-02); planned (S-02) |
 | TR-07 | Address normalization differs between the duplicate check, the unique index and the stored value, so `"15528 e golden eagle  blvd"` is not caught as a duplicate, or a valid address is wrongly blocked (FR-05 AC3, FR-08 AC1, FR-08 AC3). | M | M | U + I | U: `normalizeAddress` table (trim, collapse inner whitespace, state upper-case, case kept for display). I: FR-08 AC1 variant through the API; FR-08 AC3 delete-then-recreate succeeds. | planned (S-01, S-02, S-03) |
 | TR-08 | Input validation lets bad data through or rejects valid data: ZIP+4, 4-digit zip, leading-zero zip turned into a number, territories, full state names, blank or overlong street/city (FR-07 AC1 – AC5, A-01 – A-03). | M | M | U + I | U: shared address schema in `packages/shared`, `it.each` with the PRD's exact examples plus boundary lengths (200/201 street, 100/101 city after trimming). I: one resolver test with several invalid fields → one `BAD_USER_INPUT` listing all fields in `extensions.fields`, 0 weather calls. FR-07 AC2 `"02108"` stored and returned as the string `"02108"`. | planned (S-01) |
 | TR-09 | The region check gives a false result: case or whitespace in `region`, DC as "District of Columbia" (R-03), or a missing state in the code → name table, so a valid address is rejected or a mismatch is stored (FR-05 AC4). | M | M | U + I | U: `regionMatchesState` table (exact, different case, padded, DC, mismatch). U: the states table has exactly 51 entries and every code maps to a name. I: FR-05 AC4 → `WEATHER_LOCATION_MISMATCH` whose message names "AZ"/"Arizona" and "California", count unchanged. | planned (S-02) |
@@ -114,7 +114,8 @@ per container start is too slow, and the integration tests in TR-06, TR-13 and T
 | `apps/api/src/adapters/weatherstack/redact.ts` (URL / error redaction) | One wrong regex leaks the key (TR-01). Small module, so every mutant should die. | 100% (equivalents excepted) | Not in CI. Local `break` at 100% of non-equivalent mutants. |
 | `apps/api/src/services/property.service.ts` create flow and `regionMatchesState` | The order validate → duplicate → weather → region → save, and the region comparison, are business rules where a swapped step costs quota or stores bad records (TR-04, TR-05, TR-09). Tested with `FakeWeatherClient` and an in-memory repository fake. | 80% | Not in CI. Local `break` at 75% after the baseline. |
 | `apps/api/src/graphql/errors.ts` (domain error → `extensions.code`, masking) and the `properties` args schema | Error mapping and query argument rules (bounds, blank filters, upper-casing) are tables; a mutant in a table entry is a wrong code or a wrong bound (TR-12, TR-14). | 90% | Not in CI. Local `break` at 85% after the baseline. |
-| `apps/api/src/config/env.ts` (env schema, missing vs invalid messages) | A bad bound or anchor starts the API on a wrong port or URL; a wrong message hides which variable is wrong or echoes a secret (TR-18). | 85% | Not in CI. Baseline 83.0% (F-01); all 8 survivors equivalent or accepted. |
+| `apps/api/src/config/env.ts` (env schema, missing vs invalid messages) | A bad bound or anchor starts the API on a wrong port or URL; a wrong message hides which variable is wrong or echoes a secret (TR-18). | 85% | Not in CI. Baseline 83.0% (F-01), 84.6% after F-02's `loadDatabaseConfig`; all 8 survivors equivalent or accepted. |
+| `apps/api/src/db/migrate-cli.ts` (DB URL / password redaction in `pnpm db:migrate` output) | One wrong check prints the database password or garbles the failure reason (F-02). | 100% of non-equivalent, accepted survivors excepted | Not in CI. Baseline 76.3% (F-02); of the 9 survivors 3 are equivalent and 6 accepted (entry-point block, `decodedOrSelf` catch), see `changes/property-schema/mutation.md`. |
 | `tooling/secret-scan.ts` (pre-commit key-leak scan) | One wrong hunk regex or line count lets the key into a commit or blocks clean commits (TR-01). | 100% (equivalents excepted) | Not in CI. Baseline 93.6% (F-01) = 100% of non-equivalent. |
 | `apps/web/src/lib/execute.ts` (GraphQL/HTTP response → `GraphQLRequestError`) | A weakened check shows an error or empty payload as success in every page (FR-12, FR-13). | 90% | Not in CI. Baseline 97.4% (F-01). |
 
@@ -127,26 +128,32 @@ recorded baseline needs the user's approval (mutation skill).
 - **Fixtures from one source.** `docs/samples/weatherstack-current.json` is the only recorded
   response. The builder `weatherstackResponse(overrides)` in
   `apps/api/test/fixtures/weatherstack.ts` derives every variant from it (other region,
-  missing field, error bodies). Error bodies are built by `weatherstackError(code, type)`.
+  missing field, error bodies). Overrides deep-merge (arrays and scalars replace), and an
+  `undefined` value removes the key. Error bodies are built by
+  `weatherstackError(code, type, info?)`.
 - **The canonical valid input** is the PRD's: `15528 E Golden Eagle Blvd, Fountain Hills, AZ
   85268`, with region `Arizona` (`validInput()` in `apps/api/test/fixtures/property.ts`).
   Other addresses are derived through overrides, so tests read as "valid input except X".
 - **Sentinel key.** Tests set `WEATHERSTACK_KEY` to the constant `TEST_WEATHERSTACK_KEY`
-  (a recognisable fake, not a real key). Leak assertions search for that string. The real key
+  (a recognisable fake, not a real key), exported from `apps/api/test/helpers/secrets.ts`.
+  Leak assertions (`expectNoSecret`) search for that string. The real key
   is never loaded in tests: Vitest does not read `.env`.
 - **Database.** Testcontainers starts one `postgres:18-alpine` container per test run (Vitest
   `globalSetup`), runs the drizzle-kit migrations once, and passes the connection URL through
   `provide`/`inject`. Each integration test file truncates `properties` in `beforeEach`. Test
   files that use the database run serially (`fileParallelism: false` in the integration
-  project), so truncation cannot race. Rows are seeded through the repository (`seedProperty`)
-  with explicit `createdAt` when order matters.
+  project), so truncation cannot race. Rows are seeded with `seedProperty`
+  (`apps/api/test/helpers/db.ts`), which inserts through the Drizzle table, not the
+  repository, so seeding does not depend on the code under test. Pass `createdAt` explicitly
+  when order matters.
 - **Time.** Ordering tests set `createdAt` explicitly instead of sleeping. Tie-break tests give
   many rows the same `createdAt`.
 - **Network.** MSW `setupServer` with `onUnhandledFrame: 'error'` (MSW 3's name) in the API and web Vitest
   setup. `server.resetHandlers()` after each test. Testcontainers talks to Docker over a
   socket, which MSW does not intercept.
-- **Logs.** `captureLogs()` gives a pino logger writing to an in-memory stream and returns the
-  parsed lines, so tests assert on log content without touching stdout.
+- **Logs.** `captureLogs()` (`apps/api/test/helpers/logs.ts`) gives a pino logger at level
+  `trace` writing to an in-memory stream, and `lines()` returns the parsed lines, so tests
+  assert on log content without touching stdout.
 - **Web.** `renderWithProviders` creates a fresh `QueryClient` per test with `retry: false`, so
   cached data and retries never cross tests.
 - **E2E.** The Compose stack starts with a fresh database volume. Each spec creates the data it
@@ -165,6 +172,10 @@ Vitest projects (root `vitest.config.ts`): `shared` (`packages/shared/vitest.con
 `apps/api/test/setup/postgres.ts`), `web` (`apps/web/vitest.config.ts`, jsdom) and `tooling`
 (`tooling/*.test.ts`). `pnpm test:unit` runs all but `api-int`; `pnpm test` runs all. The API
 MSW setup is `apps/api/test/setup/msw.ts`, the web one `apps/web/src/test/setup.ts`.
+`api-unit` also runs the hermetic helper tests in `apps/api/test/**/*.test.ts`.
+
+Helpers marked *(S-01)* below do not exist yet. They land with the `WeatherClient` port in
+S-01.
 
 ### Add a unit test
 
@@ -178,7 +189,7 @@ For pure logic: validation, normalization, mapping, error classification, UI com
    copying a test.
 5. Assert the result the caller sees: the returned value, the parsed object, the thrown domain
    error's `code`. Do not assert on private helpers or call order inside the unit.
-6. Adapter tests: start from `apps/api/test/msw/weatherstack.ts` handlers. Override per test
+6. Adapter tests: start from `apps/api/test/msw/weatherstack.ts` handlers *(S-01)*. Override per test
    with `server.use(http.get('*/current', () => HttpResponse.json(...)))` (imports from
    `msw/http` in MSW 3). To check the
    request, read it inside the handler and assert on `url.searchParams` (compare `access_key`
@@ -198,24 +209,27 @@ For a GraphQL operation through resolver → service → repository → PostgreS
 replaced.
 
 1. Create `apps/api/test/integration/<feature>.int.test.ts`.
-2. Call `const app = createTestApp({ weather: new FakeWeatherClient(weatherstackResponse()) })`
-   from `apps/api/test/helpers/app.ts`. It wires the real composition root with the test
-   database from `inject('databaseUrl')`, the fake weather client and a captured logger.
+2. Call `const app = createTestApp()` from `apps/api/test/helpers/app.ts`, and
+   `afterAll(app.close)`. It wires the real composition root with the test database from
+   `inject('databaseUrl')`, the sentinel key and a captured logger, and returns
+   `{ db, execute, logs, close }`. *(S-01)* adds the `weather` option:
+   `createTestApp({ weather: new FakeWeatherClient(weatherstackResponse()) })`.
 3. In `beforeEach`, call `await resetDb(app.db)`. Seed with `seedProperty(app.db, {...})` when
-   the test needs existing rows.
-4. Execute operations with `await app.execute(CREATE_PROPERTY, variables)`. It sends the
-   request through `yoga.fetch` and returns `{ data, errors }`. Use the typed documents from
-   `apps/api/test/operations.ts`.
+   the test needs existing rows; it returns the inserted row.
+4. Execute operations with `await app.execute(document, variables)`. It sends the request
+   through `yoga.fetch` and returns `{ data, errors }`. Use the typed documents from
+   `apps/api/test/operations.ts` *(S-01)*.
 5. Assert, in this order:
    - the GraphQL result (`data`, or `errors[0].extensions.code` with `expectGraphQLError(result,
-     'PROPERTY_ALREADY_EXISTS')`);
+     'PROPERTY_ALREADY_EXISTS')` *(S-01)*);
    - the database state (`countProperties(app.db)` or a read through the repository);
-   - weather calls (`expect(app.weather.calls).toHaveLength(n)`);
-   - for failure cases, no leak: `expectNoSecret(result, app.logs())`.
-6. For adapter failures end to end, use `createTestApp({ weather: 'msw' })`, which wires the
-   real `WeatherClient` against the MSW handlers instead of the fake.
-7. For races (FR-08 AC2), use `FakeWeatherClient.withBarrier(2)`, which holds calls until two
-   have arrived, then fire both operations with `Promise.all`.
+   - weather calls (`expect(app.weather.calls).toHaveLength(n)` *(S-01)*);
+   - for failure cases, no leak: `expectNoSecret(result, app.logs())` from
+     `apps/api/test/helpers/secrets.ts`.
+6. For adapter failures end to end, use `createTestApp({ weather: 'msw' })` *(S-01)*, which
+   wires the real `WeatherClient` against the MSW handlers instead of the fake.
+7. For races (FR-08 AC2), use `FakeWeatherClient.withBarrier(2)` *(S-01)*, which holds calls
+   until two have arrived, then fire both operations with `Promise.all`.
 8. Run `pnpm test` (Docker must be running).
 
 ### Add an e2e test
@@ -242,6 +256,9 @@ records decisions in `context/changes/<id>/mutation.md`.
 1. Make sure the change's hermetic tests pass: `pnpm --filter <package> test:unit`.
 2. Run Stryker on the touched target files only:
    `pnpm --filter <package> test:mutation --mutate "src/adapters/weatherstack/classify.ts"`
+   (several files: one comma-separated `--mutate "a.ts,b.ts"`; a second `--mutate` flag
+   replaces the first. In `apps/api` add `--concurrency 4`: the default runner count makes
+   mutants time out under load, and Stryker counts timeouts as killed.)
    (tooling: `pnpm test:mutation:tooling --mutate tooling/secret-scan.ts`).
    Narrow with a line range (`file.ts:10-80`) for large files.
 3. Read the report in `reports/mutation/` (HTML for browsing, JSON for triage).

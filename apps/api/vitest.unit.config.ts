@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     name: 'api-unit',
     root: import.meta.dirname,
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
     exclude: ['**/*.int.test.ts'],
     setupFiles: ['test/setup/msw.ts'],
   },

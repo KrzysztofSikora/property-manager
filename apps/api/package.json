@@ -9,9 +9,12 @@
     "typecheck": "tsc -p .",
     "test:unit": "vitest run -c vitest.unit.config.ts",
     "test:int": "vitest run -c vitest.int.config.ts",
-    "test:mutation": "stryker run"
+    "test:mutation": "stryker run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --env-file-if-exists=../../.env src/db/migrate-cli.ts"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.3",
     "graphql": "^17.0.2",
     "graphql-yoga": "^5.24.2",
     "pg": "^8.23.1",
@@ -23,6 +26,7 @@
     "@testcontainers/postgresql": "^12.2.0",
     "@types/node": "^24.19.1",
     "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11",
     "msw": "^3.0.2",
     "vitest": "^5.0.3"
   }

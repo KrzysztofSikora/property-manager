@@ -1,0 +1,166 @@
+ ▐▛███▛█   Claude Code v2.1.292
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan property-schema                                                         
+
+  Searched for 1 pattern, read 2 files, listed 1 directory, ran 2 shell commands (ctrl+o to expand)
+
+● I've read the roadmap, PRD, tech stack and test plan. Next I'm looking at the
+  current API code and the F-01 setup that F-02 builds on.
+
+  Listed 1 directory, called context7 3 times, ran 3 shell commands (ctrl+o to expand)
+
+● Docs checked; I'm now running a quick drizzle-kit spike in the scratchpad to
+  confirm the generated SQL for the expression index and the uuidv7() default.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The spike generates clean SQL. Next I'm applying it to a real
+  postgres:18-alpine with migrate() under Node type stripping, to check the
+  index and the 23505 error shape.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Research is done. Three choices remain that the docs and roadmap don't settle:
+
+● User answered Claude's questions:
+  ⎿  · Which id format should `properties.id` use (RQ-02)? → UUID v7 via 
+     uuidv7() (suggested)
+     · How much should the database enforce beyond NOT NULL and the unique 
+     index? → Range + format CHECKs (suggested)
+     · Which test helpers should F-02 build, given the WeatherClient port and 
+     PropertyRepository are designed in S-01? → DB + data helpers now, weather 
+     fake in S-01 (suggested)
+
+● With all three answers in, I've outlined three phases: shared state/error-code
+  tables, the properties schema with migrations and CI checks, and a set of
+  test helpers/fixtures — each with its own proof via tests.
+
+● User answered Claude's questions:
+  ⎿  · Proceed with these 3 phases? → Proceed with 3 phases
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(context/changes/property-schema/plan.md)
+  ⎿  Wrote 355 lines to context/changes/property-schema/plan.md
+       1 # Plan: property-schema (F-02)
+       3 ## Goal and end state
+       4 
+       5 The `properties` table, its first migration and the test harness
+       6 are settled. No FR is complete here. This is groundwork for FR-0
+         8 AC2 (storage-enforced
+       8 
+       9 - `pnpm test` runs the drizzle-kit migrations against the Testco
+         ntainers database in
+         lumn `NOT NULL`.
+     … +521 lines (ctrl+o to expand)
+
+● Update(context/changes/property-schema/plan.md)
+  ⎿  Added 2 lines, removed 3 lines
+      337    a single table. This is negligible, and no action is needed.
+      338  - Hand-editing a generated migration would break drift detecti
+           on. The rule: change
+      339    `schema.ts` and regenerate, never edit SQL by hand. The CI d
+           rift step enforces it.
+      340 -- `drizzle-kit generate` in CI needs no database. Verify this 
+          -in Phase 2. If it does need                                   
+      341 -  one, run it against the Testcontainers-free config, since `g
+          -enerate` only reads the schema                                
+      342 -  and the journal.                                            
+      340 +- `drizzle-kit generate` in CI needs no database. The spike ra
+          +n it with no `dbCredentials`                                  
+      341 +  set, because it reads only the schema and the journal. Resol
+          +ved.                                                          
+      342  - Mutation: Phase 1 touches the target `packages/shared/src/st
+           ates.ts`, and Phase 2 touches
+      343    `apps/api/src/config/env.ts`. `/mutation property-schema` co
+           vers both. The SQL in
+      344    `schema.ts` is not a target (Testcontainers-only).
+
+● Bash(sed -i 's/^| F-02 | #2 | property-schema | foundation | (FR-08 AC2,
+      NFR-08 groundwork) | F-01 | S | todo |$/| F-02 | #2 | property-schema |
+      foundation | (FR-08…)
+  ⎿  13:| F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08 gro
+     undwork) | F-01 | S | planned |
+     155:  F-02 id decision (RQ-02).
+     … +3 lines (ctrl+o to expand)
+  ⎿  Updated context/roadmap.md (+2 -2)
+      10  | ID | Issue | change-id | Type | Covers | Depends on | Size | 
+          Status |
+      11  |----|-------|-----------|------|--------|------------|------|-
+          -------|
+      12  | F-01 | #1 | repo-skeleton | foundation | FR-14 AC3, NFR-04, N
+          FR-06 | - | M | done |
+      13 -| F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08
+         - groundwork) | F-01 | S | todo |                               
+      13 +| F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08
+         + groundwork) | F-01 | S | planned |                            
+      14  | S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1
+          –AC3, AC6), FR-07, FR-10 | F-02 | M | todo |
+      15  | S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5)
+          , FR-06, FR-08, FR-10 | S-01 | M | todo |
+      16  | S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-0
+          2, FR-03, FR-04, FR-09, FR-10 | S-01 | M | todo |
+     ...
+      228  
+      229  - RQ-01 — Resolved 2026-10-07: GitHub (`KrzysztofSikora/proper
+           ty-manager`), CI in GitHub
+      230    Actions.
+      231 -- RQ-02 Id format (F-02): UUID v7 (`uuidv7()`, built into Post
+          -greSQL 18, time-ordered) is the                               
+      231 +- RQ-02 — Resolved 2026-10-07 (F-02 plan): UUID v7 via `uuidv7
+          +()`. Original: UUID v7 (`uuidv7()`, built into PostgreSQL 18, 
+          +time-ordered) is the                                          
+      232    default proposal; confirm in the F-02 plan, since S-03's tie
+           break depends on it.
+      233  - RQ-03 — Resolved 2026-10-07: session exports go to `ai-sessi
+           ons/` as
+      234    `NN-<change-id>-<step>.txt`.
+
+● I've written the plan to context/changes/property-schema/plan.md. In
+  context/roadmap.md, F-02 is now planned and RQ-02 (the id format question) is
+  marked resolved.
+
+  What I checked before writing it: I ran drizzle-orm 0.45.3 and drizzle-kit
+  0.31.11 against a throwaway postgres:18-alpine database, running the code as
+  plain .ts the way the API does.
+  - The case-insensitive address index generates the SQL we want. Two rows that
+    differ only in case are rejected with pg error 23505.
+  - uuidv7() works as the id default, and the ids it produces are version 7.
+  - migrate() runs under Node's type stripping, and running it a second time
+    does nothing.
+  - A missing required value is rejected with 23502.
+  - One surprise for S-02: when the database rejects a row, Drizzle wraps the
+    error, and the pg error code is on error.cause, not on the error itself. I
+    recorded this in the plan's Findings, and Phase 3 adds a note to the S-02
+    entry in the roadmap.
+
+  Your three decisions:
+  - Id: UUID v7 from the database.
+  - Database checks: besides required columns and the unique index, the database
+    also checks lat/long ranges, a 5-digit zip, a 2-letter upper-case state,
+    and that weather_data has both units and current.
+  - Test helpers: the fake weather client (FakeWeatherClient) moves to S-01,
+    where the weather client it imitates is designed. F-02 builds the database
+    and data helpers.
+
+  The three phases:
+  1. Shared states and error codes: the 50 states + DC table and the error-code
+     list in packages/shared.
+  2. Schema, migration and migrate command: the table and its first migration,
+     plus a pnpm db:migrate command that doesn't need the Weatherstack key.
+     Integration tests run the migrations first. CI fails if the schema and the
+     committed migrations drift apart, and lint stops resolvers and services
+     from importing the database code.
+  3. Test helpers and documentation: the test helpers, and updates to the test
+     plan and CLAUDE.md so they match what was built.
+
+  There are no blocking unknowns.
+
+  Next step: /plan-review property-schema.
+
+✻ Cooked for 3m 54s · done 7:58 PM
