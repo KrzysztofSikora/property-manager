@@ -13,6 +13,11 @@ export function fountainHills(street: string): AddressForm {
   return { street, city: 'Fountain Hills', state: 'AZ', zipCode: '85268' };
 }
 
+// A second Arizona city, for a property the city filter must drop.
+export function scottsdale(street: string): AddressForm {
+  return { street, city: 'Scottsdale', state: 'AZ', zipCode: '85251' };
+}
+
 export async function submitCreateForm(page: Page, address: AddressForm): Promise<void> {
   await page.goto('/properties/new');
   await page.getByLabel('Street').fill(address.street);
