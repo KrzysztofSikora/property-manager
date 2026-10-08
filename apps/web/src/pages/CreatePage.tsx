@@ -1,5 +1,5 @@
 import { addressSchema } from '@property-manager/shared';
-import { type SubmitEvent, useId, useState } from 'react';
+import { type SubmitEvent, useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { z } from 'zod';
 import { useCreateProperty } from '../hooks/useCreateProperty';
@@ -27,6 +27,17 @@ export function CreatePage() {
   const idPrefix = useId();
   const [fieldMessages, setFieldMessages] = useState<FieldMessages>({});
   const [formMessage, setFormMessage] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Focus goes to the first invalid input after its message renders, so a screen reader reads
+  // the message through `aria-describedby`. Every failed validation sets a new object, so a
+  // repeated failure moves focus again.
+  useEffect(() => {
+    const first = FIELDS.find(({ name }) => fieldMessages[name] !== undefined);
+    if (first === undefined) return;
+    const input = formRef.current?.elements.namedItem(first.name);
+    if (input instanceof HTMLInputElement) input.focus();
+  }, [fieldMessages]);
 
   // `onSubmit`, not `<form action>`: React resets uncontrolled inputs after an action, and the
   // entered values must stay on an error (FR-13 AC3).
@@ -70,7 +81,7 @@ export function CreatePage() {
     <>
       <h1 className="mb-4 text-2xl font-bold">New property</h1>
 
-      <form noValidate onSubmit={submit} className="flex max-w-md flex-col gap-3">
+      <form ref={formRef} noValidate onSubmit={submit} className="flex max-w-md flex-col gap-3">
         {FIELDS.map(({ name, label, inputMode }) => {
           const message = fieldMessages[name];
           const messageId = `${idPrefix}-${name}-message`;
