@@ -193,8 +193,8 @@ export function ListPage() {
                     <th className={TH}>Address</th>
                     <th className={TH}>State</th>
                     <th className={TH}>Zip code</th>
-                    <th className={`${TH} hidden sm:table-cell`}>Weather at creation</th>
-                    <th className={`${TH} hidden sm:table-cell`}>Created</th>
+                    <th className={`${TH} hidden md:table-cell`}>Weather at creation</th>
+                    <th className={`${TH} hidden md:table-cell`}>Created</th>
                     <th className={TH}>
                       <span className="sr-only">Actions</span>
                     </th>
@@ -210,7 +210,7 @@ export function ListPage() {
                         key={property.id}
                         className="border-b border-line transition-colors last:border-b-0 hover:bg-ground"
                       >
-                        <td className={`${TD_BASE} sm:whitespace-nowrap`}>
+                        <td className={TD_BASE}>
                           <Link
                             to={`/properties/${property.id}`}
                             className="font-semibold text-ink no-underline hover:text-accent hover:underline"
@@ -218,7 +218,7 @@ export function ListPage() {
                             {property.street}
                           </Link>
                           <small className="block text-[13px] text-muted">{property.city}</small>
-                          <small className="block text-[13px] text-muted sm:hidden">
+                          <small className="block text-[13px] text-muted md:hidden">
                             {created}
                           </small>
                         </td>
@@ -228,7 +228,7 @@ export function ListPage() {
                           </span>
                         </td>
                         <td className={`${TD} font-mono text-[13.5px]`}>{property.zipCode}</td>
-                        <td className={`${TD} hidden sm:table-cell`}>
+                        <td className={`${TD} hidden md:table-cell`}>
                           <span className="inline-flex items-center gap-2">
                             {weatherIcons[0] && (
                               <img src={weatherIcons[0]} alt="" className="size-[22px] rounded" />
@@ -241,7 +241,7 @@ export function ListPage() {
                             )}
                           </span>
                         </td>
-                        <td className={`${TD} hidden text-muted sm:table-cell`}>{created}</td>
+                        <td className={`${TD} hidden text-muted md:table-cell`}>{created}</td>
                         <td className={`${TD} text-right`}>
                           <button
                             type="button"

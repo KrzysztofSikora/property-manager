@@ -7,6 +7,10 @@ import { type AddressField, createErrorMessage, fieldErrors } from '../lib/graph
 
 type FieldMessages = Partial<Record<AddressField, string>>;
 
+const FIELD_LABEL = 'text-xs font-semibold tracking-[.06em] text-muted uppercase';
+const CONTROL =
+  'h-[38px] w-full rounded-control border border-line bg-surface px-2.5 aria-invalid:border-danger';
+
 const FIELDS: { name: AddressField; label: string; inputMode?: 'numeric' }[] = [
   { name: 'street', label: 'Street' },
   { name: 'city', label: 'City' },
@@ -79,46 +83,55 @@ export function CreatePage() {
 
   return (
     <>
-      <h1 className="mb-4 text-2xl font-bold">New property</h1>
+      <div className="mx-auto w-full max-w-md">
+        <h1 className="text-[26px] font-bold tracking-tight">New property</h1>
+        <p className="mt-0.5 text-muted">
+          The current weather for the address is stored when the property is created.
+        </p>
+      </div>
 
-      <form ref={formRef} noValidate onSubmit={submit} className="flex max-w-md flex-col gap-3">
-        {FIELDS.map(({ name, label, inputMode }) => {
-          const message = fieldMessages[name];
-          const messageId = `${idPrefix}-${name}-message`;
-          return (
-            <div key={name} className="flex flex-col text-sm">
-              <label htmlFor={`${idPrefix}-${name}`}>{label}</label>
-              <input
-                id={`${idPrefix}-${name}`}
-                name={name}
-                inputMode={inputMode}
-                aria-invalid={message === undefined ? undefined : true}
-                aria-describedby={message === undefined ? undefined : messageId}
-                className="rounded border px-2 py-1 aria-invalid:border-red-700"
-              />
-              {message !== undefined && (
-                <p id={messageId} className="text-red-700">
-                  {message}
-                </p>
-              )}
-            </div>
-          );
-        })}
+      <section className="mx-auto w-full max-w-md rounded-card border border-line bg-surface p-5 sm:p-6">
+        <form ref={formRef} noValidate onSubmit={submit} className="grid gap-4">
+          {FIELDS.map(({ name, label, inputMode }) => {
+            const message = fieldMessages[name];
+            const messageId = `${idPrefix}-${name}-message`;
+            return (
+              <div key={name} className="grid min-w-0 gap-1">
+                <label htmlFor={`${idPrefix}-${name}`} className={FIELD_LABEL}>
+                  {label}
+                </label>
+                <input
+                  id={`${idPrefix}-${name}`}
+                  name={name}
+                  inputMode={inputMode}
+                  aria-invalid={message === undefined ? undefined : true}
+                  aria-describedby={message === undefined ? undefined : messageId}
+                  className={name === 'zipCode' ? `${CONTROL} font-mono` : CONTROL}
+                />
+                {message !== undefined && (
+                  <p id={messageId} className="text-sm text-danger">
+                    {message}
+                  </p>
+                )}
+              </div>
+            );
+          })}
 
-        {formMessage !== null && (
-          <p role="alert" className="text-red-700">
-            {formMessage}
-          </p>
-        )}
+          {formMessage !== null && (
+            <p role="alert" className="rounded-control bg-danger-soft px-4 py-3 text-danger">
+              {formMessage}
+            </p>
+          )}
 
-        <button
-          type="submit"
-          disabled={createProperty.isPending}
-          className="self-start rounded bg-gray-800 px-3 py-1 text-white disabled:opacity-60"
-        >
-          {createProperty.isPending ? 'Creating…' : 'Create property'}
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={createProperty.isPending}
+            className="justify-self-start rounded-control bg-accent px-3.5 py-2 font-semibold text-white hover:bg-accent/90 disabled:opacity-60"
+          >
+            {createProperty.isPending ? 'Creating…' : 'Create property'}
+          </button>
+        </form>
+      </section>
     </>
   );
 }

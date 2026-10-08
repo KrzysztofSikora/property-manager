@@ -347,7 +347,7 @@ spacer, `Link` "New property" styled as the primary button with `PlusIcon`. `<ma
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: Theme tokens and app shell (35c67e6)
 - [x] Phase 2: List page (0ed8922)
-- [x] Phase 3: Details page
+- [x] Phase 3: Details page (48e1bf6)
 - [ ] Phase 4: Create page and responsive pass
 
 ## Deviations
@@ -357,3 +357,12 @@ spacer, `Link` "New property" styled as the primary button with `PlusIcon`. `<ma
   400 px. Consequence: the Address cell wraps below `sm`, cell padding drops to 12 px below
   `sm`, and the table sits in an `overflow-x-auto` wrapper (as in the sketch), so the page
   itself never scrolls sideways.
+- Phase 4, create page placement. Plan: the form in a card (max ~28rem), placement not stated.
+  Code: a left-aligned 28rem card left most of a desktop page empty and read as a mobile
+  layout (user, human check). Consequence: the heading block and the card share a centred
+  28rem column (`mx-auto w-full max-w-md`); 400 px is unchanged.
+- Phase 4, list table from 560 to ~880 px (amends D-2's breakpoint). Plan: Weather and Created
+  columns from `sm` (560 px). Code: the six columns need ~826 px, so between 560 and ~880 px the
+  table scrolled sideways inside its card, a scrollbar mid-screen (user, human check).
+  Consequence: Weather and Created columns, and the date line under the city, switch at `md`
+  (820 px), and the Address cell wraps at every width; no element scrolls at 400 – 1920 px.
