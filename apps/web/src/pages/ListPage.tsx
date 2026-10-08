@@ -7,6 +7,7 @@ import type { PropertySort } from '../graphql/graphql';
 import { PAGE_SIZE, useProperties } from '../hooks/useProperties';
 import { formatDateTime } from '../lib/format';
 import { parseListSearch, toListSearch } from '../lib/list-search';
+import { CONTROL, FIELD_LABEL, GHOST_BUTTON, STATE_CHIP } from '../lib/ui';
 
 const SORT_OPTIONS: { value: PropertySort; label: string }[] = [
   { value: 'CREATED_AT_DESC', label: 'Newest first' },
@@ -18,14 +19,9 @@ function isPropertySort(value: string): value is PropertySort {
 }
 
 const FIELD = 'grid min-w-0 gap-1';
-const FIELD_LABEL = 'text-xs font-semibold tracking-[.06em] text-muted uppercase';
-const CONTROL = 'h-[38px] w-full rounded-control border border-line bg-surface px-2.5';
-const GHOST_BUTTON =
-  'inline-flex items-center rounded-control border border-line bg-surface px-3.5 py-2 font-semibold text-ink hover:bg-ground';
 const PAGER_BUTTON =
   'rounded-control border border-line bg-surface px-2.5 py-1 font-medium text-ink disabled:opacity-45 aria-disabled:opacity-45';
-const TH =
-  'border-b border-line px-3 py-2.5 text-xs font-semibold tracking-[.06em] whitespace-nowrap text-muted uppercase sm:px-4';
+const TH = `${FIELD_LABEL} border-b border-line px-3 py-2.5 whitespace-nowrap sm:px-4`;
 const TD_BASE = 'px-3 py-3 align-middle sm:px-4';
 const TD = `${TD_BASE} whitespace-nowrap`;
 
@@ -223,9 +219,7 @@ export function ListPage() {
                           </small>
                         </td>
                         <td className={TD}>
-                          <span className="inline-block rounded-[5px] bg-accent-soft px-[7px] py-px font-mono text-[12.5px] font-medium text-accent">
-                            {property.state}
-                          </span>
+                          <span className={STATE_CHIP}>{property.state}</span>
                         </td>
                         <td className={`${TD} font-mono text-[13.5px]`}>{property.zipCode}</td>
                         <td className={`${TD} hidden md:table-cell`}>
@@ -250,7 +244,7 @@ export function ListPage() {
                             onClick={() => {
                               setToDelete(property);
                             }}
-                            className="inline-grid size-8 place-items-center rounded-[7px] text-muted hover:bg-danger-soft hover:text-danger focus-visible:bg-danger-soft focus-visible:text-danger"
+                            className="inline-grid size-8 place-items-center rounded-item text-muted hover:bg-danger-soft hover:text-danger focus-visible:bg-danger-soft focus-visible:text-danger"
                           >
                             <TrashIcon className="size-[17px]" />
                           </button>

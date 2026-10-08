@@ -19,6 +19,8 @@
 
   --radius-card: 10px;
   --radius-control: 8px;
+  --radius-item: 7px;
+  --radius-chip: 5px;
 
   --breakpoint-sm: 35rem;
   --breakpoint-md: 51.25rem;

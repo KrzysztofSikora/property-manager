@@ -5,6 +5,7 @@ import { DeletePropertyDialog } from '../components/DeletePropertyDialog';
 import { TrashIcon } from '../components/icons';
 import { useProperty } from '../hooks/useProperty';
 import { type EpaIndexTone, epaIndexLabel, epaIndexTone, formatDateTime } from '../lib/format';
+import { CARD, DANGER_GHOST_BUTTON, FIELD_LABEL, GHOST_BUTTON, STATE_CHIP } from '../lib/ui';
 
 // A label and its display text, or `null` when the API sent no value.
 type Row = [label: string, value: string | null];
@@ -22,11 +23,6 @@ function present(rows: Row[]): [string, string][] {
   return rows.filter((row): row is [string, string] => row[1] !== null);
 }
 
-const CARD = 'rounded-card border border-line bg-surface';
-const GHOST_BUTTON =
-  'inline-flex items-center gap-1.5 rounded-control border border-line bg-surface px-3.5 py-2 font-semibold whitespace-nowrap hover:bg-ground';
-const STATE_CHIP =
-  'inline-block rounded-[5px] bg-accent-soft px-[7px] py-px font-mono text-[12.5px] font-medium text-accent';
 const EPA_BADGE: Record<EpaIndexTone, string> = {
   good: 'bg-good-soft text-good',
   fair: 'bg-fair-soft text-fair',
@@ -109,11 +105,7 @@ export function DetailsPage() {
         className="flex flex-wrap items-center gap-3 rounded-control bg-danger-soft px-4 py-3 text-danger"
       >
         <p>Could not load the property</p>
-        <button
-          type="button"
-          onClick={() => void query.refetch()}
-          className={`${GHOST_BUTTON} text-ink`}
-        >
+        <button type="button" onClick={() => void query.refetch()} className={GHOST_BUTTON}>
           Retry
         </button>
       </div>
@@ -177,7 +169,7 @@ export function DetailsPage() {
           onClick={() => {
             setDeleting(true);
           }}
-          className={`${GHOST_BUTTON} text-danger hover:bg-danger-soft`}
+          className={DANGER_GHOST_BUTTON}
         >
           <TrashIcon className="size-4" />
           Delete
@@ -213,9 +205,7 @@ export function DetailsPage() {
           <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {tiles.map(([label, value]) => (
               <div key={label} className="rounded-control bg-ground px-3 py-2.5">
-                <dt className="text-xs font-semibold tracking-[.06em] text-muted uppercase">
-                  {label}
-                </dt>
+                <dt className={FIELD_LABEL}>{label}</dt>
                 <dd className="mt-0.5 text-[17px] font-semibold tabular-nums">{value}</dd>
               </div>
             ))}
@@ -270,7 +260,7 @@ export function DetailsPage() {
               className="grid grid-cols-[max-content_1fr_max-content] items-center gap-2.5 font-mono text-[13px]"
             >
               <span>{sunrise}</span>
-              <span className="h-1.5 rounded-[3px] bg-linear-to-r from-line via-sun to-line" />
+              <span className="h-1.5 rounded-full bg-linear-to-r from-line via-sun to-line" />
               <span>{sunset}</span>
             </div>
           )}

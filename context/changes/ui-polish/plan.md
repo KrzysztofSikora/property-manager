@@ -348,7 +348,7 @@ spacer, `Link` "New property" styled as the primary button with `PlusIcon`. `<ma
 - [x] Phase 1: Theme tokens and app shell (35c67e6)
 - [x] Phase 2: List page (0ed8922)
 - [x] Phase 3: Details page (48e1bf6)
-- [ ] Phase 4: Create page and responsive pass
+- [x] Phase 4: Create page and responsive pass (022ae18)
 
 ## Deviations
 

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react';
 import { useDeleteProperty } from '../hooks/useDeleteProperty';
 import { errorCode } from '../lib/graphql-errors';
+import { CARD, GHOST_BUTTON } from '../lib/ui';
 
 export type DeletableProperty = {
   id: string;
@@ -62,7 +63,7 @@ export function DeletePropertyDialog({ property, onClose, onDeleted, onNotFound 
         if (deleteProperty.isPending) event.preventDefault();
       }}
       onClose={onClose}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-card border border-line bg-surface p-6 text-ink shadow-xl backdrop:bg-ink/40"
+      className={`${CARD} m-auto w-[calc(100%-2rem)] max-w-md p-6 text-ink shadow-xl backdrop:bg-ink/40`}
     >
       <h2 id={headingId} className="mb-2 text-lg font-semibold">
         Delete property?
@@ -80,7 +81,7 @@ export function DeletePropertyDialog({ property, onClose, onDeleted, onNotFound 
           type="button"
           onClick={() => dialogRef.current?.close()}
           disabled={deleteProperty.isPending}
-          className="rounded-control border border-line bg-surface px-3.5 py-2 font-semibold hover:bg-ground disabled:opacity-50"
+          className={GHOST_BUTTON}
         >
           Cancel
         </button>

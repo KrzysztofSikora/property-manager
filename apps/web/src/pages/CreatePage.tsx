@@ -4,12 +4,11 @@ import { useNavigate } from 'react-router';
 import { z } from 'zod';
 import { useCreateProperty } from '../hooks/useCreateProperty';
 import { type AddressField, createErrorMessage, fieldErrors } from '../lib/graphql-errors';
+import { CARD, CONTROL as BASE_CONTROL, FIELD_LABEL } from '../lib/ui';
 
 type FieldMessages = Partial<Record<AddressField, string>>;
 
-const FIELD_LABEL = 'text-xs font-semibold tracking-[.06em] text-muted uppercase';
-const CONTROL =
-  'h-[38px] w-full rounded-control border border-line bg-surface px-2.5 aria-invalid:border-danger';
+const CONTROL = `${BASE_CONTROL} aria-invalid:border-danger`;
 
 const FIELDS: { name: AddressField; label: string; inputMode?: 'numeric' }[] = [
   { name: 'street', label: 'Street' },
@@ -90,7 +89,7 @@ export function CreatePage() {
         </p>
       </div>
 
-      <section className="mx-auto w-full max-w-md rounded-card border border-line bg-surface p-5 sm:p-6">
+      <section className={`${CARD} mx-auto w-full max-w-md p-5 sm:p-6`}>
         <form ref={formRef} noValidate onSubmit={submit} className="grid gap-4">
           {FIELDS.map(({ name, label, inputMode }) => {
             const message = fieldMessages[name];

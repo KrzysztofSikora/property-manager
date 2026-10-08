@@ -7,7 +7,7 @@ export function Layout() {
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-[1080px] flex-wrap items-center gap-3 px-3.5 py-2.5 sm:flex-nowrap sm:gap-7 sm:px-6 sm:py-3">
           <div className="flex items-center gap-2.5 font-bold tracking-tight">
-            <span className="grid size-7 place-items-center rounded-[7px] bg-ink text-surface">
+            <span className="grid size-7 place-items-center rounded-item bg-ink text-surface">
               <HouseIcon className="size-4" />
             </span>
             <span className="hidden sm:inline">Property Manager</span>
@@ -17,7 +17,7 @@ export function Layout() {
               to="/"
               end
               className={({ isActive }) =>
-                `rounded-[7px] px-3 py-1.5 font-medium no-underline ${
+                `rounded-item px-3 py-1.5 font-medium no-underline ${
                   isActive ? 'bg-ground text-ink' : 'text-muted hover:text-ink'
                 }`
               }
