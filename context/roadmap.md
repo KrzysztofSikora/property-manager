@@ -21,6 +21,7 @@ export) proportionate to a small app.
 | S-08 | #10 | list-pagination | slice | FR-11 AC4 (Should) | S-07 | S | done |
 | S-09 | #11, #12 | details-extra-weather | slice | FR-12 AC6 (Should), typed non-key `CurrentWeather` fields | S-04 | S | done |
 | S-10 | #13 | demo-seed-data | slice | FR-16 AC1 (Could) | S-06 | S | done |
+| S-11 | #25 | ui-polish | slice | Visual polish of FR-11, FR-12, FR-13 views (no new FR) | S-04, S-05, S-09 | M | todo |
 
 Order follows risk: tooling and schema first, then the Weatherstack integration (the only
 third-party unknown, R-01 – R-05) and the concurrency-sensitive duplicate rule, then the
@@ -236,6 +237,26 @@ Could:
   real US addresses (public landmarks, see the S-10 plan) through `createProperty`. Uses real quota (R-01).
   Picked up as S-10 (`demo-seed-data`): `pnpm seed` posts `createProperty` to a running API;
   duplicates are skipped, any other error stops the run.
+
+Post-MVP polish (added 2026-10-08, not in the PRD):
+
+- #25 UI polish: the web UI works but looks like a bare skeleton (plain table, one long
+  label/value column on details, a red Delete button on every row). Picked up as S-11
+  (`ui-polish`), a presentational change in `apps/web` only. The visual reference is
+  `context/changes/ui-polish/sketch.html` (list and details screens, reviewed 2026-10-08; its
+  header comment says which parts to follow closely). The plan reads it before choosing tokens
+  and layout:
+  - Shared shell: app bar with the app name, "Properties" nav and a "New property" primary
+    button; tinted page background; content in cards; Tailwind 4 theme tokens; system fonts.
+  - List: filters and sort in one aligned bar; street and city on two lines; state chip; a
+    "Weather at creation" column (icon, temperature, description) from fields the API already
+    returns; delete as a quiet icon button that keeps the accessible name `Delete <street>`.
+  - Details: breadcrumb; weather hero with six reading tiles; location panel with the
+    city-level precision note; Air quality (EPA badge), Sun and moon, and Precipitation cards.
+  - Create page and loading / empty / error states restyled to match.
+  - Acceptance: every existing FR-11, FR-12, FR-13 and NFR-09 test still passes (selectors
+    change only where they asserted on layout, not role or name); works from 1280 px to
+    400 px without horizontal page scroll; no new runtime dependencies. No mutation targets.
 
 ## Open roadmap questions
 
