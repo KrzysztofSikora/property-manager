@@ -27,6 +27,16 @@ export type PropertySort =
 export type WeatherUnits =
   | 'IMPERIAL';
 
+export type CreatePropertyMutationVariables = Exact<{
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}>;
+
+
+export type CreatePropertyMutation = { createProperty: { id: string } | null };
+
 export type DeletePropertyMutationVariables = Exact<{
   id: string | number;
 }>;
@@ -68,6 +78,13 @@ export class TypedDocumentString<TResult, TVariables>
   }
 }
 
+export const CreatePropertyDocument = new TypedDocumentString(`
+    mutation CreateProperty($street: String!, $city: String!, $state: String!, $zipCode: String!) {
+  createProperty(street: $street, city: $city, state: $state, zipCode: $zipCode) {
+    id
+  }
+}
+    `) as unknown as TypedDocumentString<CreatePropertyMutation, CreatePropertyMutationVariables>;
 export const DeletePropertyDocument = new TypedDocumentString(`
     mutation DeleteProperty($id: ID!) {
   deleteProperty(id: $id)
