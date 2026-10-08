@@ -324,7 +324,7 @@ path end to end.
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [ ] Phase 1: Compose stack (api + web images)
+- [x] Phase 1: Compose stack (api + web images) (f86cc80)
 - [ ] Phase 2: E2E smoke against the Compose stack
 - [ ] Phase 3: README and AI deliverables
 
@@ -343,3 +343,16 @@ path end to end.
   fallback needed). Yoga's default `GET /health` answers 200.
 - Phase 1, `.dockerignore` also drops `**/dist` and `**/reports` (local build and Stryker
   output).
+- Phase 2, `e2e/compose.ts`: new helper, not in the plan's file list. Global setup and teardown
+  share the `docker compose -p property-manager-e2e -f … -f …` arguments and the repo-root
+  `cwd` from it.
+- Phase 2, trace: plan says `on-first-retry`; locally there are no retries, so the human check
+  ("the trace shows the journey") would find none. Local runs use `trace: 'on'`, CI keeps
+  `on-first-retry`. The report and `test-results` go to the repo root (both gitignored).
+- Phase 2, stub sample: mounted as the `docs/samples` directory (`SAMPLE_PATH`), not a single
+  file, so the read-only `/stub` mount needs no nested mount point.
+- Phase 2, e2e lives in the root `tsconfig.json` `include` (the plan's second option); no
+  `e2e/tsconfig.json`. Vitest needed no change: every project's `include` is rooted in its own
+  directory.
+- Phase 2, quota spec: the expected message is copied from `graphql-errors.ts`, not imported
+  (web sources resolve with the bundler, the root project with nodenext).

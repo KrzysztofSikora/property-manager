@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": ["*.ts", "tooling/**/*.ts"],
+  "include": ["*.ts", "tooling/**/*.ts", "e2e/**/*.ts"],
   "exclude": ["tooling/fixtures"]
 }
