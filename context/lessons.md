@@ -71,3 +71,14 @@
 - Scope: `/mutation`. If a change adds logic worth mutating outside the listed targets, add its
   *Mutation targets* row to `context/test-plan.md` first (or ask), then run. A module's first
   run records "baseline N%", never "N% -> N%".
+
+## A plan that adds a pure rule to a listed target module must name it as a mutation target
+- Why: the S-11 plan said "Mutation testing: no new target" while adding `epaIndexTone`
+  (US EPA index → badge tone bands) to `apps/web/src/lib/format.ts`, a module already in
+  *Mutation targets*. The test-plan row named only `epaIndexLabel`, so `/mutation` had to stop
+  and ask before it could run on the new rule. A "UI-only" label on a change does not mean it
+  adds no logic.
+- Seen in: ui-polish, mutation check
+- Scope: `/plan` and `/plan-review`. List every new or changed function with branches or
+  bounds; if it sits in (or belongs in) a *Mutation targets* module, the plan extends that
+  `context/test-plan.md` row and names the target, instead of "no mutation targets".
