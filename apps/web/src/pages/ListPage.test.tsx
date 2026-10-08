@@ -314,6 +314,17 @@ describe('ListPage', () => {
     expect(screen.getByRole('textbox', { name: 'City' })).toHaveValue('');
   });
 
+  it('FR-11 AC3a: Apply with unchanged filters on a link with another key order keeps the URL', async () => {
+    serveProperties(() => [middle]);
+    const user = userEvent.setup();
+    renderListWithProbe('/?zip=85268&city=Austin');
+    await screen.findByRole('link', { name: '2 Middle Ave' });
+
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(urlSearch()).toBe('?zip=85268&city=Austin');
+  });
+
   it('FR-11 AC3a: City text typed but not applied survives a sort change', async () => {
     serveProperties(() => [newest]);
     const user = userEvent.setup();
