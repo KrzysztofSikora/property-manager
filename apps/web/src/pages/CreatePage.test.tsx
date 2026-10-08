@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay } from 'msw';
 import { HttpResponse } from 'msw/http';
@@ -123,8 +123,8 @@ describe('CreatePage', () => {
     expect(requests).toHaveLength(1);
   });
 
-  it('replaces the field messages on the next submit', async () => {
-    serveCreate(failure('PROPERTY_ALREADY_EXISTS', 'exists'));
+  it('replaces the field and form messages on the next submit', async () => {
+    const requests = serveCreate(failure('PROPERTY_ALREADY_EXISTS', 'exists'));
     const user = await fillAndSubmit({ ...valid, zipCode: '8526' });
     expect(inputs.zipCode()).toHaveAccessibleDescription('must be 5 digits');
 
@@ -134,6 +134,26 @@ describe('CreatePage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/already exists/i);
     expect(inputs.zipCode()).not.toHaveAccessibleDescription();
     expect(inputs.zipCode()).not.toHaveAttribute('aria-invalid');
+
+    // Only the street is invalid now (the zip is valid): its message replaces the alert.
+    await user.clear(inputs.street());
+    await user.click(screen.getByRole('button', { name: 'Create property' }));
+
+    expect(inputs.street()).toHaveAccessibleDescription('must not be empty');
+    expect(inputs.zipCode()).not.toHaveAccessibleDescription();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(requests).toHaveLength(1);
+  });
+
+  it('cancels the native form submission, so the browser does not reload the page', () => {
+    serveCreate();
+    renderPage();
+
+    const form = screen.getByRole('button', { name: 'Create property' }).closest('form');
+    if (form === null) throw new Error('the submit button is not in a form');
+
+    // `fireEvent` returns false when a handler called `preventDefault()`.
+    expect(fireEvent.submit(form)).toBe(false);
   });
 
   it('FR-13 AC2: sends the normalized address once, disables the button while pending, then opens the details page', async () => {
