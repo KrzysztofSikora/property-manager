@@ -35,8 +35,8 @@ and `pnpm test` (Testcontainers runs on `ubuntu-latest` Docker). S-06 adds the P
 job. Stryker is not in CI; it runs per change on test-plan targets.
 
 **AI sessions (FR-15).** Delivered incrementally: every skill run is exported to `ai-sessions/`
-as `NN-<change-id>-<step>.txt` (running number `NN`, as already used for `00`–`06`). S-06 checks
-that every item has its exports and links them from the README.
+as `NN-<step>-<ROADMAP-ID>[-n].txt` (running number `NN`; pre-roadmap steps `00`–`09` have no
+roadmap ID). S-06 checks that every item has its exports and links them from the README.
 Commits reference their issue with `Refs #<n>`; the last commit of an item uses `Closes #<n>`.
 
 ## Items
@@ -234,7 +234,8 @@ Could:
 - RQ-02 — Resolved 2026-10-07 (F-02 plan): UUID v7 via `uuidv7()`. Original: UUID v7 (`uuidv7()`, built into PostgreSQL 18, time-ordered) is the
   default proposal; confirm in the F-02 plan, since S-03's tiebreak depends on it.
 - RQ-03 — Resolved 2026-10-07: session exports go to `ai-sessions/` as
-  `NN-<change-id>-<step>.txt`.
+  `NN-<step>-<ROADMAP-ID>[-n].txt`. Corrected by the S-06 plan: the original text said
+  `NN-<change-id>-<step>.txt`, but every export since `10` uses the step-then-ID form.
 - RQ-04 Real Weatherstack calls during S-02 planning (OQ-04): how many manual calls the quota
   allows for verifying error codes (104 can't be triggered safely; rely on docs).
 - RQ-05 — Resolved 2026-10-07: `context/shape-notes.md` D-09 and D-10 keep their original text

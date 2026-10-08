@@ -325,7 +325,7 @@ path end to end.
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: Compose stack (api + web images) (f86cc80)
-- [ ] Phase 2: E2E smoke against the Compose stack
+- [x] Phase 2: E2E smoke against the Compose stack (6774617)
 - [ ] Phase 3: README and AI deliverables
 
 ## Deviations
@@ -356,3 +356,9 @@ path end to end.
   directory.
 - Phase 2, quota spec: the expected message is copied from `graphql-errors.ts`, not imported
   (web sources resolve with the bundler, the root project with nodenext).
+- Phase 3, test-plan: TR-08, TR-16 and TR-17 still said `planned (S-01)`, although S-01 covers
+  them (`packages/shared/src/address.test.ts`, `domain/weather.test.ts`,
+  `adapters/weatherstack/client.test.ts`). Flipped to `covered (S-01)` so criterion 7 holds.
+- Phase 3, README sessions index: the S-06 exports are not in `ai-sessions/` yet, so the S-06
+  row points to the closing commit (as planned). The README also links `.claude/settings.json`
+  (editor hook) in *AI setup*.
