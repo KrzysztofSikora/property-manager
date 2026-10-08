@@ -1,0 +1,14 @@
+# Build contexts are the repo root; keep secrets, dependencies and generated output out.
+.env
+.env.*
+!.env.example
+.git
+node_modules
+**/node_modules
+**/dist
+reports
+**/reports
+test-results
+playwright-report
+**/.stryker-tmp
+ai-sessions
