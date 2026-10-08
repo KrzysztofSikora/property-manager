@@ -4,7 +4,7 @@ import { delay } from 'msw';
 import { HttpResponse } from 'msw/http';
 import { Route, Routes, useParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
-import type { PropertiesQueryVariables } from '../graphql/graphql';
+import type { DeletePropertyMutationVariables, PropertiesQueryVariables } from '../graphql/graphql';
 import { listItem, type PropertyListItem } from '../test/fixtures';
 import { api, server } from '../test/msw';
 import { renderWithProviders } from '../test/render';
@@ -51,6 +51,52 @@ function serveProperties(respond: (variables: PropertiesQueryVariables) => Prope
   return requests;
 }
 
+// A stored list that `DeleteProperty` changes: `Properties` serves what is left, and both
+// operations are recorded.
+function serveStore(
+  initial: PropertyListItem[],
+  respondDelete: (id: string, remove: () => void) => Response = (id, remove) => {
+    remove();
+    return HttpResponse.json({ data: { deleteProperty: id } });
+  },
+) {
+  let items = initial;
+  const listRequests: PropertiesQueryVariables[] = [];
+  const deletedIds: string[] = [];
+  server.use(
+    api.query<object, PropertiesQueryVariables>('Properties', ({ variables }) => {
+      listRequests.push(variables);
+      return HttpResponse.json(propertiesPayload(items));
+    }),
+    api.mutation<object, DeletePropertyMutationVariables>('DeleteProperty', ({ variables }) => {
+      // Codegen types an `ID` input as `string | number`. The app sends strings.
+      const id = String(variables.id);
+      deletedIds.push(id);
+      return respondDelete(id, () => {
+        items = items.filter((item) => item.id !== id);
+      });
+    }),
+  );
+  return { listRequests, deletedIds };
+}
+
+function notFoundResponse() {
+  return HttpResponse.json({
+    data: null,
+    errors: [
+      { message: 'No property with this id exists.', extensions: { code: 'PROPERTY_NOT_FOUND' } },
+    ],
+  });
+}
+
+async function openDeleteDialog(street: string) {
+  const user = userEvent.setup();
+  renderWithProviders(<ListPage />);
+  await user.click(await screen.findByRole('button', { name: `Delete ${street}` }));
+  const dialog = screen.getByRole('dialog', { name: 'Delete property?' });
+  return { user, dialog };
+}
+
 // The street of each body row, top to bottom.
 function rowStreets() {
   const [, ...rows] = screen.getAllByRole('row');
@@ -68,7 +114,14 @@ describe('ListPage', () => {
     const cells = within(screen.getAllByRole('row')[3] as HTMLElement)
       .getAllByRole('cell')
       .map((cell) => cell.textContent);
-    expect(cells).toEqual(['1 Oldest Rd', 'Boston', 'MA', '02108', 'Sep 14, 2026, 11:42 PM']);
+    expect(cells).toEqual([
+      '1 Oldest Rd',
+      'Boston',
+      'MA',
+      '02108',
+      'Sep 14, 2026, 11:42 PM',
+      'Delete',
+    ]);
     expect(screen.getByRole('columnheader', { name: 'Zip code' })).toBeInTheDocument();
     expect(screen.getByText('3 properties')).toBeInTheDocument();
     expect(requests).toEqual([{ filter: {}, sort: 'CREATED_AT_DESC' }]);
@@ -223,5 +276,64 @@ describe('ListPage', () => {
     await user.click(await screen.findByRole('link', { name: '2 Middle Ave' }));
 
     expect(await screen.findByRole('heading', { name: 'Details of id-2' })).toBeInTheDocument();
+  });
+
+  it('FR-11 AC5: confirming sends DeleteProperty, closes the dialog and the row disappears', async () => {
+    const { listRequests, deletedIds } = serveStore([newest, middle, oldest]);
+    const { user, dialog } = await openDeleteDialog('2 Middle Ave');
+    expect(dialog).toHaveTextContent('2 Middle Ave, Austin, TX 78701');
+
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    await expect.poll(() => screen.queryByRole('dialog')).toBeNull();
+    expect(deletedIds).toEqual(['id-2']);
+    expect(listRequests).toHaveLength(2);
+    expect(rowStreets()).toEqual(['3 Newest St', '1 Oldest Rd']);
+  });
+
+  it('FR-11 AC5: Cancel closes the dialog and sends nothing', async () => {
+    const { listRequests, deletedIds } = serveStore([newest, middle]);
+    const { user, dialog } = await openDeleteDialog('3 Newest St');
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(deletedIds).toEqual([]);
+    expect(listRequests).toHaveLength(1);
+    expect(rowStreets()).toEqual(['3 Newest St', '2 Middle Ave']);
+  });
+
+  it('NFR-09: PROPERTY_NOT_FOUND on delete says the property is gone and re-fetches the list', async () => {
+    // Someone else deleted it first: the store no longer has it, and the API says so.
+    const { listRequests, deletedIds } = serveStore([newest, middle], (_id, remove) => {
+      remove();
+      return notFoundResponse();
+    });
+    const { user, dialog } = await openDeleteDialog('2 Middle Ave');
+
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'This property no longer exists',
+    );
+    expect(deletedIds).toEqual(['id-2']);
+    await expect.poll(rowStreets).toEqual(['3 Newest St']);
+    expect(listRequests).toHaveLength(2);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('NFR-09: a failed delete shows the generic message, keeps the dialog and the row, and does not re-fetch', async () => {
+    const { listRequests, deletedIds } = serveStore([newest, middle], () => HttpResponse.error());
+    const { user, dialog } = await openDeleteDialog('2 Middle Ave');
+
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Could not delete the property, try again',
+    );
+    expect(deletedIds).toEqual(['id-2']);
+    expect(listRequests).toHaveLength(1);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(rowStreets()).toEqual(['3 Newest St', '2 Middle Ave']);
   });
 });

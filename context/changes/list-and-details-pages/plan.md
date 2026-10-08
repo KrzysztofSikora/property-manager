@@ -329,7 +329,7 @@ Documents are declared with `graphql(...)` in the hook files, and codegen genera
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [ ] Phase 1: List page
+- [x] Phase 1: List page (4167fe4)
 - [ ] Phase 2: Delete from the list
 - [ ] Phase 3: Details page
 
@@ -350,3 +350,12 @@ Documents are declared with `graphql(...)` in the hook files, and codegen genera
 - Follow-up (not fixed, outside the phase): `execute(doc, {})` does not type-check for a
   document whose variables are all optional. TS infers `TVariables` from `{}`, which matches
   the no-variables branch of the rest type. Callers pass a non-empty object today.
+- Phase 2, `useDeleteProperty`: the hook's `onSuccess` / `onError` return the invalidation
+  promise, so the mutation stays pending until the list has re-fetched. The dialog closes on a
+  list that no longer has the row. TanStack awaits hook-level callbacks (context7, `mutation.ts`).
+- Phase 2, tests: codegen types an `ID` input variable as `string | number`, so the MSW
+  recorders convert it with `String(...)`. The removal of an inactive cached details entry is
+  not asserted in phase 2 (no details query exists yet). Phase 3's delete-from-details tests
+  cover the "active entry is not re-fetched" half.
+- Phase 2, ListPage AC1 test: the row now has an action cell, so the expected cells end with
+  "Delete".

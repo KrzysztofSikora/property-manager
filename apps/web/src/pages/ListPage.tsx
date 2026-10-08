@@ -1,6 +1,7 @@
 import { US_STATES } from '@property-manager/shared';
 import { type SubmitEvent, useState } from 'react';
 import { Link } from 'react-router';
+import { type DeletableProperty, DeletePropertyDialog } from '../components/DeletePropertyDialog';
 import type { PropertySort } from '../graphql/graphql';
 import { type PropertiesFilter, useProperties } from '../hooks/useProperties';
 import { formatDateTime } from '../lib/format';
@@ -26,6 +27,8 @@ export function ListPage() {
   const [filter, setFilter] = useState<PropertiesFilter>(NO_FILTER);
   const [sort, setSort] = useState<PropertySort>('CREATED_AT_DESC');
   const properties = useProperties({ filter, sort });
+  // The row whose Delete was clicked. The dialog is mounted (and open) only while it is set.
+  const [toDelete, setToDelete] = useState<DeletableProperty | null>(null);
 
   function applyFilter(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -128,6 +131,9 @@ export function ListPage() {
                 <th>State</th>
                 <th>Zip code</th>
                 <th>Created</th>
+                <th>
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -142,11 +148,32 @@ export function ListPage() {
                   <td>{property.state}</td>
                   <td>{property.zipCode}</td>
                   <td>{formatDateTime(property.createdAt)}</td>
+                  <td className="text-right">
+                    <button
+                      type="button"
+                      aria-label={`Delete ${property.street}`}
+                      onClick={() => {
+                        setToDelete(property);
+                      }}
+                      className="rounded border px-2 py-0.5 text-red-700"
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </>
+      )}
+
+      {toDelete && (
+        <DeletePropertyDialog
+          property={toDelete}
+          onClose={() => {
+            setToDelete(null);
+          }}
+        />
       )}
     </>
   );

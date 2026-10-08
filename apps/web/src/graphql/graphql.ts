@@ -24,6 +24,13 @@ export type PropertySort =
   /** Newest first. */
   | 'CREATED_AT_DESC';
 
+export type DeletePropertyMutationVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type DeletePropertyMutation = { deleteProperty: string };
+
 export type PropertiesQueryVariables = Exact<{
   filter?: PropertyFilter | null | undefined;
   sort?: PropertySort | null | undefined;
@@ -51,6 +58,11 @@ export class TypedDocumentString<TResult, TVariables>
   }
 }
 
+export const DeletePropertyDocument = new TypedDocumentString(`
+    mutation DeleteProperty($id: ID!) {
+  deleteProperty(id: $id)
+}
+    `) as unknown as TypedDocumentString<DeletePropertyMutation, DeletePropertyMutationVariables>;
 export const PropertiesDocument = new TypedDocumentString(`
     query Properties($filter: PropertyFilter, $sort: PropertySort) {
   properties(filter: $filter, sort: $sort) {
