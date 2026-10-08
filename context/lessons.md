@@ -50,3 +50,14 @@
 - Scope: form validation and field-error mapping (`apps/web/src/pages/*Page.tsx`,
   `lib/graphql-errors.ts` `fieldErrors`, `packages/shared/src/address.ts`). Add a case where one
   field is invalid and the others are valid, and assert the others show no message.
+
+## Re-check earlier mutation-strengthened tests when a change moves a rule's input
+- Why: a test added to kill a mutant reaches the code only through the input path it was
+  written for. When a change moves that input (component state → URL), the test still passes
+  but no longer reaches the line, and the mutant survives again. In S-07, the S-04 test for the
+  `filtered` flag (`value.trim()`) typed whitespace and clicked Apply. A whitespace Apply now
+  leaves the URL unchanged, so only a link like `/?city=+++` still reaches the flag.
+- Seen in: list-filters-in-url, mutation check
+- Scope: `/plan` and `/mutation` for changes that move where a module reads its state (URL,
+  cache, props, API args). Before the run, look up the earlier `mutation.md` `strengthen`
+  rows for the touched lines and confirm that each test still reaches them.
