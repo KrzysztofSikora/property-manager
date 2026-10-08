@@ -40,3 +40,13 @@
 - Scope: service tests with fakes (`apps/api/src/services/*.test.ts`). Before adding a test, name
   the service line that would make it fail. Rules owned by the repository are proved against
   PostgreSQL (`*.int.test.ts`); pure helpers are proved by their own table.
+
+## Test per-field validation with exactly one invalid field
+- Why: a test that makes several fields invalid at once passes when the code assumes a given
+  field always has an issue. In S-05, `issues.zipCode?.[0]` → `issues.zipCode[0]` survived:
+  every AC1 test had an invalid zip, so a valid zip next to an empty street (the handler throws,
+  no message shown) was never tried.
+- Seen in: create-property-page, mutation check
+- Scope: form validation and field-error mapping (`apps/web/src/pages/*Page.tsx`,
+  `lib/graphql-errors.ts` `fieldErrors`, `packages/shared/src/address.ts`). Add a case where one
+  field is invalid and the others are valid, and assert the others show no message.
