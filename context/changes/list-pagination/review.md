@@ -3,7 +3,7 @@
 Verdict: APPROVE
 Gates: typecheck ok, lint ok, tests 626 passed / 0 failed (`pnpm test`, 40 files, incl. Testcontainers)
 
-Base: `1ef3378` (parent of `6d6edc8`, the first `(list-pagination)` commit). Diff: `1ef3378...HEAD`,
+Base: `1ef3378` (parent of `5069c19`, the first `(list-pagination)` commit). Diff: `1ef3378...HEAD`,
 no uncommitted changes under `apps/` or `context/` (the untracked `*-S-08.txt` session exports
 are outside the diff).
 

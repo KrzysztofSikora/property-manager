@@ -244,8 +244,8 @@ dropped by the parse, and request errors use the existing error state with Retry
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [x] Phase 1: page in the URL module (6d6edc8)
-- [x] Phase 2: paged list (c0c89d1)
+- [x] Phase 1: page in the URL module (5069c19)
+- [x] Phase 2: paged list (879e6f9)
 
 ## Deviations
 - Phase 2: the past-the-end check is `page > pageCount` on settled, non-placeholder data, not
