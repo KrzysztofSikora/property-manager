@@ -1,0 +1,478 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement create-property-page                                               
+
+  Listed 2 directories, ran 1 shell command (ctrl+o to expand)
+
+● Bash(sed -i 's/| S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04
+      | M | planned |/| S-05 | #7 | create-property-page | slice | FR-13 |
+      S-02, S-04 | M |…)
+  ⎿  | S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04 | M |
+     in-progress |
+     | S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-15 | S-0
+     … +44 lines (ctrl+o to expand)
+  ⎿  Updated context/roadmap.md (+1 -1)
+      15  | S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5)
+          , FR-06, FR-08, FR-10 | S-01 | M | done |
+      16  | S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-0
+          2, FR-03, FR-04, FR-09, FR-10 | S-01 | M | done |
+      17  | S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs)
+          , FR-12 (AC1–AC5) | S-03 | M | done |
+      18 -| S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04
+         - | M | planned |                                               
+      18 +| S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04
+         + | M | in-progress |                                           
+      19  | S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-1
+          5 | S-05 | M | todo |
+      20  
+      21  Order follows risk: tooling and schema first, then the Weathers
+          tack integration (the only
+
+● I'll start Phase 1 by adding the create-form error messages and the
+  useCreateProperty hook, validating with codegen, typecheck, lint, and tests.
+  First, I'll write the tests for graphql-errors.
+
+  Read 1 file (ctrl+o to expand)
+
+● Now the failing tests for the messages and field-error reader.
+
+● Bash(python3 - <<'EOF'
+      p='apps/web/src/lib/graphql-errors.test.ts'…)
+  ⎿      170|     ['undefined', undefined],
+         171|   ])('gives nothing for %s', (_name, error) => {
+         172|     expect(fieldErrors(error)).toEqual({});
+     … +12 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/lib/graphql-errors.test.ts (+131 -1)
+       1 +import { ERROR_CODES } from '@property-manager/shared';        
+       2  import { describe, expect, it } from 'vitest';
+       3  import { GraphQLRequestError } from './execute';
+       3 -import { errorCode } from './graphql-errors';                  
+       4 +import {                                                       
+       5 +  CREATE_ERROR_MESSAGES,                                       
+       6 +  createErrorMessage,                                          
+       7 +  errorCode,                                                   
+       8 +  fieldErrors,                                                 
+       9 +} from './graphql-errors';                                     
+      10  
+      11 +function requestError(code: unknown, message = 'server message'
+         +, extra = {}) {                                                
+      12 +  return new GraphQLRequestError(200, [{ message, extensions: {
+         + code, ...extra } }]);                                         
+      13 +}                                                              
+      14 +                                                               
+      15  describe('errorCode', () => {
+      16    it.each([
+      17      [
+     ...
+       52      expect(errorCode(error)).toBe(expected);
+       53    });
+       54  });
+       55 +                                                              
+       56 +// TR-19: a code added to the contract without a create-form m
+          +essage fails here (and in tsc).                               
+       57 +describe('CREATE_ERROR_MESSAGES', () => {                     
+       58 +  it.each(ERROR_CODES)('has a message for %s', (code) => {    
+       59 +    expect(CREATE_ERROR_MESSAGES[code].trim()).not.toBe('');  
+       60 +  });                                                         
+       61 +                                                              
+       62 +  it('names the cause FR-10 lists for each create error', () =
+          +> {                                                           
+       63 +    expect(CREATE_ERROR_MESSAGES.PROPERTY_ALREADY_EXISTS).toMa
+          +tch(/already exists/i);                                       
+       64 +    expect(CREATE_ERROR_MESSAGES.WEATHER_QUOTA_EXCEEDED).toMat
+          +ch(                                                           
+       65 +      /upgrade the plan or replace the api key/i,             
+       66 +    );                                                        
+       67 +    expect(CREATE_ERROR_MESSAGES.WEATHER_UNAVAILABLE).toMatch(
+          +/try again later/i);                                          
+       68 +    expect(CREATE_ERROR_MESSAGES.WEATHER_LOCATION_MISMATCH).to
+          +Match(/different state/i);                                    
+       69 +    expect(CREATE_ERROR_MESSAGES.INTERNAL_SERVER_ERROR).toMatc
+          +h(/not saved\. try again/i);                                  
+       70 +  });                                                         
+       71 +});                                                           
+       72 +                                                              
+       73 +describe('createErrorMessage', () => {                        
+     … 101 more lines (ctrl+o to expand)
+
+● They fail for the right reason: the exports don't exist yet. Now the
+  implementation.
+
+● Bash(cat > apps/web/src/lib/graphql-errors.ts <<'EOF'
+      import { type AddressInput, ERROR_CODES, type ErrorCode } from
+      '@property-manager/shared';…)
+  ⎿   Test Files  1 passed (1)
+           Tests  42 passed (42)
+        Start at  11:33:29
+     … +2 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/lib/graphql-errors.ts (+54 -2)
+      1 -import { ERROR_CODES, type ErrorCode } from '@property-manager/s
+        -hared';                                                         
+      1 +import { type AddressInput, ERROR_CODES, type ErrorCode } from '
+        +@property-manager/shared';                                      
+      2 +import { z } from 'zod';                                        
+      3  import { GraphQLRequestError } from './execute';
+      4  
+      5  function isErrorCode(value: unknown): value is ErrorCode {
+     ...
+       7  }
+       8  
+       9  // The FR-10 `extensions.code` of a failed request, or undefine
+          d for a network or HTTP failure
+       9 -// and for codes outside the contract. S-05 adds the per-code m
+         -essages here (TR-19).                                          
+      10 +// and for codes outside the contract.                         
+      11  export function errorCode(error: unknown): ErrorCode | undefine
+          d {
+      12    if (!(error instanceof GraphQLRequestError)) return undefined
+          ;
+      13    const code = error.errors[0]?.extensions?.code;
+      14    return isErrorCode(code) ? code : undefined;
+      15  }
+      16 +                                                               
+      17 +// One create-form message per code (NFR-09, TR-19). The wordin
+         +g is for the create form only.                                 
+      18 +// `PROPERTY_NOT_FOUND` is never returned by the create mutatio
+         +n; it keeps the record complete.                               
+      19 +export const CREATE_ERROR_MESSAGES: Record<ErrorCode, string> =
+         + {                                                             
+      20 +  BAD_USER_INPUT: 'Some fields are invalid. Check the highlight
+         +ed fields.',                                                   
+      21 +  PROPERTY_ALREADY_EXISTS: 'A property with this address alread
+         +y exists.',                                                    
+      22 +  PROPERTY_NOT_FOUND: 'This property no longer exists.',       
+      23 +  WEATHER_QUOTA_EXCEEDED:                                      
+      24 +    'The Weatherstack usage limit has been reached, so the prop
+         +erty was not saved. Upgrade the plan or replace the API key.', 
+      25 +  WEATHER_UNAVAILABLE:                                         
+      26 +    'Weather could not be fetched, so the property was not save
+         +d. Try again later.',                                          
+      27 +  WEATHER_LOCATION_MISMATCH:                                   
+      28 +    'Weatherstack placed this address in a different state, so 
+         +the property was not saved.',                                  
+      29 +  INTERNAL_SERVER_ERROR: 'Something went wrong, the property wa
+         +s not saved. Try again.',                                      
+      30 +};                                                             
+      31 +                                                               
+      32 +// Only the API's mismatch message names the region Weatherstac
+         +k returned (FR-10), so it is                                   
+      33 +// shown as it is; the table entry covers a missing message. An
+         +ything outside the contract                                    
+      34 +// (network, HTTP, unknown code) gets the generic message.     
+      35 +export function createErrorMessage(error: unknown): string {   
+      36 +  const code = errorCode(error);                               
+      37 +  if (code === undefined) return CREATE_ERROR_MESSAGES.INTERNAL
+         +_SERVER_ERROR;                                                 
+      38 +  if (code === 'WEATHER_LOCATION_MISMATCH' && error instanceof 
+         +GraphQLRequestError) {                                         
+      39 +    const message = error.errors[0]?.message.trim();           
+     … 27 more lines (ctrl+o to expand)
+
+● Now the hook, then codegen.
+
+● Bash(cat > apps/web/src/hooks/useCreateProperty.ts <<'EOF'
+      import type { Address } from '@property-manager/shared';…)
+  ⎿  ✔ Load GraphQL documents
+     ❯ Generate
+     ✔ Generate
+     … +5 lines (ctrl+o to expand)
+  ⎿  Created apps/web/src/hooks/useCreateProperty.ts (+28 -0)
+       1 +import type { Address } from '@property-manager/shared';       
+       2 +import { useMutation, useQueryClient } from '@tanstack/react-qu
+         +ery';                                                          
+       3 +import { graphql } from '../graphql';                          
+       4 +import { execute } from '../lib/execute';                      
+       5 +                                                               
+       6 +const CreatePropertyMutation = graphql(`                       
+       7 +  mutation CreateProperty($street: String!, $city: String!, $st
+         +ate: String!, $zipCode: String!) {                             
+       8 +    createProperty(street: $street, city: $city, state: $state,
+         + zipCode: $zipCode) {                                          
+       9 +      id                                                       
+      10 +    }                                                          
+      11 +  }                                                            
+      12 +`);                                                            
+      13 +                                                               
+      14 +// Resolves to the new property's id. The caller navigates; the
+         + hook owns the cache.                                          
+      15 +export function useCreateProperty() {                          
+      16 +  const queryClient = useQueryClient();                        
+      17 +  return useMutation({                                         
+      18 +    mutationFn: async (address: Address) => {                  
+      19 +      const { createProperty } = await execute(CreatePropertyMu
+         +tation, address);                                              
+      20 +      // `null` without errors breaks the contract; it must not
+         + navigate to /properties/null.                                 
+      21 +      if (createProperty === null) throw new Error('createPrope
+         +rty returned no property');                                    
+      22 +      return createProperty.id;                                
+      23 +    },                                                         
+      24 +    // Returning the invalidation keeps the mutation pending un
+         +til the lists are marked stale                                 
+      25 +    // (and active ones re-fetched). The details page fetches t
+         +he new property itself.                                        
+      26 +    onSuccess: () => queryClient.invalidateQueries({ queryKey: 
+         +['properties', 'list'] }),                                     
+      27 +  });                                                          
+      28 +}                                                              
+  ⎿  Updated apps/web/src/graphql/graphql.ts (+17 -0)
+      27  export type WeatherUnits =
+      28    | 'IMPERIAL';
+      29  
+      30 +export type CreatePropertyMutationVariables = Exact<{          
+      31 +  street: string;                                              
+      32 +  city: string;                                                
+      33 +  state: string;                                               
+      34 +  zipCode: string;                                             
+      35 +}>;                                                            
+      36 +                                                               
+      37 +                                                               
+      38 +export type CreatePropertyMutation = { createProperty: { id: st
+         +ring } | null };                                               
+      39 +                                                               
+      40  export type DeletePropertyMutationVariables = Exact<{
+      41    id: string | number;
+      42  }>;
+     ...
+      78    }
+      79  }
+      80  
+      81 +export const CreatePropertyDocument = new TypedDocumentString(`
+      82 +    mutation CreateProperty($street: String!, $city: String!, $
+         +state: String!, $zipCode: String!) {                           
+      83 +  createProperty(street: $street, city: $city, state: $state, z
+         +ipCode: $zipCode) {                                            
+      84 +    id                                                         
+      85 +  }                                                            
+      86 +}                                                              
+      87 +    `) as unknown as TypedDocumentString<CreatePropertyMutation
+         +, CreatePropertyMutationVariables>;                            
+      88  export const DeletePropertyDocument = new TypedDocumentString(`
+      89      mutation DeleteProperty($id: ID!) {
+      90    deleteProperty(id: $id)
+  ⎿  Updated apps/web/src/graphql/gql.ts (+6 -0)
+      15   * Learn more about it here: https://the-guild.dev/graphql/code
+          gen/plugins/presets/preset-client#reducing-bundle-size
+      16   */
+      17  type Documents = {
+      18 +    "\n  mutation CreateProperty($street: String!, $city: Strin
+         +g!, $state: String!, $zipCode: String!) {\n    createProperty(s
+         +treet: $street, city: $city, state: $state, zipCode: $zipCode) 
+         +{\n      id\n    }\n  }\n": typeof types.CreatePropertyDocument
+         +,                                                              
+      19      "\n  mutation DeleteProperty($id: ID!) {\n    deletePropert
+          y(id: $id)\n  }\n": typeof types.DeletePropertyDocument,
+      20      "\n  query Properties($filter: PropertyFilter, $sort: Prope
+          rtySort) {\n    properties(filter: $filter, sort: $sort) {\n   
+             items {\n        id\n        street\n        city\n        s
+          tate\n        zipCode\n        createdAt\n      }\n      totalC
+          ount\n    }\n  }\n": typeof types.PropertiesDocument,
+      21      "\n  query Property($id: ID!) {\n    property(id: $id) {\n 
+               id\n      street\n      city\n      state\n      zipCode\n
+                lat\n      long\n      createdAt\n      weatherData {\n  
+                units\n        current {\n          temperature\n        
+            feelsLike\n          weatherDescriptions\n          weatherIc
+          ons\n          windSpeed\n          windDir\n          humidity
+          \n        }\n      }\n    }\n  }\n": typeof types.PropertyDocum
+          ent,
+      22  };
+      23  const documents: Documents = {
+      24 +    "\n  mutation CreateProperty($street: String!, $city: Strin
+         +g!, $state: String!, $zipCode: String!) {\n    createProperty(s
+         +treet: $street, city: $city, state: $state, zipCode: $zipCode) 
+         +{\n      id\n    }\n  }\n": types.CreatePropertyDocument,      
+      25      "\n  mutation DeleteProperty($id: ID!) {\n    deletePropert
+          y(id: $id)\n  }\n": types.DeletePropertyDocument,
+      26      "\n  query Properties($filter: PropertyFilter, $sort: Prope
+          rtySort) {\n    properties(filter: $filter, sort: $sort) {\n   
+             items {\n        id\n        street\n        city\n        s
+          tate\n        zipCode\n        createdAt\n      }\n      totalC
+          ount\n    }\n  }\n": types.PropertiesDocument,
+      27      "\n  query Property($id: ID!) {\n    property(id: $id) {\n 
+               id\n      street\n      city\n      state\n      zipCode\n
+                lat\n      long\n      createdAt\n      weatherData {\n  
+                units\n        current {\n          temperature\n        
+            feelsLike\n          weatherDescriptions\n          weatherIc
+          ons\n          windSpeed\n          windDir\n          humidity
+          \n        }\n      }\n    }\n  }\n": types.PropertyDocument,
+     ...
+      30  /**
+      31   * The graphql function is used to parse GraphQL queries into a
+           document that can be used by GraphQL clients.
+      32   */
+      33 +export function graphql(source: "\n  mutation CreateProperty($s
+         +treet: String!, $city: String!, $state: String!, $zipCode: Stri
+         +ng!) {\n    createProperty(street: $street, city: $city, state:
+         + $state, zipCode: $zipCode) {\n      id\n    }\n  }\n"): typeof
+         + import('./graphql.ts').CreatePropertyDocument;                
+      34 +/**                                                            
+      35 + * The graphql function is used to parse GraphQL queries into a
+         + document that can be used by GraphQL clients.                 
+      36 + */                                                            
+      37  export function graphql(source: "\n  mutation DeleteProperty($i
+          d: ID!) {\n    deleteProperty(id: $id)\n  }\n"): typeof import(
+          './graphql.ts').DeletePropertyDocument;
+      38  /**
+      39   * The graphql function is used to parse GraphQL queries into a
+           document that can be used by GraphQL clients.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now the hook test.
+
+● Bash(cat > apps/web/src/hooks/useCreateProperty.test.tsx <<'EOF'
+      import { QueryClient, QueryClientProvider } from
+      '@tanstack/react-query';…)
+  ⎿   RUN  v5.0.3 /home/krzysztof/projects/taskTreeCover/property-manager
+     … +5 lines (ctrl+o to expand)
+  ⎿  Created apps/web/src/hooks/useCreateProperty.test.tsx (+82 -0)
+       1 +import { QueryClient, QueryClientProvider } from '@tanstack/rea
+         +ct-query';                                                     
+       2 +import { renderHook } from '@testing-library/react';           
+       3 +import { HttpResponse } from 'msw/http';                       
+       4 +import type { ReactNode } from 'react';                        
+       5 +import { describe, expect, it } from 'vitest';                 
+       6 +import { api, server } from '../test/msw';                     
+       7 +import { useCreateProperty } from './useCreateProperty';       
+       8 +                                                               
+       9 +const address = {                                              
+      10 +  street: '15528 E Golden Eagle Blvd',                         
+      11 +  city: 'Fountain Hills',                                      
+      12 +  state: 'AZ',                                                 
+      13 +  zipCode: '85268',                                            
+      14 +} as const;                                                    
+      15 +                                                               
+      16 +function renderCreate(queryClient: QueryClient) {              
+      17 +  return renderHook(() => useCreateProperty(), {               
+      18 +    wrapper: ({ children }: { children: ReactNode }) => (      
+      19 +      <QueryClientProvider client={queryClient}>{children}</Que
+         +ryClientProvider>                                              
+      20 +    ),                                                         
+      21 +  });                                                          
+      22 +}                                                              
+      23 +                                                               
+      24 +function newQueryClient() {                                    
+      25 +  return new QueryClient({ defaultOptions: { queries: { retry: 
+         +false } } });                                                  
+      26 +}                                                              
+      27 +                                                               
+      28 +describe('useCreateProperty', () => {                          
+      29 +  it('sends the address and resolves to the new id', async () =
+         +> {                                                            
+      30 +    const sent: unknown[] = [];                                
+      31 +    server.use(                                                
+      32 +      api.mutation('CreateProperty', ({ variables }) => {      
+      33 +        sent.push(variables);                                  
+      34 +        return HttpResponse.json({ data: { createProperty: { id
+         +: 'new-id' } } });                                             
+      35 +      }),                                                      
+      36 +    );                                                         
+      37 +    const { result } = renderCreate(newQueryClient());         
+      38 +                                                               
+      39 +    result.current.mutate(address);                            
+      40 +                                                               
+     … 42 more lines (ctrl+o to expand)
+
+● Now the agent checks.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Phase 1 is built and every agent check passes. Before I commit, one human
+  check needs you.
+
+  Human check: message wording
+
+  Please read CREATE_ERROR_MESSAGES in apps/web/src/lib/graphql-errors.ts:19 and
+  compare it with FR-10's "Message must say" column:
+
+  Code: BAD_USER_INPUT
+  Message: Some fields are invalid. Check the highlighted fields.
+  ────────────────────────────────────────
+  Code: PROPERTY_ALREADY_EXISTS
+  Message: A property with this address already exists.
+  ────────────────────────────────────────
+  Code: PROPERTY_NOT_FOUND
+  Message: This property no longer exists. (only there so every code has an 
+  entry; create never returns it)
+  ────────────────────────────────────────
+  Code: WEATHER_QUOTA_EXCEEDED
+  Message: The Weatherstack usage limit has been reached, so the property was
+  not
+  saved. Upgrade the plan or replace the API key.
+  ────────────────────────────────────────
+  Code: WEATHER_UNAVAILABLE
+  Message: Weather could not be fetched, so the property was not saved. Try
+  again
+  later.
+  ────────────────────────────────────────
+  Code: WEATHER_LOCATION_MISMATCH
+  Message: Weatherstack placed this address in a different state, so the
+  property
+  was not saved. (fallback only; normally the API's own message is  shown, 
+  which names both states)
+  ────────────────────────────────────────
+  Code: INTERNAL_SERVER_ERROR
+  Message: Something went wrong, the property was not saved. Try again. (also 
+  used for network failures, HTTP errors and unknown codes)
+
+  What changed
+
+  - apps/web/src/lib/graphql-errors.ts: added CREATE_ERROR_MESSAGES (one message
+    per code), createErrorMessage, fieldErrors (reads extensions.fields with
+    zod) and the AddressField type. errorCode works as before; I only removed
+    the outdated "S-05 adds…" comment.
+  - apps/web/src/lib/graphql-errors.test.ts: TR-19 tests. There is one message
+    test per entry in ERROR_CODES, plus tests of each code's key facts, how
+    createErrorMessage handles each case, and fieldErrors with known, unknown,
+    duplicate and malformed fields and with other error codes.
+  - apps/web/src/hooks/useCreateProperty.ts: the new hook. It resolves to the
+    new property's id, fails when the API returns null, and marks cached list
+    queries as out of date on success.
+  - apps/web/src/hooks/useCreateProperty.test.tsx: checks the variables sent and
+    the id returned, that cached lists are marked out of date while cached
+    details are not, and the null case (error, no invalidation).
+  - apps/web/src/graphql/{gql,graphql}.ts: codegen output for CreateProperty.
+  - context/roadmap.md: S-05 set to in-progress.
+
+  Checks
+
+  - graphql-errors tests failed first because the exports were missing, then
+    passed: 42/42.
+  - pnpm codegen: running it again changes nothing beyond these two generated
+    files.
+  - pnpm typecheck, pnpm lint, pnpm format:check: pass.
+  - pnpm vitest run --project web: 95/95 passed.
+  - pnpm test:unit: 439/439 passed.
+
+  Deviations
+
+  None.
+
+  Proposed commit
+
+  Files staged by path: the six code files above, plus
+  context/changes/create-property-page/plan.md.
+
+  feat(create-property-page): add create error messages and useCreateProperty 
+  hook
+
+  Refs #7
+
+  Files already dirty before I started:
+  - context/roadmap.md: this one now contains my in-progress edit.
+  - context/changes/create-property-page/plan-review.md
+  - plan-S-05.txt
+  - plan-review-S-05.txt
+
+  Should roadmap.md and plan-review.md go into this commit too? I'll leave the
+  two .txt files out unless you say otherwise.
+
+  Confirm the wording (or give me edits) and the commit message, and I'll
+  commit.
+
+✻ Churned for 2m 3s · done 11:34 AM
