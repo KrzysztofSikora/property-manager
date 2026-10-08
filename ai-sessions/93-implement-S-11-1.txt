@@ -1,0 +1,639 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan-review ui-polish                                                        
+  ⎿  Running in the background as @plan-review
+
+● Agent "/plan-review ui-polish" finished · 2m 42s
+
+● The plan review for ui-polish is done. The verdict is ready with notes:
+  nothing blocks it, but there is one major finding and seven minor ones. The
+  review is in context/changes/ui-polish/plan-review.md, and plan.md is
+  unchanged.
+
+  Major
+  - The creation date disappears on phones. Decision D-2 hides the "Created"
+    column below 560 px, but FR-11 AC1 (a Must) requires the date on every row,
+    and the views must work down to 400 px. No automated test would catch this.
+    You can either show the date as a third line in the address cell on small
+    screens, or record it as an accepted deviation, since D-2 was your call.
+
+  Minor
+  1. Temperature test: the details page shows "82 °F" with the unit in a nested
+     span. Testing Library's default getByText won't match text split like that,
+     so the plan should say how the test checks it.
+  2. List icon test: the weather icon in the list has empty alt text, so
+     getByRole('img') can't find it. The plan should name a different query.
+  3. Air quality card rule untested: the new rule (show the card if any row or
+     the badge has a value) has no test. One case should cover a snapshot where
+     only the EPA index is set.
+  4. Badge placement: the badge has to sit next to the Air quality heading, not
+     inside it, or the heading-list test breaks.
+  5. Renames without a decision row: "Moon illumination" becomes "Illumination",
+     "Astronomy" becomes "Sun and moon", and the "US EPA index" row becomes a
+     badge. Listing them would let the test rewrite be checked against them.
+  6. Wrong line numbers: the plan cites DetailsPage.tsx:122-212, but the file is
+     only 207 lines long; the actual range is 119–193.
+  7. Checks:
+     - Phase 1 changes the nav that the e2e test clicks, but doesn't run pnpm 
+       e2e.
+     - Phase 2's codegen check uses git status --porcelain, which lists changed
+       files but not the diff.
+
+  Everything else the plan cites checks out, including the Tailwind 4 @theme
+  claims against current docs.
+
+  Next step: decide how to handle D-2, then revise plan.md with the minor fixes
+  before implementation starts.
+
+✻ Cooked for 16s · done 6:13 PM
+
+❯ /export plan-review-S-11                                                      
+  ⎿  Conversation exported to: /home/krzysztof/projects/taskTreeCover/property-m
+     anager/plan-review-S-11.txt
+
+❯ go forward how handle d2?                                                     
+
+  Searched for 1 pattern, listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● I'm updating D-2 in plan.md and applying the seven minor fixes from the
+  review.
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/ui-polish/plan.md'…)
+  ⎿  38:    `e2e/property-journey.spec.ts` (details assertions, the "Proper
+     ties" link locator).
+     39-- Out:
+     … +17 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/ui-polish/plan.md (+27 -20)
+      57  - `apps/web/src/hooks/useProperties.ts:6-21`: the list query as
+          ks for id, street, city, state,
+      58    zipCode, createdAt. The query document changes; `toFilter` (t
+          he Stryker target logic) does
+      59    not.
+      60 -- `apps/web/src/pages/DetailsPage.tsx:122-212`: one AC1 `<dl>` 
+         -(Address, Coordinates, Created,                                
+      61 -  Temperature, Feels like, Conditions, Wind, Humidity), then th
+         -ree `DetailsGroup` sections                                    
+      62 -  ("Weather details", "Astronomy", "Air quality") that drop `nu
+         -ll` rows and empty groups, then                                
+      63 -  one `<p>` holding both AC2 sentences.                        
+      60 +- `apps/web/src/pages/DetailsPage.tsx:119-151`: one AC1 `<dl>` 
+         +(Address, Coordinates, Created,                                
+      61 +  Temperature, Feels like, Conditions, Wind, Humidity), then `:
+         +153-188` three `DetailsGroup`                                  
+      62 +  sections ("Weather details", "Astronomy", "Air quality") that
+         + drop `null` rows and empty                                    
+      63 +  groups (rule at `:22-25`), then `:190-193` one `<p>` holding 
+         +both AC2 sentences.                                            
+      64  - `apps/web/src/components/DeletePropertyDialog.tsx:84-122`: na
+          tive `<dialog>`, Cancel and
+      65    Delete buttons with ad-hoc classes.
+      66  - Tests that read layout and must change:
+     ...
+      103  
+      104  | Question | Answer | Why | Decided by |
+      105  |---|---|---|---|
+      106 -| D-1 How closely does the details page follow the sketch? | F
+          -ollow it: hero with six tiles, Location panel, Air quality / S
+          -un and moon / Precipitation cards, page footnote. DetailsPage 
+          -tests are rewritten per section with every AC1/AC5/AC6 value k
+          -ept; two e2e lines change. | The sketch is the reviewed refere
+          -nce; keeping the old groups would keep the long-column feel th
+          -e item exists to fix. | user |                                
+      107 -| D-2 What do narrow screens (< 560 px) do with the 6-column l
+          -ist? | Hide the "Weather at creation" and "Created" columns wi
+          -th CSS below the `sm` breakpoint; Address, State, Zip code and
+          - Delete stay. | No horizontal scroll at all; the hidden values
+          - remain on the details page. | user |                         
+      106 +| D-1 How closely does the details page follow the sketch? | F
+          +ollow it: hero with six tiles, Location panel, Air quality / S
+          +un and moon / Precipitation cards, page footnote. DetailsPage 
+          +tests are rewritten per section with every AC1/AC5/AC6 value k
+          +ept; two e2e lines change. | The sketch is the reviewed refere
+          +nce; keeping the old groups would keep the long-column feel th
+          +e item exists to fix. Layout renames this implies (values and 
+          +units unchanged): region "Astronomy" → "Sun and moon"; label "
+          +Moon illumination" → "Illumination"; the "US EPA index" row → 
+          +the Air quality badge (D-9); "Weather details" split into hero
+          + tiles and the "Precipitation" card; AC1 `<dl>` "Coordinates" 
+          +→ Location "Latitude" / "Longitude". Rewritten tests are check
+          +ed against this list. | user |                                
+      107 +| D-2 What do narrow screens (< 560 px) do with the 6-column l
+          +ist? | Hide the "Weather at creation" and "Created" columns wi
+          +th CSS below the `sm` breakpoint; Address, State, Zip code and
+          + Delete stay. Below `sm` the creation date moves into the Addr
+          +ess cell as a muted third line (`sm:hidden`), so every row sti
+          +ll shows it. | No horizontal scroll at all. FR-11 AC1 (Must) r
+          +equires the creation date on every row at every supported widt
+          +h (400 px, roadmap); weather is not in AC1, so it may stay on 
+          +the details page only. Amended after plan-review finding 1. | 
+          +user (amended per plan review) |                              
+      108  | D-3 Dark mode? | Light palette only. | One palette to build 
+           and check by eye; the app has no dark mode today. | user |
+      109  | D-4 Breakpoints | Override `--breakpoint-sm: 35rem` (560 px)
+            and `--breakpoint-md: 51.25rem` (820 px) in `@theme`; styles 
+           are mobile-first (`sm:` = ≥ 560 px, `md:` = ≥ 820 px). | Sketc
+           h says follow its 820 / 560 px breakpoints closely; overriding
+            the default names keeps the familiar utilities. No current cl
+           ass uses `sm:` / `md:`. | research |
+      110  | D-5 Column headers | Address, State, Zip code, Weather at cr
+           eation, Created, plus an `sr-only` "Actions". | Sketch shows "
+           Zip" and "Added"; "Zip code" and "Created" match the PRD (FR-1
+           1 AC1 "creation date"), the filter labels, and the existing co
+           lumnheader assertion. | research (PRD) |
+     ...
+      152    ≥ `md`). Labels keep wrapping their controls (or `htmlFor`),
+            so names "City", "State",
+      153    "Zip code", "Sort" are unchanged.
+      154  - Table: Address cell = `Link` street (accessible name = stree
+           t) with the city on a second
+      155 -  line; State chip; Zip code in `font-mono`; Weather cell = ic
+          -on (D-6), "82 °F" bold,                                       
+      155 +  line and, below `sm` only (`sm:hidden`), the muted creation 
+          +date as a third line (D-2); State chip; Zip code in `font-mono
+          +`; Weather cell = icon (D-6), "82 °F" bold,                   
+      156    description muted; Created muted; Delete = 32 px icon button
+           , `aria-label="Delete <street>"`,
+      157    `title="Delete"`, `TrashIcon`, red on hover/focus. Weather a
+           nd Created `th`/`td` get
+      158    `hidden sm:table-cell` (D-2). Rows highlight on hover.
+     ...
+      181  - Cards grid (3 columns at ≥ `md`, 1 below): each a `<section 
+           aria-labelledby>` with an h2,
+      182    reusing the current `DetailsGroup` rule (null rows dropped, 
+           empty card left out):
+      183    - "Air quality": rows PM2.5, PM10, O₃, NO₂, SO₂, CO, GB DEFR
+           A index; when `usEpaIndex` is not
+      184 -    `null`, a badge in the h2 row with tone from `epaIndexTone
+          -` (D-9). The region's accessible                              
+      185 -    name is "Air quality" only (`aria-labelledby` points at th
+          -e title text, not the badge).                                 
+      184 +    `null`, a badge with tone from `epaIndexTone` (D-9), place
+          +d as a sibling of the `<h2>` inside a                         
+      185 +    flex header (never inside the `<h2>`, so the heading text 
+          +stays "Air quality"). The                                     
+      186 +    region's accessible name is "Air quality" only (`aria-labe
+          +lledby` points at the `<h2>`).                                
+     … 62 more lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/ui-polish/plan.md'…)
+  ⎿   context/roadmap.md | 2 +-
+      1 file changed, 1 insertion(+), 1 deletion(-)
+      M context/roadmap.md
+     … +4 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/ui-polish/plan.md (+2 -2)
+      225    through the unchanged dialog, list and details tests.
+      226  - Agent checks: `pnpm typecheck`, `pnpm lint`, `pnpm format:ch
+           eck`,
+      227    `pnpm vitest run --project web`, `pnpm --filter @property-ma
+           nager/web build`, `pnpm e2e`
+      228 -  (the journey's line-28 click goes through the rewritten nav;
+          - the D-11 locator change lands                                
+      229 -  here, not in Phase 3).                                      
+      228 +  (the journey's line-28 click goes through the rewritten nav;
+          + it stays unambiguous until the                               
+      229 +  breadcrumb arrives, so the D-11 locator change remains in Ph
+          +ase 3).                                                       
+      230  - Human checks: app bar, ground, dialog and not-found page aga
+           inst the sketch at 1280 px and
+      231    400 px (brand text hidden, no horizontal scroll).
+      232  
+
+● I updated context/changes/ui-polish/plan.md to keep the creation date visible
+  on phones. It also now has all seven minor fixes from the review. Nothing is
+  committed.
+
+  How D-2 now works: the Weather and Created columns are still hidden below 560
+  px. Below that width, the creation date shows as a muted third line in the
+  Address cell, under the street and city, and that line is hidden from 560 px
+  up. This keeps FR-11 AC1, a Must, true at 400 px. Weather isn't part of AC1,
+  so on phones it can live on the details page only. I chose this over keeping
+  the Created column visible because a fourth column holding a full date would
+  be cramped at 400 px.
+
+  The test for AC1 now expects the date in the Address cell as well, since the
+  jsdom test environment renders both copies. The 400 px manual check now looks
+  for the date under the city.
+
+  D-2 was your decision, so I marked the amendment as "user (amended per plan
+  review)". If you'd rather keep the original plan, the alternative is to record
+  "creation date hidden below 560 px" as an accepted deviation.
+
+  Minor fixes:
+  1. Temperature: the component test checks it with toHaveTextContent('82 °F').
+  2. List icon: the test finds it with
+     within(weatherCell).getByRole('presentation').
+  3. Air quality: two new omission tests: a card with only the badge, and a card
+     with rows but no badge.
+  4. Badge: it sits next to the Air quality heading, not inside it.
+  5. Renames: D-1 now lists each renamed label and section.
+  6. Line numbers: corrected to DetailsPage.tsx:119-151, :153-188 and :190-193.
+  7. Checks:
+     - Phase 1 now runs pnpm e2e. The locator change for the second "Properties"
+       link stays in Phase 3, because the breadcrumb that causes the clash only
+       arrives then.
+     - The Phase 2 codegen check now uses git diff --stat and git diff 
+       apps/web/src/graphql.
+
+  The plan is ready for your approval. Once you approve it, run /implement 
+  ui-polish.
+
+✻ Brewed for 1m 42s · done 6:15 PM
+
+❯ /implement ui-polish                                                          
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(git diff context/roadmap.md; sed -i 's/| S-04, S-05, S-09 | M | planned
+      |/| S-04, S-05, S-09 | M | in-progress |/' context/roadmap.md; grep -n
+      "S-11 |" context/…)
+  ⎿  diff --git a/context/roadmap.md b/context/roadmap.md
+     index 3576d17..7bb1ca1 100644
+     --- a/context/roadmap.md
+     … +179 lines (ctrl+o to expand)
+  ⎿  Updated context/roadmap.md (+1 -1)
+      21  | S-08 | #10 | list-pagination | slice | FR-11 AC4 (Should) | S
+          -07 | S | done |
+      22  | S-09 | #11, #12 | details-extra-weather | slice | FR-12 AC6 (
+          Should), typed non-key `CurrentWeather` fields | S-04 | S | don
+          e |
+      23  | S-10 | #13 | demo-seed-data | slice | FR-16 AC1 (Could) | S-0
+          6 | S | done |
+      24 -| S-11 | #25 | ui-polish | slice | Visual polish of FR-11, FR-1
+         -2, FR-13 views (no new FR) | S-04, S-05, S-09 | M | planned |  
+      24 +| S-11 | #25 | ui-polish | slice | Visual polish of FR-11, FR-1
+         +2, FR-13 views (no new FR) | S-04, S-05, S-09 | M | in-progress
+         + |                                                             
+      25  
+      26  Order follows risk: tooling and schema first, then the Weathers
+          tack integration (the only
+      27  third-party unknown, R-01 – R-05) and the concurrency-sensitive
+           duplicate rule, then the
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Phase 1 (theme tokens and the app shell) is in progress. I'm checking the
+  React Router NavLink API against the current docs before writing the shell.
+
+  Called context7 2 times (ctrl+o to expand)
+
+● Now writing the tokens, icons and shell.
+
+● Write(apps/web/src/index.css)
+  ⎿  Added 44 lines
+       1  @import 'tailwindcss';
+       2 +                                                               
+       3 +/* Light palette, radii and breakpoints from context/changes/ui
+         +-polish/sketch.html (D-3, D-4). */                             
+       4 +@theme {                                                       
+       5 +  --color-ground: #f3f5f8;                                     
+       6 +  --color-surface: #ffffff;                                    
+       7 +  --color-ink: #16202e;                                        
+       8 +  --color-muted: #5d6b7e;                                      
+       9 +  --color-line: #e1e6ee;                                       
+      10 +  --color-accent: #1f5fbf;                                     
+      11 +  --color-accent-soft: #e6eefb;                                
+      12 +  --color-danger: #c0352b;                                     
+      13 +  --color-danger-soft: #fdecea;                                
+      14 +  --color-good: #1d7a4c;                                       
+      15 +  --color-good-soft: #e3f4ea;                                  
+      16 +  --color-fair: #9a6a00;                                       
+      17 +  --color-fair-soft: #fbf1d9;                                  
+      18 +  --color-sun: #e8a317;                                        
+      19 +                                                               
+      20 +  --radius-card: 10px;                                         
+      21 +  --radius-control: 8px;                                       
+      22 +                                                               
+      23 +  --breakpoint-sm: 35rem;                                      
+      24 +  --breakpoint-md: 51.25rem;                                   
+      25 +}                                                              
+      26 +                                                               
+      27 +@layer base {                                                  
+      28 +  body {                                                       
+      29 +    background-color: var(--color-ground);                     
+      30 +    color: var(--color-ink);                                   
+      31 +    font-size: 15px;                                           
+      32 +    line-height: 1.5;                                          
+      33 +  }                                                            
+      34 +                                                               
+      35 +  :focus-visible {                                             
+      36 +    outline: 2px solid var(--color-accent);                    
+      37 +    outline-offset: 2px;                                       
+      38 +  }                                                            
+      39 +                                                               
+      40 +  @media (prefers-reduced-motion: reduce) {                    
+      41 +    * {                                                        
+      42 +      transition: none !important;                             
+      43 +    }                                                          
+      44 +  }                                                            
+      45 +}                                                              
+
+● Write(apps/web/src/components/icons.tsx)
+  ⎿  Wrote 39 lines to apps/web/src/components/icons.tsx
+       1 // Decorative inline icons (paths from the ui-polish sketch). Th
+         e text or `aria-label` next to
+       2 // each one carries the meaning, so they are hidden from assisti
+       3 type IconProps = { className?: string };
+       4 
+       5 const base = {
+       6   viewBox: '0 0 24 24',
+       8   stroke: 'currentColor',
+       9   strokeLinecap: 'round',
+      10   strokeLinejoin: 'round',
+     … +32 lines (ctrl+o to expand)
+
+● Write(apps/web/src/app/Layout.tsx)
+  ⎿  Added 34 lines, removed 10 lines
+       1 -import { Link, Outlet } from 'react-router';                   
+       1 +import { Link, NavLink, Outlet } from 'react-router';          
+       2 +import { HouseIcon, PlusIcon } from '../components/icons';     
+       3  
+       4  export function Layout() {
+       5    return (
+       5 -    <div className="mx-auto max-w-4xl p-6">                    
+       6 -      <header className="mb-6 flex items-center justify-between
+         - border-b pb-4">                                               
+       7 -        <nav className="flex gap-4">                           
+       8 -          <Link to="/" className="font-semibold">              
+       9 -            Properties                                         
+       6 +    <>                                                         
+       7 +      <header className="border-b border-line bg-surface">     
+       8 +        <div className="mx-auto flex max-w-[1080px] flex-wrap i
+         +tems-center gap-3 px-3.5 py-2.5 sm:flex-nowrap sm:gap-7 sm:px-6
+         + sm:py-3">                                                     
+       9 +          <div className="flex items-center gap-2.5 font-bold t
+         +racking-tight">                                                
+      10 +            <span className="grid size-7 place-items-center rou
+         +nded-[7px] bg-ink text-surface">                               
+      11 +              <HouseIcon className="size-4" />                 
+      12 +            </span>                                            
+      13 +            <span className="hidden sm:inline">Property Manager
+         +</span>                                                        
+      14 +          </div>                                               
+      15 +          <nav aria-label="Main" className="flex gap-1">       
+      16 +            <NavLink                                           
+      17 +              to="/"                                           
+      18 +              end                                              
+      19 +              className={({ isActive }) =>                     
+      20 +                `rounded-[7px] px-3 py-1.5 font-medium no-under
+         +line ${                                                        
+      21 +                  isActive ? 'bg-ground text-ink' : 'text-muted
+         + hover:text-ink'                                               
+      22 +                }`                                             
+      23 +              }                                                
+      24 +            >                                                  
+      25 +              Properties                                       
+      26 +            </NavLink>                                         
+      27 +          </nav>                                               
+      28 +          <div className="flex-1" />                           
+      29 +          <Link                                                
+      30 +            to="/properties/new"                               
+      31 +            className="inline-flex items-center gap-1.5 rounded
+         +-control bg-accent px-3.5 py-2 font-semibold whitespace-nowrap 
+         +text-white hover:bg-accent/90"                                 
+      32 +          >                                                    
+      33 +            <PlusIcon className="size-4" />                    
+      34 +            New property                                       
+      35            </Link>
+      11 -          <Link to="/properties/new">New property</Link>       
+      12 -        </nav>                                                 
+      36 +        </div>                                                 
+      37        </header>
+      14 -      <main>                                                   
+      38 +      <main className="mx-auto grid max-w-[1080px] gap-5 px-3.5
+         + pt-5 pb-7 sm:px-6 sm:pt-7 sm:pb-9">                           
+      39          <Outlet />
+      40        </main>
+      17 -    </div>                                                     
+      41 +    </>                                                        
+      42    );
+      43  }
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src
+      && python3 - <<'EOF'
+      p='components/DeletePropertyDialog.tsx'…)
+  ⎿  Updated apps/web/src/components/DeletePropertyDialog.tsx (+6 -6)
+      62          if (deleteProperty.isPending) event.preventDefault();
+      63        }}
+      64        onClose={onClose}
+      65 -      className="m-auto rounded p-6 shadow-lg backdrop:bg-black
+         -/40"                                                           
+      65 +      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-ca
+         +rd border border-line bg-surface p-6 text-ink shadow-xl backdro
+         +p:bg-ink/40"                                                   
+      66      >
+      67 -      <h2 id={headingId} className="mb-2 text-lg font-bold">   
+      67 +      <h2 id={headingId} className="mb-2 text-lg font-semibold"
+         +>                                                              
+      68          Delete property?
+      69        </h2>
+      70 -      <p className="mb-4">                                     
+      70 +      <p className="mb-4 text-muted">                          
+      71          {property.street}, {property.city}, {property.state} {p
+          roperty.zipCode}
+      72        </p>
+      73        {deleteProperty.isError && !handedOff && (
+      74 -        <p role="alert" className="mb-4 text-red-700">         
+      74 +        <p role="alert" className="mb-4 rounded-control bg-dang
+         +er-soft px-3 py-2 text-danger">                                
+      75            {failureMessage(deleteProperty.error)}
+      76          </p>
+      77        )}
+     ...
+      80            type="button"
+      81            onClick={() => dialogRef.current?.close()}
+      82            disabled={deleteProperty.isPending}
+      83 -          className="rounded border px-3 py-1 disabled:opacity-
+         -50"                                                            
+      83 +          className="rounded-control border border-line bg-surf
+         +ace px-3.5 py-2 font-semibold hover:bg-ground disabled:opacity-
+         +50"                                                            
+      84          >
+      85            Cancel
+      86          </button>
+     ...
+      88            type="button"
+      89            onClick={confirm}
+      90            disabled={deleteProperty.isPending}
+      91 -          className="rounded bg-red-700 px-3 py-1 text-white di
+         -sabled:opacity-50"                                             
+      91 +          className="rounded-control bg-danger px-3.5 py-2 font
+         +-semibold text-white hover:bg-danger/90 disabled:opacity-50"   
+      92          >
+      93            Delete
+      94          </button>
+  ⎿  Updated apps/web/src/pages/NotFoundPage.tsx (+9 -4)
+       2  
+       3  export function NotFoundPage() {
+       4    return (
+       5 -    <>                                                         
+       6 -      <h1 className="text-2xl font-bold">Page not found</h1>   
+       7 -      <Link to="/">Back to properties</Link>                   
+       8 -    </>                                                        
+       5 +    <section className="grid justify-items-start gap-3 rounded-
+         +card border border-line bg-surface p-6">                       
+       6 +      <h1 className="text-[26px] font-bold tracking-tight">Page
+         + not found</h1>                                                
+       7 +      <Link                                                    
+       8 +        to="/"                                                 
+       9 +        className="inline-flex items-center rounded-control bor
+         +der border-line bg-surface px-3.5 py-2 font-semibold hover:bg-g
+         +round"                                                         
+      10 +      >                                                        
+      11 +        Back to properties                                     
+      12 +      </Link>                                                  
+      13 +    </section>                                                 
+      14    );
+      15  }
+
+  Read 1 file (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='app/routes.test.tsx'…)
+  ⎿  $ prettier --write .
+
+      RUN  v5.0.3 /home/krzysztof/projects/taskTreeCover/property-manager
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/app/routes.test.tsx (+31 -1)
+      1 -import { screen } from '@testing-library/react';                
+      1 +import { screen, within } from '@testing-library/react';        
+      2  import { describe, expect, it } from 'vitest';
+      3  import { renderWithProviders } from '../test/render';
+      4  import { AppRoutes } from './routes';
+     ...
+      14  
+      15      expect(await screen.findByRole('heading', { level: 1, name:
+           heading })).toBeInTheDocument();
+      16    });
+      17 +                                                               
+      18 +  it('marks "Properties" in the Main navigation as the current 
+         +page on the list only', async () => {                          
+      19 +    renderWithProviders(<AppRoutes />, { route: '/' });        
+      20 +                                                               
+      21 +    const main = screen.getByRole('navigation', { name: 'Main' 
+         +});                                                            
+      22 +    expect(within(main).getByRole('link', { name: 'Properties' 
+         +})).toHaveAttribute(                                           
+      23 +      'aria-current',                                          
+      24 +      'page',                                                  
+      25 +    );                                                         
+      26 +    expect(screen.getByRole('link', { name: 'New property' })).
+         +toHaveAttribute(                                               
+      27 +      'href',                                                  
+      28 +      '/properties/new',                                       
+      29 +    );                                                         
+      30 +    expect(within(main).queryByRole('link', { name: 'New proper
+         +ty' })).not.toBeInTheDocument();                               
+      31 +    expect(                                                    
+      32 +      await screen.findByRole('heading', { level: 1, name: 'Pro
+         +perties' }),                                                   
+      33 +    ).toBeInTheDocument();                                     
+      34 +  });                                                          
+      35 +                                                               
+      36 +  it('leaves "Properties" without aria-current on the create pa
+         +ge', async () => {                                             
+      37 +    renderWithProviders(<AppRoutes />, { route: '/properties/ne
+         +w' });                                                         
+      38 +                                                               
+      39 +    expect(                                                    
+      40 +      await screen.findByRole('heading', { level: 1, name: 'New
+         + property' }),                                                 
+      41 +    ).toBeInTheDocument();                                     
+      42 +    const main = screen.getByRole('navigation', { name: 'Main' 
+         +});                                                            
+      43 +    expect(within(main).getByRole('link', { name: 'Properties' 
+         +})).not.toHaveAttribute(                                       
+      44 +      'aria-current',                                          
+      45 +    );                                                         
+      46 +  });                                                          
+      47  });
+
+  Ran 2 shell commands (ctrl+o to expand)
+● The unit tests, typecheck, lint, format and build all pass. Now running pnpm 
+  e2e, which needs Docker.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The code for Phase 1 (theme tokens and app shell) is written and every agent
+  check passes. Nothing is committed yet: I need you to do the manual checks
+  first.
+
+  Files changed (apps/web/src/):
+  - index.css: the sketch's light colours, the 10 px card and 8 px control
+    corner radii, and the breakpoints moved to 560 / 820 px. It also sets the
+    page background, the text colour, 15 px type, an accent-coloured focus
+    outline, and turns off hover transitions for users who prefer reduced
+    motion.
+  - components/icons.tsx (new): house, plus and trash icons as inline SVG,
+    hidden from screen readers.
+  - app/Layout.tsx: a white app bar with the house mark and "Property Manager"
+    (the text is hidden below 560 px), then the "Properties" nav link, then a
+    blue "New property" button. Content sits in a 1080 px column on the tinted
+    background.
+  - components/DeletePropertyDialog.tsx: styling only. Card-styled, Cancel as an
+    outlined button, Delete as a solid red button.
+  - pages/NotFoundPage.tsx: a card, with "Back to properties" styled as an
+    outlined button.
+  - app/routes.test.tsx: two new tests. On /, "Properties" in the Main
+    navigation is marked as the current page and "New property" sits outside the
+    nav and links to /properties/new. On the create page, "Properties" is not
+    marked current.
+
+  I also changed context/roadmap.md to set S-11 to in-progress. That file
+  already had your planning edit in it.
+
+  Checks:
+
+  ┌──────────────────────────────┬──────────────────────────────────────────┐
+  │            Check             │                  Result                  │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm vitest run --project    │ 178 passed (11 files)                    │
+  │ web                          │                                          │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm typecheck               │ pass                                     │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm lint                    │ pass                                     │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm format:check            │ pass                                     │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm --filter                │ pass; the built CSS contains the new     │
+  │ @property-manager/web build  │ colour and radius classes and the 560 px │
+  │                              │  breakpoint                              │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm e2e                     │ 2 passed                                 │
+  └──────────────────────────────┴──────────────────────────────────────────┘
+
+  No deviations from the plan.
+
+  Manual checks (run docker compose up -d postgres && pnpm dev, then open
+  http://localhost:5173). Compare with context/changes/ui-polish/sketch.html:
+  - [ ] At 1280 px, the app bar has the house mark, "Property Manager",
+    "Properties" highlighted on /, and the blue "New property" button on the
+    right, over the tinted background.
+  - [ ] At 400 px (DevTools device toolbar), the brand text is hidden and the
+    page doesn't scroll sideways.
+  - [ ] On a list row, click Delete: the dialog is a rounded card with an
+    outlined Cancel and a solid red Delete. Press Cancel, don't delete.
+  - [ ] At http://localhost:5173/no/such/page, the not-found page shows the card
+    and the outlined "Back to properties" button.
+
+  The list, details and create pages keep their old styling until Phases 2–4,
+  and their spacing may look a little uneven inside the new column for now.
+
+  Proposed commit, staging by explicit path the six files above plus
+  context/roadmap.md, context/changes/ui-polish/plan.md and plan-review.md:
+
+  feat(ui-polish): add theme tokens and the app shell
+
+  Refs #25
+
+  Reply with "ok" to commit, or edit the message. I'm leaving plan-S-11.txt and
+  plan-review-S-11.txt (your session exports) unstaged.
+
+✻ Brewed for 3m 47s · done 6:19 PM

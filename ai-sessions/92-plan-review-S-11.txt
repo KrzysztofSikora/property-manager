@@ -1,0 +1,53 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan-review ui-polish                                                        
+  ⎿  Running in the background as @plan-review
+
+● Agent "/plan-review ui-polish" finished · 2m 42s
+
+● The plan review for ui-polish is done. The verdict is ready with notes:
+  nothing blocks it, but there is one major finding and seven minor ones. The
+  review is in context/changes/ui-polish/plan-review.md, and plan.md is
+  unchanged.
+
+  Major
+  - The creation date disappears on phones. Decision D-2 hides the "Created"
+    column below 560 px, but FR-11 AC1 (a Must) requires the date on every row,
+    and the views must work down to 400 px. No automated test would catch this.
+    You can either show the date as a third line in the address cell on small
+    screens, or record it as an accepted deviation, since D-2 was your call.
+
+  Minor
+  1. Temperature test: the details page shows "82 °F" with the unit in a nested
+     span. Testing Library's default getByText won't match text split like that,
+     so the plan should say how the test checks it.
+  2. List icon test: the weather icon in the list has empty alt text, so
+     getByRole('img') can't find it. The plan should name a different query.
+  3. Air quality card rule untested: the new rule (show the card if any row or
+     the badge has a value) has no test. One case should cover a snapshot where
+     only the EPA index is set.
+  4. Badge placement: the badge has to sit next to the Air quality heading, not
+     inside it, or the heading-list test breaks.
+  5. Renames without a decision row: "Moon illumination" becomes "Illumination",
+     "Astronomy" becomes "Sun and moon", and the "US EPA index" row becomes a
+     badge. Listing them would let the test rewrite be checked against them.
+  6. Wrong line numbers: the plan cites DetailsPage.tsx:122-212, but the file is
+     only 207 lines long; the actual range is 119–193.
+  7. Checks:
+     - Phase 1 changes the nav that the e2e test clicks, but doesn't run pnpm 
+       e2e.
+     - Phase 2's codegen check uses git status --porcelain, which lists changed
+       files but not the diff.
+
+  Everything else the plan cites checks out, including the Tailwind 4 @theme
+  claims against current docs.
+
+  Next step: decide how to handle D-2, then revise plan.md with the minor fixes
+  before implementation starts.
+
+✻ Cooked for 16s · done 6:13 PM

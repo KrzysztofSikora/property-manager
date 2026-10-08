@@ -1,0 +1,1247 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan-review ui-polish                                                        
+  ⎿  Running in the background as @plan-review
+
+● Agent "/plan-review ui-polish" finished · 2m 42s
+
+● The plan review for ui-polish is done. The verdict is ready with notes:
+  nothing blocks it, but there is one major finding and seven minor ones. The
+  review is in context/changes/ui-polish/plan-review.md, and plan.md is
+  unchanged.
+
+  Major
+  - The creation date disappears on phones. Decision D-2 hides the "Created"
+    column below 560 px, but FR-11 AC1 (a Must) requires the date on every row,
+    and the views must work down to 400 px. No automated test would catch this.
+    You can either show the date as a third line in the address cell on small
+    screens, or record it as an accepted deviation, since D-2 was your call.
+
+  Minor
+  1. Temperature test: the details page shows "82 °F" with the unit in a nested
+     span. Testing Library's default getByText won't match text split like that,
+     so the plan should say how the test checks it.
+  2. List icon test: the weather icon in the list has empty alt text, so
+     getByRole('img') can't find it. The plan should name a different query.
+  3. Air quality card rule untested: the new rule (show the card if any row or
+     the badge has a value) has no test. One case should cover a snapshot where
+     only the EPA index is set.
+  4. Badge placement: the badge has to sit next to the Air quality heading, not
+     inside it, or the heading-list test breaks.
+  5. Renames without a decision row: "Moon illumination" becomes "Illumination",
+     "Astronomy" becomes "Sun and moon", and the "US EPA index" row becomes a
+     badge. Listing them would let the test rewrite be checked against them.
+  6. Wrong line numbers: the plan cites DetailsPage.tsx:122-212, but the file is
+     only 207 lines long; the actual range is 119–193.
+  7. Checks:
+     - Phase 1 changes the nav that the e2e test clicks, but doesn't run pnpm 
+       e2e.
+     - Phase 2's codegen check uses git status --porcelain, which lists changed
+       files but not the diff.
+
+  Everything else the plan cites checks out, including the Tailwind 4 @theme
+  claims against current docs.
+
+  Next step: decide how to handle D-2, then revise plan.md with the minor fixes
+  before implementation starts.
+
+✻ Cooked for 16s · done 6:13 PM
+
+❯ /export plan-review-S-11                                                      
+  ⎿  Conversation exported to: /home/krzysztof/projects/taskTreeCover/property-m
+     anager/plan-review-S-11.txt
+
+❯ go forward how handle d2?                                                     
+
+  Searched for 1 pattern, listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● I'm updating D-2 in plan.md and applying the seven minor fixes from the
+  review.
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/ui-polish/plan.md'…)
+  ⎿  38:    `e2e/property-journey.spec.ts` (details assertions, the "Proper
+     ties" link locator).
+     39-- Out:
+     … +17 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/ui-polish/plan.md (+27 -20)
+      57  - `apps/web/src/hooks/useProperties.ts:6-21`: the list query as
+          ks for id, street, city, state,
+      58    zipCode, createdAt. The query document changes; `toFilter` (t
+          he Stryker target logic) does
+      59    not.
+      60 -- `apps/web/src/pages/DetailsPage.tsx:122-212`: one AC1 `<dl>` 
+         -(Address, Coordinates, Created,                                
+      61 -  Temperature, Feels like, Conditions, Wind, Humidity), then th
+         -ree `DetailsGroup` sections                                    
+      62 -  ("Weather details", "Astronomy", "Air quality") that drop `nu
+         -ll` rows and empty groups, then                                
+      63 -  one `<p>` holding both AC2 sentences.                        
+      60 +- `apps/web/src/pages/DetailsPage.tsx:119-151`: one AC1 `<dl>` 
+         +(Address, Coordinates, Created,                                
+      61 +  Temperature, Feels like, Conditions, Wind, Humidity), then `:
+         +153-188` three `DetailsGroup`                                  
+      62 +  sections ("Weather details", "Astronomy", "Air quality") that
+         + drop `null` rows and empty                                    
+      63 +  groups (rule at `:22-25`), then `:190-193` one `<p>` holding 
+         +both AC2 sentences.                                            
+      64  - `apps/web/src/components/DeletePropertyDialog.tsx:84-122`: na
+          tive `<dialog>`, Cancel and
+      65    Delete buttons with ad-hoc classes.
+      66  - Tests that read layout and must change:
+     ...
+      103  
+      104  | Question | Answer | Why | Decided by |
+      105  |---|---|---|---|
+      106 -| D-1 How closely does the details page follow the sketch? | F
+          -ollow it: hero with six tiles, Location panel, Air quality / S
+          -un and moon / Precipitation cards, page footnote. DetailsPage 
+          -tests are rewritten per section with every AC1/AC5/AC6 value k
+          -ept; two e2e lines change. | The sketch is the reviewed refere
+          -nce; keeping the old groups would keep the long-column feel th
+          -e item exists to fix. | user |                                
+      107 -| D-2 What do narrow screens (< 560 px) do with the 6-column l
+          -ist? | Hide the "Weather at creation" and "Created" columns wi
+          -th CSS below the `sm` breakpoint; Address, State, Zip code and
+          - Delete stay. | No horizontal scroll at all; the hidden values
+          - remain on the details page. | user |                         
+      106 +| D-1 How closely does the details page follow the sketch? | F
+          +ollow it: hero with six tiles, Location panel, Air quality / S
+          +un and moon / Precipitation cards, page footnote. DetailsPage 
+          +tests are rewritten per section with every AC1/AC5/AC6 value k
+          +ept; two e2e lines change. | The sketch is the reviewed refere
+          +nce; keeping the old groups would keep the long-column feel th
+          +e item exists to fix. Layout renames this implies (values and 
+          +units unchanged): region "Astronomy" → "Sun and moon"; label "
+          +Moon illumination" → "Illumination"; the "US EPA index" row → 
+          +the Air quality badge (D-9); "Weather details" split into hero
+          + tiles and the "Precipitation" card; AC1 `<dl>` "Coordinates" 
+          +→ Location "Latitude" / "Longitude". Rewritten tests are check
+          +ed against this list. | user |                                
+      107 +| D-2 What do narrow screens (< 560 px) do with the 6-column l
+          +ist? | Hide the "Weather at creation" and "Created" columns wi
+          +th CSS below the `sm` breakpoint; Address, State, Zip code and
+          + Delete stay. Below `sm` the creation date moves into the Addr
+          +ess cell as a muted third line (`sm:hidden`), so every row sti
+          +ll shows it. | No horizontal scroll at all. FR-11 AC1 (Must) r
+          +equires the creation date on every row at every supported widt
+          +h (400 px, roadmap); weather is not in AC1, so it may stay on 
+          +the details page only. Amended after plan-review finding 1. | 
+          +user (amended per plan review) |                              
+      108  | D-3 Dark mode? | Light palette only. | One palette to build 
+           and check by eye; the app has no dark mode today. | user |
+      109  | D-4 Breakpoints | Override `--breakpoint-sm: 35rem` (560 px)
+            and `--breakpoint-md: 51.25rem` (820 px) in `@theme`; styles 
+           are mobile-first (`sm:` = ≥ 560 px, `md:` = ≥ 820 px). | Sketc
+           h says follow its 820 / 560 px breakpoints closely; overriding
+            the default names keeps the familiar utilities. No current cl
+           ass uses `sm:` / `md:`. | research |
+      110  | D-5 Column headers | Address, State, Zip code, Weather at cr
+           eation, Created, plus an `sr-only` "Actions". | Sketch shows "
+           Zip" and "Added"; "Zip code" and "Created" match the PRD (FR-1
+           1 AC1 "creation date"), the filter labels, and the existing co
+           lumnheader assertion. | research (PRD) |
+     ...
+      152    ≥ `md`). Labels keep wrapping their controls (or `htmlFor`),
+            so names "City", "State",
+      153    "Zip code", "Sort" are unchanged.
+      154  - Table: Address cell = `Link` street (accessible name = stree
+           t) with the city on a second
+      155 -  line; State chip; Zip code in `font-mono`; Weather cell = ic
+          -on (D-6), "82 °F" bold,                                       
+      155 +  line and, below `sm` only (`sm:hidden`), the muted creation 
+          +date as a third line (D-2); State chip; Zip code in `font-mono
+          +`; Weather cell = icon (D-6), "82 °F" bold,                   
+      156    description muted; Created muted; Delete = 32 px icon button
+           , `aria-label="Delete <street>"`,
+      157    `title="Delete"`, `TrashIcon`, red on hover/focus. Weather a
+           nd Created `th`/`td` get
+      158    `hidden sm:table-cell` (D-2). Rows highlight on hover.
+     ...
+      181  - Cards grid (3 columns at ≥ `md`, 1 below): each a `<section 
+           aria-labelledby>` with an h2,
+      182    reusing the current `DetailsGroup` rule (null rows dropped, 
+           empty card left out):
+      183    - "Air quality": rows PM2.5, PM10, O₃, NO₂, SO₂, CO, GB DEFR
+           A index; when `usEpaIndex` is not
+      184 -    `null`, a badge in the h2 row with tone from `epaIndexTone
+          -` (D-9). The region's accessible                              
+      185 -    name is "Air quality" only (`aria-labelledby` points at th
+          -e title text, not the badge).                                 
+      184 +    `null`, a badge with tone from `epaIndexTone` (D-9), place
+          +d as a sibling of the `<h2>` inside a                         
+      185 +    flex header (never inside the `<h2>`, so the heading text 
+          +stays "Air quality"). The                                     
+      186 +    region's accessible name is "Air quality" only (`aria-labe
+          +lledby` points at the `<h2>`).                                
+     … 62 more lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/ui-polish/plan.md'…)
+  ⎿   context/roadmap.md | 2 +-
+      1 file changed, 1 insertion(+), 1 deletion(-)
+      M context/roadmap.md
+     … +4 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/ui-polish/plan.md (+2 -2)
+      225    through the unchanged dialog, list and details tests.
+      226  - Agent checks: `pnpm typecheck`, `pnpm lint`, `pnpm format:ch
+           eck`,
+      227    `pnpm vitest run --project web`, `pnpm --filter @property-ma
+           nager/web build`, `pnpm e2e`
+      228 -  (the journey's line-28 click goes through the rewritten nav;
+          - the D-11 locator change lands                                
+      229 -  here, not in Phase 3).                                      
+      228 +  (the journey's line-28 click goes through the rewritten nav;
+          + it stays unambiguous until the                               
+      229 +  breadcrumb arrives, so the D-11 locator change remains in Ph
+          +ase 3).                                                       
+      230  - Human checks: app bar, ground, dialog and not-found page aga
+           inst the sketch at 1280 px and
+      231    400 px (brand text hidden, no horizontal scroll).
+      232  
+
+● I updated context/changes/ui-polish/plan.md to keep the creation date visible
+  on phones. It also now has all seven minor fixes from the review. Nothing is
+  committed.
+
+  How D-2 now works: the Weather and Created columns are still hidden below 560
+  px. Below that width, the creation date shows as a muted third line in the
+  Address cell, under the street and city, and that line is hidden from 560 px
+  up. This keeps FR-11 AC1, a Must, true at 400 px. Weather isn't part of AC1,
+  so on phones it can live on the details page only. I chose this over keeping
+  the Created column visible because a fourth column holding a full date would
+  be cramped at 400 px.
+
+  The test for AC1 now expects the date in the Address cell as well, since the
+  jsdom test environment renders both copies. The 400 px manual check now looks
+  for the date under the city.
+
+  D-2 was your decision, so I marked the amendment as "user (amended per plan
+  review)". If you'd rather keep the original plan, the alternative is to record
+  "creation date hidden below 560 px" as an accepted deviation.
+
+  Minor fixes:
+  1. Temperature: the component test checks it with toHaveTextContent('82 °F').
+  2. List icon: the test finds it with
+     within(weatherCell).getByRole('presentation').
+  3. Air quality: two new omission tests: a card with only the badge, and a card
+     with rows but no badge.
+  4. Badge: it sits next to the Air quality heading, not inside it.
+  5. Renames: D-1 now lists each renamed label and section.
+  6. Line numbers: corrected to DetailsPage.tsx:119-151, :153-188 and :190-193.
+  7. Checks:
+     - Phase 1 now runs pnpm e2e. The locator change for the second "Properties"
+       link stays in Phase 3, because the breadcrumb that causes the clash only
+       arrives then.
+     - The Phase 2 codegen check now uses git diff --stat and git diff 
+       apps/web/src/graphql.
+
+  The plan is ready for your approval. Once you approve it, run /implement 
+  ui-polish.
+
+✻ Brewed for 1m 42s · done 6:15 PM
+
+❯ /implement ui-polish                                                          
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(git diff context/roadmap.md; sed -i 's/| S-04, S-05, S-09 | M | planned
+      |/| S-04, S-05, S-09 | M | in-progress |/' context/roadmap.md; grep -n
+      "S-11 |" context/…)
+  ⎿  diff --git a/context/roadmap.md b/context/roadmap.md
+     index 3576d17..7bb1ca1 100644
+     --- a/context/roadmap.md
+     … +179 lines (ctrl+o to expand)
+  ⎿  Updated context/roadmap.md (+1 -1)
+      21  | S-08 | #10 | list-pagination | slice | FR-11 AC4 (Should) | S
+          -07 | S | done |
+      22  | S-09 | #11, #12 | details-extra-weather | slice | FR-12 AC6 (
+          Should), typed non-key `CurrentWeather` fields | S-04 | S | don
+          e |
+      23  | S-10 | #13 | demo-seed-data | slice | FR-16 AC1 (Could) | S-0
+          6 | S | done |
+      24 -| S-11 | #25 | ui-polish | slice | Visual polish of FR-11, FR-1
+         -2, FR-13 views (no new FR) | S-04, S-05, S-09 | M | planned |  
+      24 +| S-11 | #25 | ui-polish | slice | Visual polish of FR-11, FR-1
+         +2, FR-13 views (no new FR) | S-04, S-05, S-09 | M | in-progress
+         + |                                                             
+      25  
+      26  Order follows risk: tooling and schema first, then the Weathers
+          tack integration (the only
+      27  third-party unknown, R-01 – R-05) and the concurrency-sensitive
+           duplicate rule, then the
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Phase 1 (theme tokens and the app shell) is in progress. I'm checking the
+  React Router NavLink API against the current docs before writing the shell.
+
+  Called context7 2 times (ctrl+o to expand)
+
+● Now writing the tokens, icons and shell.
+
+● Write(apps/web/src/index.css)
+  ⎿  Added 44 lines
+       1  @import 'tailwindcss';
+       2 +                                                               
+       3 +/* Light palette, radii and breakpoints from context/changes/ui
+         +-polish/sketch.html (D-3, D-4). */                             
+       4 +@theme {                                                       
+       5 +  --color-ground: #f3f5f8;                                     
+       6 +  --color-surface: #ffffff;                                    
+       7 +  --color-ink: #16202e;                                        
+       8 +  --color-muted: #5d6b7e;                                      
+       9 +  --color-line: #e1e6ee;                                       
+      10 +  --color-accent: #1f5fbf;                                     
+      11 +  --color-accent-soft: #e6eefb;                                
+      12 +  --color-danger: #c0352b;                                     
+      13 +  --color-danger-soft: #fdecea;                                
+      14 +  --color-good: #1d7a4c;                                       
+      15 +  --color-good-soft: #e3f4ea;                                  
+      16 +  --color-fair: #9a6a00;                                       
+      17 +  --color-fair-soft: #fbf1d9;                                  
+      18 +  --color-sun: #e8a317;                                        
+      19 +                                                               
+      20 +  --radius-card: 10px;                                         
+      21 +  --radius-control: 8px;                                       
+      22 +                                                               
+      23 +  --breakpoint-sm: 35rem;                                      
+      24 +  --breakpoint-md: 51.25rem;                                   
+      25 +}                                                              
+      26 +                                                               
+      27 +@layer base {                                                  
+      28 +  body {                                                       
+      29 +    background-color: var(--color-ground);                     
+      30 +    color: var(--color-ink);                                   
+      31 +    font-size: 15px;                                           
+      32 +    line-height: 1.5;                                          
+      33 +  }                                                            
+      34 +                                                               
+      35 +  :focus-visible {                                             
+      36 +    outline: 2px solid var(--color-accent);                    
+      37 +    outline-offset: 2px;                                       
+      38 +  }                                                            
+      39 +                                                               
+      40 +  @media (prefers-reduced-motion: reduce) {                    
+      41 +    * {                                                        
+      42 +      transition: none !important;                             
+      43 +    }                                                          
+      44 +  }                                                            
+      45 +}                                                              
+
+● Write(apps/web/src/components/icons.tsx)
+  ⎿  Wrote 39 lines to apps/web/src/components/icons.tsx
+       1 // Decorative inline icons (paths from the ui-polish sketch). Th
+         e text or `aria-label` next to
+       2 // each one carries the meaning, so they are hidden from assisti
+       3 type IconProps = { className?: string };
+       4 
+       5 const base = {
+       6   viewBox: '0 0 24 24',
+       8   stroke: 'currentColor',
+       9   strokeLinecap: 'round',
+      10   strokeLinejoin: 'round',
+     … +32 lines (ctrl+o to expand)
+
+● Write(apps/web/src/app/Layout.tsx)
+  ⎿  Added 34 lines, removed 10 lines
+       1 -import { Link, Outlet } from 'react-router';                   
+       1 +import { Link, NavLink, Outlet } from 'react-router';          
+       2 +import { HouseIcon, PlusIcon } from '../components/icons';     
+       3  
+       4  export function Layout() {
+       5    return (
+       5 -    <div className="mx-auto max-w-4xl p-6">                    
+       6 -      <header className="mb-6 flex items-center justify-between
+         - border-b pb-4">                                               
+       7 -        <nav className="flex gap-4">                           
+       8 -          <Link to="/" className="font-semibold">              
+       9 -            Properties                                         
+       6 +    <>                                                         
+       7 +      <header className="border-b border-line bg-surface">     
+       8 +        <div className="mx-auto flex max-w-[1080px] flex-wrap i
+         +tems-center gap-3 px-3.5 py-2.5 sm:flex-nowrap sm:gap-7 sm:px-6
+         + sm:py-3">                                                     
+       9 +          <div className="flex items-center gap-2.5 font-bold t
+         +racking-tight">                                                
+      10 +            <span className="grid size-7 place-items-center rou
+         +nded-[7px] bg-ink text-surface">                               
+      11 +              <HouseIcon className="size-4" />                 
+      12 +            </span>                                            
+      13 +            <span className="hidden sm:inline">Property Manager
+         +</span>                                                        
+      14 +          </div>                                               
+      15 +          <nav aria-label="Main" className="flex gap-1">       
+      16 +            <NavLink                                           
+      17 +              to="/"                                           
+      18 +              end                                              
+      19 +              className={({ isActive }) =>                     
+      20 +                `rounded-[7px] px-3 py-1.5 font-medium no-under
+         +line ${                                                        
+      21 +                  isActive ? 'bg-ground text-ink' : 'text-muted
+         + hover:text-ink'                                               
+      22 +                }`                                             
+      23 +              }                                                
+      24 +            >                                                  
+      25 +              Properties                                       
+      26 +            </NavLink>                                         
+      27 +          </nav>                                               
+      28 +          <div className="flex-1" />                           
+      29 +          <Link                                                
+      30 +            to="/properties/new"                               
+      31 +            className="inline-flex items-center gap-1.5 rounded
+         +-control bg-accent px-3.5 py-2 font-semibold whitespace-nowrap 
+         +text-white hover:bg-accent/90"                                 
+      32 +          >                                                    
+      33 +            <PlusIcon className="size-4" />                    
+      34 +            New property                                       
+      35            </Link>
+      11 -          <Link to="/properties/new">New property</Link>       
+      12 -        </nav>                                                 
+      36 +        </div>                                                 
+      37        </header>
+      14 -      <main>                                                   
+      38 +      <main className="mx-auto grid max-w-[1080px] gap-5 px-3.5
+         + pt-5 pb-7 sm:px-6 sm:pt-7 sm:pb-9">                           
+      39          <Outlet />
+      40        </main>
+      17 -    </div>                                                     
+      41 +    </>                                                        
+      42    );
+      43  }
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src
+      && python3 - <<'EOF'
+      p='components/DeletePropertyDialog.tsx'…)
+  ⎿  Updated apps/web/src/components/DeletePropertyDialog.tsx (+6 -6)
+      62          if (deleteProperty.isPending) event.preventDefault();
+      63        }}
+      64        onClose={onClose}
+      65 -      className="m-auto rounded p-6 shadow-lg backdrop:bg-black
+         -/40"                                                           
+      65 +      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-ca
+         +rd border border-line bg-surface p-6 text-ink shadow-xl backdro
+         +p:bg-ink/40"                                                   
+      66      >
+      67 -      <h2 id={headingId} className="mb-2 text-lg font-bold">   
+      67 +      <h2 id={headingId} className="mb-2 text-lg font-semibold"
+         +>                                                              
+      68          Delete property?
+      69        </h2>
+      70 -      <p className="mb-4">                                     
+      70 +      <p className="mb-4 text-muted">                          
+      71          {property.street}, {property.city}, {property.state} {p
+          roperty.zipCode}
+      72        </p>
+      73        {deleteProperty.isError && !handedOff && (
+      74 -        <p role="alert" className="mb-4 text-red-700">         
+      74 +        <p role="alert" className="mb-4 rounded-control bg-dang
+         +er-soft px-3 py-2 text-danger">                                
+      75            {failureMessage(deleteProperty.error)}
+      76          </p>
+      77        )}
+     ...
+      80            type="button"
+      81            onClick={() => dialogRef.current?.close()}
+      82            disabled={deleteProperty.isPending}
+      83 -          className="rounded border px-3 py-1 disabled:opacity-
+         -50"                                                            
+      83 +          className="rounded-control border border-line bg-surf
+         +ace px-3.5 py-2 font-semibold hover:bg-ground disabled:opacity-
+         +50"                                                            
+      84          >
+      85            Cancel
+      86          </button>
+     ...
+      88            type="button"
+      89            onClick={confirm}
+      90            disabled={deleteProperty.isPending}
+      91 -          className="rounded bg-red-700 px-3 py-1 text-white di
+         -sabled:opacity-50"                                             
+      91 +          className="rounded-control bg-danger px-3.5 py-2 font
+         +-semibold text-white hover:bg-danger/90 disabled:opacity-50"   
+      92          >
+      93            Delete
+      94          </button>
+  ⎿  Updated apps/web/src/pages/NotFoundPage.tsx (+9 -4)
+       2  
+       3  export function NotFoundPage() {
+       4    return (
+       5 -    <>                                                         
+       6 -      <h1 className="text-2xl font-bold">Page not found</h1>   
+       7 -      <Link to="/">Back to properties</Link>                   
+       8 -    </>                                                        
+       5 +    <section className="grid justify-items-start gap-3 rounded-
+         +card border border-line bg-surface p-6">                       
+       6 +      <h1 className="text-[26px] font-bold tracking-tight">Page
+         + not found</h1>                                                
+       7 +      <Link                                                    
+       8 +        to="/"                                                 
+       9 +        className="inline-flex items-center rounded-control bor
+         +der border-line bg-surface px-3.5 py-2 font-semibold hover:bg-g
+         +round"                                                         
+      10 +      >                                                        
+      11 +        Back to properties                                     
+      12 +      </Link>                                                  
+      13 +    </section>                                                 
+      14    );
+      15  }
+
+  Read 1 file (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='app/routes.test.tsx'…)
+  ⎿  $ prettier --write .
+
+      RUN  v5.0.3 /home/krzysztof/projects/taskTreeCover/property-manager
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/app/routes.test.tsx (+31 -1)
+      1 -import { screen } from '@testing-library/react';                
+      1 +import { screen, within } from '@testing-library/react';        
+      2  import { describe, expect, it } from 'vitest';
+      3  import { renderWithProviders } from '../test/render';
+      4  import { AppRoutes } from './routes';
+     ...
+      14  
+      15      expect(await screen.findByRole('heading', { level: 1, name:
+           heading })).toBeInTheDocument();
+      16    });
+      17 +                                                               
+      18 +  it('marks "Properties" in the Main navigation as the current 
+         +page on the list only', async () => {                          
+      19 +    renderWithProviders(<AppRoutes />, { route: '/' });        
+      20 +                                                               
+      21 +    const main = screen.getByRole('navigation', { name: 'Main' 
+         +});                                                            
+      22 +    expect(within(main).getByRole('link', { name: 'Properties' 
+         +})).toHaveAttribute(                                           
+      23 +      'aria-current',                                          
+      24 +      'page',                                                  
+      25 +    );                                                         
+      26 +    expect(screen.getByRole('link', { name: 'New property' })).
+         +toHaveAttribute(                                               
+      27 +      'href',                                                  
+      28 +      '/properties/new',                                       
+      29 +    );                                                         
+      30 +    expect(within(main).queryByRole('link', { name: 'New proper
+         +ty' })).not.toBeInTheDocument();                               
+      31 +    expect(                                                    
+      32 +      await screen.findByRole('heading', { level: 1, name: 'Pro
+         +perties' }),                                                   
+      33 +    ).toBeInTheDocument();                                     
+      34 +  });                                                          
+      35 +                                                               
+      36 +  it('leaves "Properties" without aria-current on the create pa
+         +ge', async () => {                                             
+      37 +    renderWithProviders(<AppRoutes />, { route: '/properties/ne
+         +w' });                                                         
+      38 +                                                               
+      39 +    expect(                                                    
+      40 +      await screen.findByRole('heading', { level: 1, name: 'New
+         + property' }),                                                 
+      41 +    ).toBeInTheDocument();                                     
+      42 +    const main = screen.getByRole('navigation', { name: 'Main' 
+         +});                                                            
+      43 +    expect(within(main).getByRole('link', { name: 'Properties' 
+         +})).not.toHaveAttribute(                                       
+      44 +      'aria-current',                                          
+      45 +    );                                                         
+      46 +  });                                                          
+      47  });
+
+  Ran 2 shell commands (ctrl+o to expand)
+● The unit tests, typecheck, lint, format and build all pass. Now running pnpm 
+  e2e, which needs Docker.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The code for Phase 1 (theme tokens and app shell) is written and every agent
+  check passes. Nothing is committed yet: I need you to do the manual checks
+  first.
+
+  Files changed (apps/web/src/):
+  - index.css: the sketch's light colours, the 10 px card and 8 px control
+    corner radii, and the breakpoints moved to 560 / 820 px. It also sets the
+    page background, the text colour, 15 px type, an accent-coloured focus
+    outline, and turns off hover transitions for users who prefer reduced
+    motion.
+  - components/icons.tsx (new): house, plus and trash icons as inline SVG,
+    hidden from screen readers.
+  - app/Layout.tsx: a white app bar with the house mark and "Property Manager"
+    (the text is hidden below 560 px), then the "Properties" nav link, then a
+    blue "New property" button. Content sits in a 1080 px column on the tinted
+    background.
+  - components/DeletePropertyDialog.tsx: styling only. Card-styled, Cancel as an
+    outlined button, Delete as a solid red button.
+  - pages/NotFoundPage.tsx: a card, with "Back to properties" styled as an
+    outlined button.
+  - app/routes.test.tsx: two new tests. On /, "Properties" in the Main
+    navigation is marked as the current page and "New property" sits outside the
+    nav and links to /properties/new. On the create page, "Properties" is not
+    marked current.
+
+  I also changed context/roadmap.md to set S-11 to in-progress. That file
+  already had your planning edit in it.
+
+  Checks:
+
+  ┌──────────────────────────────┬──────────────────────────────────────────┐
+  │            Check             │                  Result                  │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm vitest run --project    │ 178 passed (11 files)                    │
+  │ web                          │                                          │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm typecheck               │ pass                                     │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm lint                    │ pass                                     │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm format:check            │ pass                                     │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm --filter                │ pass; the built CSS contains the new     │
+  │ @property-manager/web build  │ colour and radius classes and the 560 px │
+  │                              │  breakpoint                              │
+  ├──────────────────────────────┼──────────────────────────────────────────┤
+  │ pnpm e2e                     │ 2 passed                                 │
+  └──────────────────────────────┴──────────────────────────────────────────┘
+
+  No deviations from the plan.
+
+  Manual checks (run docker compose up -d postgres && pnpm dev, then open
+  http://localhost:5173). Compare with context/changes/ui-polish/sketch.html:
+  - [ ] At 1280 px, the app bar has the house mark, "Property Manager",
+    "Properties" highlighted on /, and the blue "New property" button on the
+    right, over the tinted background.
+  - [ ] At 400 px (DevTools device toolbar), the brand text is hidden and the
+    page doesn't scroll sideways.
+  - [ ] On a list row, click Delete: the dialog is a rounded card with an
+    outlined Cancel and a solid red Delete. Press Cancel, don't delete.
+  - [ ] At http://localhost:5173/no/such/page, the not-found page shows the card
+    and the outlined "Back to properties" button.
+
+  The list, details and create pages keep their old styling until Phases 2–4,
+  and their spacing may look a little uneven inside the new column for now.
+
+  Proposed commit, staging by explicit path the six files above plus
+  context/roadmap.md, context/changes/ui-polish/plan.md and plan-review.md:
+
+  feat(ui-polish): add theme tokens and the app shell
+
+  Refs #25
+
+  Reply with "ok" to commit, or edit the message. I'm leaving plan-S-11.txt and
+  plan-review-S-11.txt (your session exports) unstaged.
+
+✻ Brewed for 3m 47s · done 6:19 PM
+
+❯ /export implement-S-11-1                                                      
+  ⎿  Conversation exported to: /home/krzysztof/projects/taskTreeCover/property-m
+     anager/implement-S-11-1.txt
+
+❯ manual check pass commit                                                      
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Tick the phase in Progress:
+
+● Bash(sed -i 's/^- \[ \] Phase 1: Theme tokens and app shell$/- [x] Phase 1:
+      Theme tokens and app shell (35c67e6)/' context/changes/ui-polish/plan.md
+      && grep -n "Phas…)
+  ⎿  348:- [x] Phase 1: Theme tokens and app shell (35c67e6)
+  ⎿  Updated context/changes/ui-polish/plan.md (+1 -1)
+      345  
+      346  ## Progress
+      347  <!-- One line per phase. /implement ticks it and appends the c
+           ommit hash. -->
+      348 -- [ ] Phase 1: Theme tokens and app shell                     
+      348 +- [x] Phase 1: Theme tokens and app shell (35c67e6)           
+      349  - [ ] Phase 2: List page
+      350  - [ ] Phase 3: Details page
+      351  - [ ] Phase 4: Create page and responsive pass
+
+● Phase 1 is committed on main as 35c67e6 ("feat(ui-polish): add theme tokens
+  and the app shell", Refs #25). The pre-commit hook passed: format, typecheck
+  and all 619 hermetic tests.
+
+  - Committed files: the six web files, context/roadmap.md,
+    context/changes/ui-polish/plan.md and
+    context/changes/ui-polish/plan-review.md.
+  - Progress: Phase 1 is ticked in plan.md with the hash. That edit is
+    uncommitted and will go into the Phase 2 commit.
+  - Left alone: your session exports implement-S-11-1.txt, plan-S-11.txt and
+    plan-review-S-11.txt stay untracked.
+
+  Next is Phase 2, the list page: the extra weather fields in the list query,
+  codegen, the new list layout with the creation date under the city on phones,
+  and the list test rewrites. The context is getting long, so run /clear and
+  then /implement ui-polish.
+
+✻ Churned for 37s · done 6:20 PM
+
+❯ /implement ui-polish                                                          
+
+● Phase 2 is the list page. It adds the three weather fields to the list query,
+  regenerates the codegen output, and gives the list the new layout. The checks
+  are codegen + diff, typecheck, lint, format, the web tests and e2e.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager && python3 -
+      <<'EOF'
+      p='apps/web/src/hooks/useProperties.ts'…)
+  ⎿  ✔ Generate
+     ✔ Generate to apps/web/src/graphql/
+     ✔ Generate outputs
+     … +104 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/hooks/useProperties.ts (+7 -0)
+      13          state
+      14          zipCode
+      15          createdAt
+      16 +        weatherData {                                          
+      17 +          current {                                            
+      18 +            temperature                                        
+      19 +            weatherDescriptions                                
+      20 +            weatherIcons                                       
+      21 +          }                                                    
+      22 +        }                                                      
+      23        }
+      24        totalCount
+      25      }
+  ⎿  Updated apps/web/src/test/fixtures.ts (+12 -2)
+      105  
+      106  // A row of the `Properties` list: the list fields of `propert
+           yFixture`.
+      107  export function listItem(overrides: Partial<PropertyListItem> 
+           = {}): PropertyListItem {
+      108 -  const { id, street, city, state, zipCode, createdAt } = prop
+          -ertyFixture();                                                
+      109 -  return { id, street, city, state, zipCode, createdAt, ...ove
+          -rrides };                                                     
+      108 +  const { id, street, city, state, zipCode, createdAt, weather
+          +Data } = propertyFixture();                                   
+      109 +  const { temperature, weatherDescriptions, weatherIcons } = w
+          +eatherData.current;                                           
+      110 +  return {                                                    
+      111 +    id,                                                       
+      112 +    street,                                                   
+      113 +    city,                                                     
+      114 +    state,                                                    
+      115 +    zipCode,                                                  
+      116 +    createdAt,                                                
+      117 +    weatherData: { current: { temperature, weatherDescriptions
+          +, weatherIcons } },                                           
+      118 +    ...overrides,                                             
+      119 +  };                                                          
+      120  }
+  ⎿  Updated apps/web/src/graphql/gql.ts (+3 -3)
+      17  type Documents = {
+      18      "\n  mutation CreateProperty($street: String!, $city: Strin
+          g!, $state: String!, $zipCode: String!) {\n    createProperty(s
+          treet: $street, city: $city, state: $state, zipCode: $zipCode) 
+          {\n      id\n    }\n  }\n": typeof types.CreatePropertyDocument
+          ,
+      19      "\n  mutation DeleteProperty($id: ID!) {\n    deletePropert
+          y(id: $id)\n  }\n": typeof types.DeletePropertyDocument,
+      20 -    "\n  query Properties($filter: PropertyFilter, $sort: Prope
+         -rtySort, $limit: Int, $offset: Int) {\n    properties(filter: $
+         -filter, sort: $sort, limit: $limit, offset: $offset) {\n      i
+         -tems {\n        id\n        street\n        city\n        state
+         -\n        zipCode\n        createdAt\n      }\n      totalCount
+         -\n    }\n  }\n": typeof types.PropertiesDocument,              
+      20 +    "\n  query Properties($filter: PropertyFilter, $sort: Prope
+         +rtySort, $limit: Int, $offset: Int) {\n    properties(filter: $
+         +filter, sort: $sort, limit: $limit, offset: $offset) {\n      i
+         +tems {\n        id\n        street\n        city\n        state
+         +\n        zipCode\n        createdAt\n        weatherData {\n  
+         +        current {\n            temperature\n            weather
+         +Descriptions\n            weatherIcons\n          }\n        }\
+         +n      }\n      totalCount\n    }\n  }\n": typeof types.Propert
+         +iesDocument,                                                   
+      21      "\n  query Property($id: ID!) {\n    property(id: $id) {\n 
+               id\n      street\n      city\n      state\n      zipCode\n
+                lat\n      long\n      createdAt\n      weatherData {\n  
+                units\n        current {\n          temperature\n        
+            feelsLike\n          weatherDescriptions\n          weatherIc
+          ons\n          windSpeed\n          windDir\n          humidity
+          \n          observationTime\n          pressure\n          prec
+          ip\n          cloudCover\n          uvIndex\n          visibili
+          ty\n          astro {\n            sunrise\n            sunset\
+          n            moonrise\n            moonset\n            moonPha
+          se\n            moonIllumination\n          }\n          airQua
+          lity {\n            co\n            no2\n            o3\n      
+                so2\n            pm2_5\n            pm10\n            usE
+          paIndex\n            gbDefraIndex\n          }\n        }\n    
+            }\n    }\n  }\n": typeof types.PropertyDocument,
+      22  };
+      23  const documents: Documents = {
+      24      "\n  mutation CreateProperty($street: String!, $city: Strin
+          g!, $state: String!, $zipCode: String!) {\n    createProperty(s
+          treet: $street, city: $city, state: $state, zipCode: $zipCode) 
+          {\n      id\n    }\n  }\n": types.CreatePropertyDocument,
+      25      "\n  mutation DeleteProperty($id: ID!) {\n    deletePropert
+          y(id: $id)\n  }\n": types.DeletePropertyDocument,
+      26 -    "\n  query Properties($filter: PropertyFilter, $sort: Prope
+         -rtySort, $limit: Int, $offset: Int) {\n    properties(filter: $
+         -filter, sort: $sort, limit: $limit, offset: $offset) {\n      i
+         -tems {\n        id\n        street\n        city\n        state
+         -\n        zipCode\n        createdAt\n      }\n      totalCount
+         -\n    }\n  }\n": types.PropertiesDocument,                     
+      26 +    "\n  query Properties($filter: PropertyFilter, $sort: Prope
+         +rtySort, $limit: Int, $offset: Int) {\n    properties(filter: $
+         +filter, sort: $sort, limit: $limit, offset: $offset) {\n      i
+         +tems {\n        id\n        street\n        city\n        state
+         +\n        zipCode\n        createdAt\n        weatherData {\n  
+         +        current {\n            temperature\n            weather
+         +Descriptions\n            weatherIcons\n          }\n        }\
+         +n      }\n      totalCount\n    }\n  }\n": types.PropertiesDocu
+         +ment,                                                          
+      27      "\n  query Property($id: ID!) {\n    property(id: $id) {\n 
+               id\n      street\n      city\n      state\n      zipCode\n
+                lat\n      long\n      createdAt\n      weatherData {\n  
+                units\n        current {\n          temperature\n        
+            feelsLike\n          weatherDescriptions\n          weatherIc
+          ons\n          windSpeed\n          windDir\n          humidity
+          \n          observationTime\n          pressure\n          prec
+          ip\n          cloudCover\n          uvIndex\n          visibili
+          ty\n          astro {\n            sunrise\n            sunset\
+          n            moonrise\n            moonset\n            moonPha
+          se\n            moonIllumination\n          }\n          airQua
+          lity {\n            co\n            no2\n            o3\n      
+                so2\n            pm2_5\n            pm10\n            usE
+          paIndex\n            gbDefraIndex\n          }\n        }\n    
+            }\n    }\n  }\n": types.PropertyDocument,
+      28  };
+      29  
+     ...
+      38  /**
+      39   * The graphql function is used to parse GraphQL queries into a
+           document that can be used by GraphQL clients.
+      40   */
+      41 -export function graphql(source: "\n  query Properties($filter: 
+         -PropertyFilter, $sort: PropertySort, $limit: Int, $offset: Int)
+         - {\n    properties(filter: $filter, sort: $sort, limit: $limit,
+         - offset: $offset) {\n      items {\n        id\n        street\
+         -n        city\n        state\n        zipCode\n        createdA
+         -t\n      }\n      totalCount\n    }\n  }\n"): typeof import('./
+         -graphql.ts').PropertiesDocument;                               
+      41 +export function graphql(source: "\n  query Properties($filter: 
+         +PropertyFilter, $sort: PropertySort, $limit: Int, $offset: Int)
+         + {\n    properties(filter: $filter, sort: $sort, limit: $limit,
+         + offset: $offset) {\n      items {\n        id\n        street\
+         +n        city\n        state\n        zipCode\n        createdA
+         +t\n        weatherData {\n          current {\n            temp
+         +erature\n            weatherDescriptions\n            weatherIc
+         +ons\n          }\n        }\n      }\n      totalCount\n    }\n
+         +  }\n"): typeof import('./graphql.ts').PropertiesDocument;     
+      42  /**
+      43   * The graphql function is used to parse GraphQL queries into a
+           document that can be used by GraphQL clients.
+      44   */
+  ⎿  Updated apps/web/src/graphql/graphql.ts (+8 -1)
+      52  }>;
+      53  
+      54  
+      55 -export type PropertiesQuery = { properties: { totalCount: numbe
+         -r, items: Array<{ id: string, street: string, city: string, sta
+         -te: string, zipCode: string, createdAt: string }> } };         
+      55 +export type PropertiesQuery = { properties: { totalCount: numbe
+         +r, items: Array<{ id: string, street: string, city: string, sta
+         +te: string, zipCode: string, createdAt: string, weatherData: { 
+         +current: { temperature: number, weatherDescriptions: Array<stri
+         +ng>, weatherIcons: Array<string> } } }> } };                   
+      56  
+      57  export type PropertyQueryVariables = Exact<{
+      58    id: string | number;
+     ...
+      102        state
+      103        zipCode
+      104        createdAt
+      105 +      weatherData {                                           
+      106 +        current {                                             
+      107 +          temperature                                         
+      108 +          weatherDescriptions                                 
+      109 +          weatherIcons                                        
+      110 +        }                                                     
+      111 +      }                                                       
+      112      }
+      113      totalCount
+      114    }
+
+● The codegen diff contains only the three new list fields. Next I'm checking
+  the format helpers before rewriting the list tests.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='pages/ListPage.test.tsx'…)
+  ⎿  114:  const dialog = screen.getByRole('dialog', { name: 'Delete proper
+     ty?' });
+     604:    await user.click(await screen.findByRole('button', { name: 'De
+     … +12 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/ListPage.test.tsx (+51 -10)
+      147    return screen.getByRole('status', { name: 'URL search' }).te
+           xtContent;
+      148  }
+      149  
+      150 -// The street of each body row, top to bottom.                
+      150 +// The street of each body row, top to bottom: the link text i
+          +n the Address cell.                                           
+      151  function rowStreets() {
+      152    const [, ...rows] = screen.getAllByRole('row');
+      153 -  return rows.map((row) => within(row).getAllByRole('cell')[0]
+          -?.textContent);                                               
+      153 +  return rows.map((row) => within(row).getAllByRole('link')[0]
+          +?.textContent);                                               
+      154  }
+      155  
+      156 +// The text of each cell of body row `index` (0 = first row un
+          +der the header).                                              
+      157 +function rowCells(index: number) {                            
+      158 +  const [, ...rows] = screen.getAllByRole('row');             
+      159 +  return within(rows[index] as HTMLElement)                   
+      160 +    .getAllByRole('cell')                                     
+      161 +    .map((cell) => cell.textContent);                         
+      162 +}                                                             
+      163 +                                                              
+      164  describe('ListPage', () => {
+      165    it('FR-11 AC1: lists every property newest first with addres
+           s and creation date', async () => {
+      166      const requests = serveProperties(() => [newest, middle, ol
+           dest]);
+     ...
+      169  
+      170      expect(await screen.findByRole('link', { name: '3 Newest S
+           t' })).toBeInTheDocument();
+      171      expect(rowStreets()).toEqual(['3 Newest St', '2 Middle Ave
+           ', '1 Oldest Rd']);
+      164 -    const cells = within(screen.getAllByRole('row')[3] as HTML
+          -Element)                                                      
+      165 -      .getAllByRole('cell')                                   
+      166 -      .map((cell) => cell.textContent);                       
+      167 -    expect(cells).toEqual([                                   
+      168 -      '1 Oldest Rd',                                          
+      169 -      'Boston',                                               
+      172 +    // Address cell: street link, city, and the creation date 
+          +line shown below `sm` (D-2).                                  
+      173 +    expect(rowCells(2)).toEqual([                             
+      174 +      '1 Oldest RdBostonSep 14, 2026, 11:42 PM',              
+      175        'MA',
+      176        '02108',
+      177 +      '82 °FClear',                                           
+      178        'Sep 14, 2026, 11:42 PM',
+      173 -      'Delete',                                               
+      179 +      '',                                                     
+     … 46 more lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The two new list tests fail as expected against the old layout. Now rewriting
+  the ListPage markup, keeping its logic as it is.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src
+      && python3 - <<'EOF'
+      p='pages/ListPage.tsx'…)
+  ⎿        Tests  179 passed (179)
+  ⎿  Updated apps/web/src/pages/ListPage.tsx (+213 -154)
+      2  import { type SubmitEvent, useEffect, useState } from 'react';
+      3  import { Link, useSearchParams } from 'react-router';
+      4  import { type DeletableProperty, DeletePropertyDialog } from '..
+         /components/DeletePropertyDialog';
+      5 +import { TrashIcon } from '../components/icons';                
+      6  import type { PropertySort } from '../graphql/graphql';
+      7  import { PAGE_SIZE, useProperties } from '../hooks/useProperties
+         ';
+      8  import { formatDateTime } from '../lib/format';
+     ...
+      17    return SORT_OPTIONS.some((option) => option.value === value);
+      18  }
+      19  
+      20 +const FIELD = 'grid min-w-0 gap-1';                            
+      21 +const FIELD_LABEL = 'text-xs font-semibold tracking-[.06em] tex
+         +t-muted uppercase';                                            
+      22 +const CONTROL = 'h-[38px] w-full rounded-control border border-
+         +line bg-surface px-2.5';                                       
+      23 +const GHOST_BUTTON =                                           
+      24 +  'inline-flex items-center rounded-control border border-line 
+         +bg-surface px-3.5 py-2 font-semibold text-ink hover:bg-ground';
+      25 +const PAGER_BUTTON =                                           
+      26 +  'rounded-control border border-line bg-surface px-2.5 py-1 fo
+         +nt-medium text-ink disabled:opacity-45 aria-disabled:opacity-45
+         +';                                                             
+      27 +const TH =                                                     
+      28 +  'border-b border-line px-4 py-2.5 text-xs font-semibold track
+         +ing-[.06em] whitespace-nowrap text-muted uppercase';           
+      29 +const TD = 'px-4 py-3 align-middle whitespace-nowrap';         
+      30 +                                                               
+      31  function formText(data: FormData, name: string): string {
+      32    const value = data.get(name);
+      33    return typeof value === 'string' ? value : '';
+     ...
+       77  
+       78    const filtered = Object.values(filter).some((value) => value
+           .trim() !== '');
+       79  
+       80 +  const count = (                                             
+       81 +    <span>                                                    
+       82 +      {totalCount === 1 ? '1 property' : `${String(totalCount)
+          +} properties`}                                                
+       83 +      {properties.isPlaceholderData && <span role="status"> · 
+          +Updating…</span>}                                             
+       84 +    </span>                                                   
+       85 +  );                                                          
+       86 +                                                              
+       87    return (
+       88      <>
+       70 -      <h1 className="mb-4 text-2xl font-bold">Properties</h1> 
+       89 +      <div>                                                   
+       90 +        <h1 className="text-[26px] font-bold tracking-tight">P
+          +roperties</h1>                                                
+       91 +        <p className="mt-0.5 text-muted">                     
+     … 356 more lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/ListPage.test.tsx (+8 -3)
+      178        'Sep 14, 2026, 11:42 PM',
+      179        '',
+      180      ]);
+      181 -    expect(                                                   
+      182 -      screen.getAllByRole('columnheader').map((header) => head
+          -er.textContent),                                              
+      183 -    ).toEqual(['Address', 'State', 'Zip code', 'Weather at cre
+          -ation', 'Created', 'Actions']);                               
+      181 +    expect(screen.getAllByRole('columnheader').map((header) =>
+          + header.textContent)).toEqual([                               
+      182 +      'Address',                                              
+      183 +      'State',                                                
+      184 +      'Zip code',                                             
+      185 +      'Weather at creation',                                  
+      186 +      'Created',                                              
+      187 +      'Actions',                                              
+      188 +    ]);                                                       
+      189      const weatherCell = within(screen.getAllByRole('row')[3] a
+           s HTMLElement).getAllByRole(
+      190        'cell',
+      191      )[3] as HTMLElement;
+
+● The web tests pass (179). At 400 px the table could be too wide, so I'm making
+  the Address cell wrap below sm and adding the sketch's overflow-x-auto
+  wrapper as a fallback.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src
+      && python3 - <<'EOF'
+      p='pages/ListPage.tsx'…)
+  ⎿  27:const TH =
+     28-  'border-b border-line px-3 py-2.5 text-xs font-semibold tracking-
+     [.06em] whitespace-nowrap text-muted uppercase sm:px-4';
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/ListPage.tsx (+77 -71)
+      25  const PAGER_BUTTON =
+      26    'rounded-control border border-line bg-surface px-2.5 py-1 fo
+          nt-medium text-ink disabled:opacity-45 aria-disabled:opacity-45
+          ';
+      27  const TH =
+      28 -  'border-b border-line px-4 py-2.5 text-xs font-semibold track
+         -ing-[.06em] whitespace-nowrap text-muted uppercase';           
+      29 -const TD = 'px-4 py-3 align-middle whitespace-nowrap';         
+      28 +  'border-b border-line px-3 py-2.5 text-xs font-semibold track
+         +ing-[.06em] whitespace-nowrap text-muted uppercase sm:px-4';   
+      29 +const TD = 'px-3 py-3 align-middle whitespace-nowrap sm:px-4'; 
+      30  
+      31  function formText(data: FormData, name: string): string {
+      32    const value = data.get(name);
+     ...
+      185            </div>
+      186          ) : (
+      187            <>
+      188 -            <table className="w-full border-collapse text-left
+          - tabular-nums">                                               
+      189 -              <thead>                                         
+      190 -                <tr>                                          
+      191 -                  <th className={TH}>Address</th>             
+      192 -                  <th className={TH}>State</th>               
+      193 -                  <th className={TH}>Zip code</th>            
+      194 -                  <th className={`${TH} hidden sm:table-cell`}
+          ->Weather at creation</th>                                     
+      195 -                  <th className={`${TH} hidden sm:table-cell`}
+          ->Created</th>                                                 
+      196 -                  <th className={TH}>                         
+      197 -                    <span className="sr-only">Actions</span>  
+      198 -                  </th>                                       
+      199 -                </tr>                                         
+      200 -              </thead>                                        
+      201 -              <tbody>                                         
+      202 -                {properties.data.properties.items.map((propert
+          -y) => {                                                       
+      203 -                  const { temperature, weatherDescriptions, we
+          -atherIcons } =                                                
+      204 -                    property.weatherData.current;             
+      205 -                  const created = formatDateTime(property.crea
+          -tedAt);                                                       
+      206 -                  return (                                    
+      207 -                    <tr                                       
+      208 -                      key={property.id}                       
+      209 -                      className="border-b border-line transiti
+          -on-colors last:border-b-0 hover:bg-ground"                    
+      210 -                    >                                         
+      211 -                      <td className={TD}>                     
+      212 -                        <Link                                 
+      213 -                          to={`/properties/${property.id}`}   
+      214 -                          className="font-semibold text-ink no
+          --underline hover:text-accent hover:underline"                 
+     … 120 more lines (ctrl+o to expand)
+
+● TD and the Address cell now both carry a whitespace utility, so which one wins
+  depends on Tailwind's CSS order. I'm splitting TD so the Address cell has
+  only its own.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src
+      && python3 - <<'EOF'
+      p='pages/ListPage.tsx'…)
+  ⎿        Tests  179 passed (179)
+     apps/api typecheck: Done
+     $ eslint .
+     All matched files use Prettier code style!
+  ⎿  Updated apps/web/src/pages/ListPage.tsx (+3 -2)
+      26    'rounded-control border border-line bg-surface px-2.5 py-1 fo
+          nt-medium text-ink disabled:opacity-45 aria-disabled:opacity-45
+          ';
+      27  const TH =
+      28    'border-b border-line px-3 py-2.5 text-xs font-semibold track
+          ing-[.06em] whitespace-nowrap text-muted uppercase sm:px-4';
+      29 -const TD = 'px-3 py-3 align-middle whitespace-nowrap sm:px-4'; 
+      29 +const TD_BASE = 'px-3 py-3 align-middle sm:px-4';              
+      30 +const TD = `${TD_BASE} whitespace-nowrap`;                     
+      31  
+      32  function formText(data: FormData, name: string): string {
+      33    const value = data.get(name);
+     ...
+      210                          key={property.id}
+      211                          className="border-b border-line transi
+           tion-colors last:border-b-0 hover:bg-ground"
+      212                        >
+      212 -                        <td className={`${TD} whitespace-norma
+          -l sm:whitespace-nowrap`}>                                     
+      213 +                        <td className={`${TD_BASE} sm:whitespa
+          +ce-nowrap`}>                                                  
+      214                            <Link
+      215                              to={`/properties/${property.id}`}
+      216                              className="font-semibold text-ink 
+           no-underline hover:text-accent hover:underline"
+
+● Tests, typecheck, lint and format pass. Running pnpm e2e.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/ui-polish/plan.md'…)
+  ⎿   M apps/web/src/graphql/gql.ts
+      M apps/web/src/graphql/graphql.ts
+      M apps/web/src/hooks/useProperties.ts
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/ui-polish/plan.md (+6 -1)
+      351  - [ ] Phase 4: Create page and responsive pass
+      352  
+      353  ## Deviations
+      354 -<filled during implementation>                                
+      354 +                                                              
+      355 +- Phase 2, list table at < 560 px. Plan: Weather and Created h
+          +idden, so the table fits.                                     
+      356 +  Code: with `whitespace-nowrap` cells a long street plus chip
+          +, zip and Delete is wider than                                
+      357 +  400 px. Consequence: the Address cell wraps below `sm`, cell
+          + padding drops to 12 px below                                 
+      358 +  `sm`, and the table sits in an `overflow-x-auto` wrapper (as
+          + in the sketch), so the page                                  
+      359 +  itself never scrolls sideways.                              
+
+● Phase 2 (list page) is built and all agent checks pass. Nothing is committed
+  yet: I need you to do the manual checks first.
+
+  Files changed:
+  - hooks/useProperties.ts: the list query now also asks for temperature,
+    weather descriptions and weather icons. The filter logic in toFilter is
+    unchanged.
+  - graphql/gql.ts, graphql/graphql.ts: regenerated by pnpm codegen. The diff
+    contains only those three fields.
+  - test/fixtures.ts: the listItem test fixture now includes the three weather
+    fields.
+  - pages/ListPage.tsx: the new layout.
+    - Header: the property count moves into the line under the heading, next to
+      "Weather is the snapshot taken when each one was created."
+    - Filter card: the filters and Sort sit in one aligned bar inside a card,
+      with small uppercase labels.
+    - Rows:
+      - The Address cell shows the street link over the city, plus the creation
+        date as a third line on screens under 560 px.
+      - State is a chip and the zip code is monospace.
+      - A "Weather at creation" column shows the icon, "82 °F" and the
+        description.
+      - Delete is a quiet trash-icon button that turns red on hover and keyboard
+        focus.
+    - Below 560 px: the Weather and Created columns are hidden.
+    - Inside the card: the pager, loading, empty and error states.
+    - Unchanged: all accessible names and texts.
+  - pages/ListPage.test.tsx:
+    - The street helper reads the street link instead of the first cell.
+    - The AC1 test checks every cell of a row and the column headers in order.
+    - The icon is found with the presentation role and checked for its src and
+      empty alt.
+    - A new test covers a row with no description and no icon.
+
+  Checks:
+
+  ┌───────────────────────────────────┬─────────────────────────────────────┐
+  │               Check               │               Result                │
+  ├───────────────────────────────────┼─────────────────────────────────────┤
+  │ pnpm codegen + git diff --stat /  │ only the three list fields changed  │
+  │ git diff apps/web/src/graphql     │                                     │
+  ├───────────────────────────────────┼─────────────────────────────────────┤
+  │                                   │ 179 passed. The two rewritten list  │
+  │ pnpm vitest run --project web     │ tests failed against the old layout │
+  │                                   │  first, as expected.                │
+  ├───────────────────────────────────┼─────────────────────────────────────┤
+  │ pnpm typecheck, pnpm lint, pnpm   │ pass                                │
+  │ format:check                      │                                     │
+  ├───────────────────────────────────┼─────────────────────────────────────┤
+  │ pnpm e2e                          │ 2 passed                            │
+  └───────────────────────────────────┴─────────────────────────────────────┘
+
+  Deviation (logged in plan.md): at 400 px a long street name plus the state
+  chip, zip code and Delete button would overflow the screen. I let the Address
+  cell wrap on small screens, reduced the cell padding, and put the table in a
+  horizontally scrollable wrapper, as in the sketch. The page itself never
+  scrolls sideways.
+
+  Manual checks (run docker compose up -d postgres && pnpm dev, open
+  http://localhost:5173 with a few properties stored; pnpm seed adds demo data
+  if needed, at one Weatherstack call per new address):
+  - [ ] At 1280 px, compare with the sketch: the aligned filter bar, the state
+    chip, the weather column with its icon, and the trash icon turning red on
+    hover and when you Tab to it.
+  - [ ] At 400 px (DevTools device toolbar), the Weather and Created columns are
+    hidden, each row shows the date under the city, and the page doesn't scroll
+    sideways.
+  - [ ] Filter by a city that matches nothing: you see "No properties match the
+    filters" and the "Add a property" button.
+  - [ ] Error state: stop the API (Ctrl+C on pnpm dev, then run only pnpm 
+    --filter @property-manager/web dev) and reload. "Could not load properties"
+    and Retry appear in a red box.
+  - [ ] Loading state: in DevTools, set Network to Slow 3G and reload. "Loading
+    properties…" shows inside the card.
+
+  Proposed commit, staging by explicit path the seven changed files above
+  (including context/changes/ui-polish/plan.md, which also carries the Phase 1
+  hash):
+
+  feat(ui-polish): restyle the list page with the weather column
+
+  Refs #25
+
+  Reply with "ok" to commit, or edit the message. implement-S-11-1.txt,
+  plan-S-11.txt and plan-review-S-11.txt stay unstaged.
+
+✻ Worked for 6m 13s · done 6:27 PM
+
+※ recap: We're restyling the web UI to match the sketch (S-11 ui-polish), and the Phase 2 list page is built with all checks green. Next, do the manual checks at 1280 and 400 px, then reply "ok" so I commit. (disable recaps in /config)
