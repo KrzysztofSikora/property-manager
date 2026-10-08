@@ -139,9 +139,13 @@ describe('ListPage', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Sort' }), 'Oldest first');
 
     await expect.poll(rowStreets).toEqual(['1 Oldest Rd', '2 Middle Ave', '3 Newest St']);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort' }), 'Newest first');
+
+    await expect.poll(rowStreets).toEqual(['3 Newest St', '2 Middle Ave', '1 Oldest Rd']);
     expect(requests.map((variables) => variables.sort)).toEqual([
       'CREATED_AT_DESC',
       'CREATED_AT_ASC',
+      'CREATED_AT_DESC',
     ]);
   });
 
@@ -239,6 +243,24 @@ describe('ListPage', () => {
       '/properties/new',
     );
   });
+
+  it.each(['City', 'Zip code'])(
+    'FR-11 AC6: a whitespace-only %s is a blank filter: left out, and the empty state is "No properties yet"',
+    async (field) => {
+      const requests = serveProperties(() => []);
+      const user = userEvent.setup();
+      renderWithProviders(<ListPage />);
+      await screen.findByText('No properties yet');
+
+      await user.type(screen.getByRole('textbox', { name: field }), '   ');
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      await expect.poll(() => requests).toHaveLength(2);
+      expect(requests[1]).toEqual({ filter: {}, sort: 'CREATED_AT_DESC' });
+      expect(await screen.findByText('No properties yet')).toBeInTheDocument();
+      expect(screen.queryByText('No properties match the filters')).not.toBeInTheDocument();
+    },
+  );
 
   it('FR-11 AC6: a failed request shows an error, and Retry requests again and shows the rows', async () => {
     let calls = 0;
