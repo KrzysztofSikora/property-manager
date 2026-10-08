@@ -1,0 +1,183 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /mutation list-filters-in-url                                                 
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I'll focus on apps/web/src/lib/list-search.ts, the only file from this change
+  in the test plan's mutation targets, and skip ListPage.tsx since it's just
+  page wiring not listed there.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● All 43 mutants were killed and none timed out, so the timeout lesson doesn't
+  affect this score. I'll pull the mutator breakdown for the record.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● A previous run (S-04) also mutated the logic lines of ListPage.tsx. This
+  change added a decision there (skip Apply when the URL wouldn't change) plus
+  the form key, so I'll mutate those lines too.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Four survived and one timed out. Next I'll check how the S-04 report decided
+  the same spots, and re-run the timed-out mutant on its own (per the timeout
+  lesson).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The hang persists even at concurrency 1, confirming a real bug rather than
+  load-related flakiness, and I spotted a test regression where the
+  whitespace-trim mutant is no longer caught since whitespace Apply no longer
+  changes the URL. I'll add a test case using a whitespace link parameter to
+  cover this path in AC6.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Update(apps/web/src/pages/ListPage.test.tsx)
+  ⎿  Added 12 lines
+      420      },
+      421    );
+      422  
+      423 +  it.each(['city', 'zip'])(                                   
+      424 +    'FR-11 AC6: a whitespace-only %s in the URL is a blank fil
+          +ter: left out of the request, and the empty state is "No prope
+          +rties yet"',                                                  
+      425 +    async (key) => {                                          
+      426 +      const requests = serveProperties(() => []);             
+      427 +      renderListWithProbe(`/?${key}=+++`);                    
+      428 +                                                              
+      429 +      expect(await screen.findByText('No properties yet')).toB
+          +eInTheDocument();                                             
+      430 +      expect(requests).toEqual([{ filter: {}, sort: 'CREATED_A
+          +T_DESC' }]);                                                  
+      431 +      expect(screen.queryByText('No properties match the filte
+          +rs')).not.toBeInTheDocument();                                
+      432 +    },                                                        
+      433 +  );                                                          
+      434 +                                                              
+      435    it('FR-11 AC6: a failed request shows an error, and Retry re
+           quests again and shows the rows', async () => {
+      436      let calls = 0;
+      437      server.use(
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The trim mutant is gone, but there are now two timeouts. I'll check which ones
+  they are before recording the score.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The second timeout was a load timeout, now caught by the strengthened
+  test—leaving one real hang and three survivors. I'll check next whether the
+  E2E journey catches the preventDefault survivor before writing up results.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The anchored E2E check confirms this behavior, since a native GET submit would
+  leave extra params in the URL. I'll now write the report, record the baseline
+  in the test plan, and run format, lint, and typecheck.
+
+● Write(context/changes/list-filters-in-url/mutation.md)
+  ⎿  Wrote 46 lines to context/changes/list-filters-in-url/mutation.md
+       1 # Mutation check: list-filters-in-url
+       3 Targets: `apps/web/src/lib/list-search.ts` (whole file), `apps/w
+         eb/src/pages/ListPage.tsx:24-60`
+          hermetic), `--concurrency 4`
+       5 Score: 94.20% -> 95.65% (before 64 / 4 / 0 / 1, after 65 / 3 / 0
+       6 no coverage / timeout)
+       7 
+         irst run and its baseline
+       9   (test plan target 90%).
+         22 / 3 / 0 / 1). The lines
+     … +73 lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/test-plan.md'…)
+  ⎿  53:| TR-26 | The list filters and sort are not written to the URL, are
+      not read back on load or Back, or a bad URL value breaks the page or
+     reaches the request (FR-11 AC3a). | M | L | U (web) + E | Unit table f
+     … +21 lines (ctrl+o to expand)
+  ⎿  Updated context/test-plan.md (+1 -1)
+      121  | `apps/web/src/lib/execute.ts` (GraphQL/HTTP response → `Grap
+           hQLRequestError`) | A weakened check shows an error or empty p
+           ayload as success in every page (FR-12, FR-13). | 90% | Not in
+            CI. Baseline 97.4% (F-01). |
+      122  | `apps/web/src/lib/graphql-errors.ts` (`errorCode`: first err
+           or's `extensions.code`, checked against `ERROR_CODES`) | The U
+           I picks its message and its navigation from this code; a wrong
+            pick shows "try again" for a gone property or hides a real fa
+           ilure (FR-11 AC5, FR-12 AC4, NFR-09). | 90% | Not in CI. Basel
+           ine 100% (S-04). |
+      123  | `apps/web/src/hooks/useProperties.ts` (list query variables:
+            blank filters dropped, values trimmed, sort) | A blank or unt
+           rimmed filter sends a wrong request, so the list shows no matc
+           hes or ignores a filter (FR-11 AC2, AC3). | 90% | Not in CI. B
+           aseline 95.0% (S-04); the 1 survivor is equivalent, see `chang
+           es/list-and-details-pages/mutation.md`. |
+      124 -| `apps/web/src/lib/list-search.ts` (URL ↔ list filters and so
+          -rt: per-field zod fallbacks, state upper-casing, trimmed write
+          -, default sort left out) | A flipped bound or a dropped fallba
+          -ck lets a bad link blank the page or send a wrong filter, and 
+          -a wrong write breaks reload and Back (FR-11 AC3a, TR-26). | 90
+          -% | Not in CI. `break` after the baseline. |                  
+      124 +| `apps/web/src/lib/list-search.ts` (URL ↔ list filters and so
+          +rt: per-field zod fallbacks, state upper-casing, trimmed write
+          +, default sort left out) | A flipped bound or a dropped fallba
+          +ck lets a bad link blank the page or send a wrong filter, and 
+          +a wrong write breaks reload and Back (FR-11 AC3a, TR-26). | 90
+          +% | Not in CI. Baseline 100% (S-07); `break` after the user ag
+          +rees on a value. |                                            
+      125  | `apps/web/src/hooks/useDeleteProperty.ts` (cache rule after 
+           a delete) | A wrong key removes other properties' details or l
+           eaves the deleted one cached, so it is shown again (FR-11 AC5,
+            FR-12 AC4). | 90% | Not in CI. Baseline 95.5% (S-04); the 1 s
+           urvivor is equivalent. |
+      126  
+      127  Target scores are starting points. The first `/mutation` run o
+           n each module records the
+  ⎿  (timeout 10m)
+
+● The score went from 94.2% to 95.7%. list-search.ts got 100% (43 of 43 killed)
+  on its first run, so that's its baseline. The URL logic in ListPage.tsx went
+  from 84.6% to 88.5%.
+
+  I added one parametrised test, it.each(['city', 'zip']) in ListPage.test.tsx,
+  and merged none. No bug was found. Lint, typecheck and pnpm test:unit pass
+  (478 tests).
+
+  The survivor I fixed was a test regression from this change. In S-04, the
+  whitespace-Apply test killed the value.trim() mutant on the filtered flag
+  (ListPage.tsx:47). Now a whitespace Apply leaves the URL unchanged, so that
+  test never reaches the line. A link like /?city=+++ still does, because the
+  URL parse keeps the spaces. The new test opens that link and checks that the
+  empty state says "No properties yet".
+
+  The other three survivors are recorded with reasons, not tests:
+  - Missing preventDefault (:33): accepted, because jsdom can't observe a page
+    reload. The new E2E reload step does catch it: its URL regex ends in $, and
+    a native form submit would leave &state=&zipCode= in the URL. That closes
+    the gap S-04 left.
+  - Form key (:57) and the sort guard (:101): equivalent; no input can change
+    the outcome.
+  - Timeouts: I re-ran both at --concurrency 1. :28 is a real hang (the page
+    stays loading), so it counts as caught. :47 → true was a load timeout, and
+    it's killed when run alone.
+
+  The report is in context/changes/list-filters-in-url/mutation.md, and the
+  baseline is recorded on the list-search.ts row of context/test-plan.md. I
+  didn't commit anything. The break threshold stays null until you agree on a
+  value.
+
+  Suggested rule for context/lessons.md: when a change moves where a rule gets
+  its input (here, from component state to the URL), re-check the tests that
+  earlier mutation runs added for that rule. They may no longer reach the code,
+  which is how the :47 mutant came back.
+
+✻ Cooked for 6m 57s · done 1:11 PM

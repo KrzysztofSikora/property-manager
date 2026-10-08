@@ -1,0 +1,47 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan-review list-filters-in-url                                              
+  ⎿  Running in the background as @plan-review
+
+● Agent "/plan-review list-filters-in-url" finished · 1m 5s
+
+● I finished the review of the list-filters-in-url plan and saved it to
+  context/changes/list-filters-in-url/plan-review.md. The verdict is ready with 
+  notes: nothing blocks it, but there is one major finding and four minor ones.
+
+  Major
+  1. One existing test will fail, but the plan says all tests pass unchanged
+     (plan.md:17). The test "a whitespace-only %s is a blank filter" in
+     ListPage.test.tsx:275-291 expects a second request after you click Apply on
+     a whitespace-only value. With the plan's URL code, that value is dropped,
+     so the URL doesn't change and no second request is sent. The plan should
+     list this test as one that changes. It should also note the new behaviour:
+     a blank Apply no longer reloads the list.
+
+  Minor
+  2. Changing the sort clears typed but unapplied filter text. The plan resets
+  the form whenever the URL changes. Today that text survives a sort change.
+  Resetting only when the filter part of the URL changes would keep it.
+  3. Back can seem to do nothing. Every Apply adds a browser history entry, even
+  when the URL stays the same.
+  4. The planned Back test would be flaky. The list is reloaded in the
+  background after Back, so the test should check the last request and the rows
+  shown, not the exact list of requests.
+  5. The roadmap edits are already done. The S-07 row and the #9 note are in
+  context/roadmap.md but not committed yet. The plan still lists them as work to
+  do; they can go into the Phase 1 commit.
+
+  The files, line numbers and functions the plan names all match the code. The
+  current React Router docs confirm the plan uses useSearchParams correctly. The
+  plan also follows the "exactly one invalid field" rule from
+  context/lessons.md.
+
+  You can update plan.md for finding 1 (and 2–5 if you want them).
+  Implementation starts only after you approve the plan.
+
+✻ Baked for 6s · done 12:56 PM
