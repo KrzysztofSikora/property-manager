@@ -345,10 +345,15 @@ spacer, `Link` "New property" styled as the primary button with `PlusIcon`. `<ma
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [ ] Phase 1: Theme tokens and app shell
+- [x] Phase 1: Theme tokens and app shell (35c67e6)
 - [ ] Phase 2: List page
 - [ ] Phase 3: Details page
 - [ ] Phase 4: Create page and responsive pass
 
 ## Deviations
-<filled during implementation>
+
+- Phase 2, list table at < 560 px. Plan: Weather and Created hidden, so the table fits.
+  Code: with `whitespace-nowrap` cells a long street plus chip, zip and Delete is wider than
+  400 px. Consequence: the Address cell wraps below `sm`, cell padding drops to 12 px below
+  `sm`, and the table sits in an `overflow-x-auto` wrapper (as in the sketch), so the page
+  itself never scrolls sideways.

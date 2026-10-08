@@ -52,7 +52,7 @@ export type PropertiesQueryVariables = Exact<{
 }>;
 
 
-export type PropertiesQuery = { properties: { totalCount: number, items: Array<{ id: string, street: string, city: string, state: string, zipCode: string, createdAt: string }> } };
+export type PropertiesQuery = { properties: { totalCount: number, items: Array<{ id: string, street: string, city: string, state: string, zipCode: string, createdAt: string, weatherData: { current: { temperature: number, weatherDescriptions: Array<string>, weatherIcons: Array<string> } } }> } };
 
 export type PropertyQueryVariables = Exact<{
   id: string | number;
@@ -102,6 +102,13 @@ export const PropertiesDocument = new TypedDocumentString(`
       state
       zipCode
       createdAt
+      weatherData {
+        current {
+          temperature
+          weatherDescriptions
+          weatherIcons
+        }
+      }
     }
     totalCount
   }

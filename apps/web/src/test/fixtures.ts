@@ -105,6 +105,16 @@ export type PropertyListItem = PropertiesQuery['properties']['items'][number];
 
 // A row of the `Properties` list: the list fields of `propertyFixture`.
 export function listItem(overrides: Partial<PropertyListItem> = {}): PropertyListItem {
-  const { id, street, city, state, zipCode, createdAt } = propertyFixture();
-  return { id, street, city, state, zipCode, createdAt, ...overrides };
+  const { id, street, city, state, zipCode, createdAt, weatherData } = propertyFixture();
+  const { temperature, weatherDescriptions, weatherIcons } = weatherData.current;
+  return {
+    id,
+    street,
+    city,
+    state,
+    zipCode,
+    createdAt,
+    weatherData: { current: { temperature, weatherDescriptions, weatherIcons } },
+    ...overrides,
+  };
 }

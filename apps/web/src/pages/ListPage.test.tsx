@@ -147,10 +147,18 @@ function urlSearch() {
   return screen.getByRole('status', { name: 'URL search' }).textContent;
 }
 
-// The street of each body row, top to bottom.
+// The street of each body row, top to bottom: the link text in the Address cell.
 function rowStreets() {
   const [, ...rows] = screen.getAllByRole('row');
-  return rows.map((row) => within(row).getAllByRole('cell')[0]?.textContent);
+  return rows.map((row) => within(row).getAllByRole('link')[0]?.textContent);
+}
+
+// The text of each cell of body row `index` (0 = first row under the header).
+function rowCells(index: number) {
+  const [, ...rows] = screen.getAllByRole('row');
+  return within(rows[index] as HTMLElement)
+    .getAllByRole('cell')
+    .map((cell) => cell.textContent);
 }
 
 describe('ListPage', () => {
@@ -161,21 +169,59 @@ describe('ListPage', () => {
 
     expect(await screen.findByRole('link', { name: '3 Newest St' })).toBeInTheDocument();
     expect(rowStreets()).toEqual(['3 Newest St', '2 Middle Ave', '1 Oldest Rd']);
-    const cells = within(screen.getAllByRole('row')[3] as HTMLElement)
-      .getAllByRole('cell')
-      .map((cell) => cell.textContent);
-    expect(cells).toEqual([
-      '1 Oldest Rd',
-      'Boston',
+    // Address cell: street link, city, and the creation date line shown below `sm` (D-2).
+    expect(rowCells(2)).toEqual([
+      '1 Oldest RdBostonSep 14, 2026, 11:42 PM',
       'MA',
       '02108',
+      '82 °FClear',
       'Sep 14, 2026, 11:42 PM',
-      'Delete',
+      '',
     ]);
-    expect(screen.getByRole('columnheader', { name: 'Zip code' })).toBeInTheDocument();
+    expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
+      'Address',
+      'State',
+      'Zip code',
+      'Weather at creation',
+      'Created',
+      'Actions',
+    ]);
+    const weatherCell = within(screen.getAllByRole('row')[3] as HTMLElement).getAllByRole(
+      'cell',
+    )[3] as HTMLElement;
+    const icon = within(weatherCell).getByRole('presentation');
+    expect(icon).toHaveAttribute('src', oldest.weatherData.current.weatherIcons[0]);
+    expect(icon).toHaveAttribute('alt', '');
     expect(screen.getByText('3 properties')).toBeInTheDocument();
     expect(requests).toEqual([{ filter: {}, sort: 'CREATED_AT_DESC', limit: 20, offset: 0 }]);
     expect(pagination()).not.toBeInTheDocument();
+  });
+
+  it('FR-11 AC1: a row without weather descriptions or icons shows the temperature only', async () => {
+    const bare = listItem({
+      id: 'id-9',
+      street: '9 Bare St',
+      city: 'Austin',
+      state: 'TX',
+      zipCode: '78701',
+      createdAt: '2026-09-15T12:30:00.000Z',
+      weatherData: { current: { temperature: 64, weatherDescriptions: [], weatherIcons: [] } },
+    });
+    serveProperties(() => [bare]);
+
+    renderWithProviders(<ListPage />);
+
+    expect(await screen.findByRole('link', { name: '9 Bare St' })).toBeInTheDocument();
+    expect(rowCells(0)).toEqual([
+      '9 Bare StAustinSep 15, 2026, 12:30 PM',
+      'TX',
+      '78701',
+      '64 °F',
+      'Sep 15, 2026, 12:30 PM',
+      '',
+    ]);
+    expect(screen.queryByRole('presentation')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
   it('FR-11 AC2: "Oldest first" re-fetches with CREATED_AT_ASC and re-orders the rows', async () => {

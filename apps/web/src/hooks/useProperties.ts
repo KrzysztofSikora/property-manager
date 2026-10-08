@@ -13,6 +13,13 @@ const PropertiesQuery = graphql(`
         state
         zipCode
         createdAt
+        weatherData {
+          current {
+            temperature
+            weatherDescriptions
+            weatherIcons
+          }
+        }
       }
       totalCount
     }
