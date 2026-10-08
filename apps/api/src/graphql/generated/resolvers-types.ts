@@ -16,16 +16,63 @@ export type Scalars = {
   JSON: { input: unknown; output: unknown; }
 };
 
-/** Key fields of Weatherstack `current`. Every other field is in `raw`. */
+/** Weatherstack `current.air_quality`. Pollutants are in µg/m³. */
+export type AirQuality = {
+  __typename?: 'AirQuality';
+  co?: Maybe<Scalars['Float']['output']>;
+  /** UK DEFRA index, 1 to 10. */
+  gbDefraIndex?: Maybe<Scalars['Int']['output']>;
+  no2?: Maybe<Scalars['Float']['output']>;
+  o3?: Maybe<Scalars['Float']['output']>;
+  pm2_5?: Maybe<Scalars['Float']['output']>;
+  pm10?: Maybe<Scalars['Float']['output']>;
+  so2?: Maybe<Scalars['Float']['output']>;
+  /** US EPA index, 1 (Good) to 6 (Hazardous). */
+  usEpaIndex?: Maybe<Scalars['Int']['output']>;
+};
+
+/** Weatherstack `current.astro`. Times are "hh:mm AM/PM", local to the location. */
+export type Astro = {
+  __typename?: 'Astro';
+  /** Percent. */
+  moonIllumination?: Maybe<Scalars['Int']['output']>;
+  moonPhase?: Maybe<Scalars['String']['output']>;
+  moonrise?: Maybe<Scalars['String']['output']>;
+  moonset?: Maybe<Scalars['String']['output']>;
+  sunrise?: Maybe<Scalars['String']['output']>;
+  sunset?: Maybe<Scalars['String']['output']>;
+};
+
+/**
+ * Weatherstack `current`, camelCased. The key fields are always set. Every other field is null
+ * when Weatherstack did not send it or sent it with an unexpected type. `raw` holds the object as
+ * it was received.
+ */
 export type CurrentWeather = {
   __typename?: 'CurrentWeather';
+  airQuality?: Maybe<AirQuality>;
+  astro?: Maybe<Astro>;
+  /** Percent. */
+  cloudCover?: Maybe<Scalars['Int']['output']>;
   feelsLike: Scalars['Int']['output'];
   humidity: Scalars['Int']['output'];
+  isDay?: Maybe<Scalars['Boolean']['output']>;
+  /** "hh:mm AM/PM" in UTC, without a date. */
+  observationTime?: Maybe<Scalars['String']['output']>;
+  /** Inches. */
+  precip?: Maybe<Scalars['Float']['output']>;
+  /** mb. */
+  pressure?: Maybe<Scalars['Int']['output']>;
   /** The Weatherstack `current` object as it was received. */
   raw: Scalars['JSON']['output'];
   temperature: Scalars['Int']['output'];
+  uvIndex?: Maybe<Scalars['Int']['output']>;
+  /** Miles. */
+  visibility?: Maybe<Scalars['Int']['output']>;
+  weatherCode?: Maybe<Scalars['Int']['output']>;
   weatherDescriptions: Array<Scalars['String']['output']>;
   weatherIcons: Array<Scalars['String']['output']>;
+  windDegree?: Maybe<Scalars['Int']['output']>;
   windDir: Scalars['String']['output'];
   windSpeed: Scalars['Int']['output'];
 };
@@ -210,6 +257,8 @@ export type DirectiveResolverFn<TResult = Record<PropertyKey, never>, TParent = 
 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
+  AirQuality: ResolverTypeWrapper<AirQuality>;
+  Astro: ResolverTypeWrapper<Astro>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   CurrentWeather: ResolverTypeWrapper<CurrentWeather>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
@@ -230,6 +279,8 @@ export type ResolversTypes = {
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
+  AirQuality: AirQuality;
+  Astro: Astro;
   Boolean: Scalars['Boolean']['output'];
   CurrentWeather: CurrentWeather;
   DateTime: Scalars['DateTime']['output'];
@@ -246,13 +297,44 @@ export type ResolversParentTypes = {
   WeatherData: WeatherData;
 };
 
+export type AirQualityResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AirQuality'] = ResolversParentTypes['AirQuality']> = {
+  co?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  gbDefraIndex?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  no2?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  o3?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  pm2_5?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  pm10?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  so2?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  usEpaIndex?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+};
+
+export type AstroResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Astro'] = ResolversParentTypes['Astro']> = {
+  moonIllumination?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  moonPhase?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  moonrise?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  moonset?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  sunrise?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  sunset?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
 export type CurrentWeatherResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['CurrentWeather'] = ResolversParentTypes['CurrentWeather']> = {
+  airQuality?: Resolver<Maybe<ResolversTypes['AirQuality']>, ParentType, ContextType>;
+  astro?: Resolver<Maybe<ResolversTypes['Astro']>, ParentType, ContextType>;
+  cloudCover?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   feelsLike?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   humidity?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  isDay?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  observationTime?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  precip?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  pressure?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   raw?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   temperature?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  uvIndex?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  visibility?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  weatherCode?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   weatherDescriptions?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
   weatherIcons?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  windDegree?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   windDir?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   windSpeed?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
@@ -299,6 +381,8 @@ export type WeatherDataResolvers<ContextType = GraphQLContext, ParentType extend
 };
 
 export type Resolvers<ContextType = GraphQLContext> = {
+  AirQuality?: AirQualityResolvers<ContextType>;
+  Astro?: AstroResolvers<ContextType>;
   CurrentWeather?: CurrentWeatherResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
   JSON?: GraphQLScalarType;

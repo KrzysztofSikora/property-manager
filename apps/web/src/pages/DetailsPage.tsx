@@ -1,9 +1,44 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { DeletePropertyDialog } from '../components/DeletePropertyDialog';
 import { useProperty } from '../hooks/useProperty';
-import { formatDateTime } from '../lib/format';
+import { epaIndexLabel, formatDateTime } from '../lib/format';
+
+// A label and its display text, or `null` when the API sent no value.
+type Row = [label: string, value: string | null];
+
+// `0` is a value, so only `null` leaves the row out.
+function withUnit(value: number | null, unit: string): string | null {
+  return value === null ? null : `${String(value)} ${unit}`;
+}
+
+function plain(value: number | null): string | null {
+  return value === null ? null : String(value);
+}
+
+// One extra weather group: an `h2` and its own `<dl>`, left out when no row has a value
+// (FR-12 AC5, AC6).
+function DetailsGroup({ title, rows }: { title: string; rows: Row[] }) {
+  const headingId = useId();
+  const shown = rows.filter((row): row is [string, string] => row[1] !== null);
+  if (shown.length === 0) return null;
+  return (
+    <section aria-labelledby={headingId} className="mt-6">
+      <h2 id={headingId} className="mb-2 text-lg font-semibold">
+        {title}
+      </h2>
+      <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2">
+        {shown.map(([label, value]) => (
+          <Fragment key={label}>
+            <dt className="font-semibold">{label}</dt>
+            <dd>{value}</dd>
+          </Fragment>
+        ))}
+      </dl>
+    </section>
+  );
+}
 
 export function DetailsPage() {
   const { id = '' } = useParams();
@@ -55,6 +90,9 @@ export function DetailsPage() {
   }
 
   const weather = property.weatherData.current;
+  const { astro, airQuality } = weather;
+  const pollutant = (value: number | null | undefined) => withUnit(value ?? null, 'µg/m³');
+  const epaIndex = airQuality?.usEpaIndex ?? null;
   const description = weather.weatherDescriptions[0];
   const icon = weather.weatherIcons[0];
   // The property is gone either way, so a delete and a "not found" both return to the list.
@@ -111,6 +149,43 @@ export function DetailsPage() {
         <dt className="font-semibold">Humidity</dt>
         <dd>{weather.humidity} %</dd>
       </dl>
+
+      <DetailsGroup
+        title="Weather details"
+        rows={[
+          // Weatherstack sends the observation time in UTC, without a date.
+          ['Observed', weather.observationTime === null ? null : `${weather.observationTime} UTC`],
+          ['Pressure', withUnit(weather.pressure, 'mb')],
+          ['Precipitation', withUnit(weather.precip, 'in')],
+          ['Cloud cover', withUnit(weather.cloudCover, '%')],
+          ['UV index', plain(weather.uvIndex)],
+          ['Visibility', withUnit(weather.visibility, 'mi')],
+        ]}
+      />
+      <DetailsGroup
+        title="Astronomy"
+        rows={[
+          ['Sunrise', astro?.sunrise ?? null],
+          ['Sunset', astro?.sunset ?? null],
+          ['Moonrise', astro?.moonrise ?? null],
+          ['Moonset', astro?.moonset ?? null],
+          ['Moon phase', astro?.moonPhase ?? null],
+          ['Moon illumination', withUnit(astro?.moonIllumination ?? null, '%')],
+        ]}
+      />
+      <DetailsGroup
+        title="Air quality"
+        rows={[
+          ['CO', pollutant(airQuality?.co)],
+          ['NO₂', pollutant(airQuality?.no2)],
+          ['O₃', pollutant(airQuality?.o3)],
+          ['SO₂', pollutant(airQuality?.so2)],
+          ['PM2.5', pollutant(airQuality?.pm2_5)],
+          ['PM10', pollutant(airQuality?.pm10)],
+          ['US EPA index', epaIndex === null ? null : epaIndexLabel(epaIndex)],
+          ['GB DEFRA index', plain(airQuality?.gbDefraIndex ?? null)],
+        ]}
+      />
 
       <p className="mt-4 text-sm text-gray-600">
         Coordinates are those of the town Weatherstack resolved the address to, not of the building.

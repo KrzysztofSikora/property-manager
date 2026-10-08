@@ -1,6 +1,30 @@
 import type { Address } from '@property-manager/shared';
 
-// The key fields of Weatherstack `current`, camelCased. Everything else stays in `raw`.
+// Weatherstack `current.astro`. Times are "hh:mm AM/PM", local to the location.
+export type Astro = {
+  sunrise?: string;
+  sunset?: string;
+  moonrise?: string;
+  moonset?: string;
+  moonPhase?: string;
+  // Percent.
+  moonIllumination?: number;
+};
+
+// Weatherstack `current.air_quality`. Pollutants are in µg/m³.
+export type AirQuality = {
+  co?: number;
+  no2?: number;
+  o3?: number;
+  so2?: number;
+  pm2_5?: number;
+  pm10?: number;
+  usEpaIndex?: number;
+  gbDefraIndex?: number;
+};
+
+// Weatherstack `current`, camelCased. The key fields are required; the others are optional and
+// absent when missing or mistyped. `raw` holds the object as it was received.
 export type CurrentWeather = {
   temperature: number;
   feelsLike: number;
@@ -9,6 +33,22 @@ export type CurrentWeather = {
   windSpeed: number;
   windDir: string;
   humidity: number;
+  // "hh:mm AM/PM" in UTC, without a date.
+  observationTime?: string;
+  weatherCode?: number;
+  windDegree?: number;
+  // mb.
+  pressure?: number;
+  // Inches.
+  precip?: number;
+  // Percent.
+  cloudCover?: number;
+  uvIndex?: number;
+  // Miles.
+  visibility?: number;
+  isDay?: boolean;
+  astro?: Astro;
+  airQuality?: AirQuality;
   raw: Record<string, unknown>;
 };
 

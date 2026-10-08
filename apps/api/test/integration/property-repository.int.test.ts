@@ -6,7 +6,7 @@ import type { NewProperty } from '../../src/domain/property.ts';
 import { PropertyAlreadyExistsError } from '../../src/domain/errors.ts';
 import { createPropertyRepository } from '../../src/repositories/property.repository.ts';
 import { validInput } from '../fixtures/property.ts';
-import { weatherstackResponse } from '../fixtures/weatherstack.ts';
+import { SAMPLE_OPTIONAL_WEATHER, weatherstackResponse } from '../fixtures/weatherstack.ts';
 import { countProperties, resetDb, seedProperty } from '../helpers/db.ts';
 
 const { db, close } = createDb(inject('databaseUrl'));
@@ -71,6 +71,7 @@ describe('PropertyRepository', () => {
         windSpeed: 6,
         windDir: 'NE',
         humidity: 34,
+        ...SAMPLE_OPTIONAL_WEATHER,
         raw: weatherstackResponse().current,
       },
     });

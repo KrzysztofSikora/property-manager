@@ -56,14 +56,62 @@ function GoBack() {
   );
 }
 
-// The `<dd>` text of each `<dt>` label, in page order.
-function details() {
+// The `<dd>` text of each `<dt>` label in `scope`, in page order.
+function details(scope: HTMLElement) {
   return Object.fromEntries(
-    screen
+    within(scope)
       .getAllByRole('term')
       .map((term) => [term.textContent, term.nextElementSibling?.textContent]),
   );
 }
+
+// The first `<dl>`: address, coordinates, creation date and key weather (FR-12 AC1).
+function keyDetails() {
+  const list = screen.getAllByRole('term')[0]?.closest('dl');
+  if (!list) throw new Error('no <dl> on the page');
+  return details(list);
+}
+
+// The extra weather group under the `h2` called `name` (FR-12 AC6).
+function group(name: string) {
+  return details(screen.getByRole('region', { name }));
+}
+
+function withCurrent(current: Partial<PropertyFixture['weatherData']['current']>) {
+  return propertyFixture({
+    id: 'id-9',
+    weatherData: { units: 'IMPERIAL', current: { ...property.weatherData.current, ...current } },
+  });
+}
+
+const WEATHER_DETAILS = {
+  Observed: '01:13 PM UTC',
+  Pressure: '1010 mb',
+  Precipitation: '0 in',
+  'Cloud cover': '0 %',
+  'UV index': '0',
+  Visibility: '6 mi',
+};
+
+const ASTRONOMY = {
+  Sunrise: '06:25 AM',
+  Sunset: '06:03 PM',
+  Moonrise: '03:22 AM',
+  Moonset: '04:27 PM',
+  'Moon phase': 'Waning Crescent',
+  'Moon illumination': '15 %',
+};
+
+const AIR_QUALITY = {
+  CO: '112 µg/m³',
+  'NO₂': '6.9 µg/m³',
+  'O₃': '21 µg/m³',
+  'SO₂': '0.2 µg/m³',
+  'PM2.5': '4.6 µg/m³',
+  PM10: '10.4 µg/m³',
+  'US EPA index': '1 (Good)',
+  'GB DEFRA index': '1',
+};
 
 describe('DetailsPage', () => {
   it('FR-12 AC1: shows the address, coordinates, creation date and key weather with units', async () => {
@@ -74,7 +122,7 @@ describe('DetailsPage', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' }),
     ).toBeInTheDocument();
-    expect(details()).toEqual({
+    expect(keyDetails()).toEqual({
       Address: '15528 E Golden Eagle Blvd, Fountain Hills, AZ 85268',
       Coordinates: '33.609, -111.729',
       Created: 'Sep 14, 2026, 3:42 PM',
@@ -217,7 +265,7 @@ describe('DetailsPage', () => {
     renderDetails();
 
     await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
-    expect(Object.keys(details())).toEqual([
+    expect(Object.keys(keyDetails())).toEqual([
       'Address',
       'Coordinates',
       'Created',
@@ -227,6 +275,89 @@ describe('DetailsPage', () => {
       'Humidity',
     ]);
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('FR-12 AC6: shows the extra weather, astronomy and air quality with units', async () => {
+    serveProperty(found(property));
+
+    renderDetails();
+
+    await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual(['Weather details', 'Astronomy', 'Air quality']);
+    expect(group('Weather details')).toEqual(WEATHER_DETAILS);
+    expect(group('Astronomy')).toEqual(ASTRONOMY);
+    expect(group('Air quality')).toEqual(AIR_QUALITY);
+  });
+
+  it('FR-12 AC6: zero values are shown, not left out', async () => {
+    const astro = {
+      sunrise: null,
+      sunset: null,
+      moonrise: null,
+      moonset: null,
+      moonPhase: null,
+      moonIllumination: 0,
+    };
+    serveProperty(found(withCurrent({ uvIndex: 0, precip: 0, astro })));
+
+    renderDetails();
+
+    await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
+    expect(group('Weather details')).toMatchObject({ Precipitation: '0 in', 'UV index': '0' });
+    expect(group('Astronomy')).toEqual({ 'Moon illumination': '0 %' });
+  });
+
+  it.each([
+    ['astro', { astro: null }, 'Astronomy'],
+    ['airQuality', { airQuality: null }, 'Air quality'],
+  ] as const)(
+    'FR-12 AC5: a missing %s leaves out its group, the rest still shows',
+    async (_name, current, missing) => {
+      serveProperty(found(withCurrent(current)));
+
+      renderDetails();
+
+      await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
+      expect(screen.queryByRole('region', { name: missing })).not.toBeInTheDocument();
+      expect(screen.getAllByRole('region')).toHaveLength(2);
+      expect(group('Weather details')).toEqual(WEATHER_DETAILS);
+      expect(keyDetails()).toHaveProperty('Temperature', '82 °F');
+    },
+  );
+
+  it('FR-12 AC5: a missing pressure leaves out only its row', async () => {
+    serveProperty(found(withCurrent({ pressure: null })));
+
+    renderDetails();
+
+    await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
+    expect(group('Weather details')).toEqual({ ...WEATHER_DETAILS, Pressure: undefined });
+    expect(group('Weather details')).not.toHaveProperty('Pressure');
+    expect(group('Astronomy')).toEqual(ASTRONOMY);
+    expect(group('Air quality')).toEqual(AIR_QUALITY);
+  });
+
+  it('FR-12 AC5: a group whose fields are all missing is left out', async () => {
+    serveProperty(
+      found(
+        withCurrent({
+          observationTime: null,
+          pressure: null,
+          precip: null,
+          cloudCover: null,
+          uvIndex: null,
+          visibility: null,
+        }),
+      ),
+    );
+
+    renderDetails();
+
+    await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
+    expect(screen.queryByRole('region', { name: 'Weather details' })).not.toBeInTheDocument();
+    expect(group('Astronomy')).toEqual(ASTRONOMY);
   });
 
   it('NFR-09: shows a loading status while the property loads', async () => {

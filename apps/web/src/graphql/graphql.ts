@@ -59,7 +59,7 @@ export type PropertyQueryVariables = Exact<{
 }>;
 
 
-export type PropertyQuery = { property: { id: string, street: string, city: string, state: string, zipCode: string, lat: number, long: number, createdAt: string, weatherData: { units: WeatherUnits, current: { temperature: number, feelsLike: number, weatherDescriptions: Array<string>, weatherIcons: Array<string>, windSpeed: number, windDir: string, humidity: number } } } | null };
+export type PropertyQuery = { property: { id: string, street: string, city: string, state: string, zipCode: string, lat: number, long: number, createdAt: string, weatherData: { units: WeatherUnits, current: { temperature: number, feelsLike: number, weatherDescriptions: Array<string>, weatherIcons: Array<string>, windSpeed: number, windDir: string, humidity: number, observationTime: string | null, pressure: number | null, precip: number | null, cloudCover: number | null, uvIndex: number | null, visibility: number | null, astro: { sunrise: string | null, sunset: string | null, moonrise: string | null, moonset: string | null, moonPhase: string | null, moonIllumination: number | null } | null, airQuality: { co: number | null, no2: number | null, o3: number | null, so2: number | null, pm2_5: number | null, pm10: number | null, usEpaIndex: number | null, gbDefraIndex: number | null } | null } } } | null };
 
 export class TypedDocumentString<TResult, TVariables>
   extends String
@@ -128,6 +128,30 @@ export const PropertyDocument = new TypedDocumentString(`
         windSpeed
         windDir
         humidity
+        observationTime
+        pressure
+        precip
+        cloudCover
+        uvIndex
+        visibility
+        astro {
+          sunrise
+          sunset
+          moonrise
+          moonset
+          moonPhase
+          moonIllumination
+        }
+        airQuality {
+          co
+          no2
+          o3
+          so2
+          pm2_5
+          pm10
+          usEpaIndex
+          gbDefraIndex
+        }
       }
     }
   }

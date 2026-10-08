@@ -1,6 +1,6 @@
 import type { PropertiesQuery } from '../graphql/graphql';
 
-// A stored property as the API returns it: the PRD's canonical address, with the key weather
+// A stored property as the API returns it: the PRD's canonical address, with the typed weather
 // fields of the recorded Weatherstack sample. `raw` is left out because no page asks for it.
 export function propertyFixture(overrides: Partial<PropertyFixture> = {}): PropertyFixture {
   return {
@@ -24,6 +24,30 @@ export function propertyFixture(overrides: Partial<PropertyFixture> = {}): Prope
         windSpeed: 6,
         windDir: 'NE',
         humidity: 34,
+        observationTime: '01:13 PM',
+        pressure: 1010,
+        precip: 0,
+        cloudCover: 0,
+        uvIndex: 0,
+        visibility: 6,
+        astro: {
+          sunrise: '06:25 AM',
+          sunset: '06:03 PM',
+          moonrise: '03:22 AM',
+          moonset: '04:27 PM',
+          moonPhase: 'Waning Crescent',
+          moonIllumination: 15,
+        },
+        airQuality: {
+          co: 112,
+          no2: 6.9,
+          o3: 21,
+          so2: 0.2,
+          pm2_5: 4.6,
+          pm10: 10.4,
+          usEpaIndex: 1,
+          gbDefraIndex: 1,
+        },
       },
     },
     ...overrides,
@@ -49,6 +73,30 @@ export type PropertyFixture = {
       windSpeed: number;
       windDir: string;
       humidity: number;
+      observationTime: string | null;
+      pressure: number | null;
+      precip: number | null;
+      cloudCover: number | null;
+      uvIndex: number | null;
+      visibility: number | null;
+      astro: {
+        sunrise: string | null;
+        sunset: string | null;
+        moonrise: string | null;
+        moonset: string | null;
+        moonPhase: string | null;
+        moonIllumination: number | null;
+      } | null;
+      airQuality: {
+        co: number | null;
+        no2: number | null;
+        o3: number | null;
+        so2: number | null;
+        pm2_5: number | null;
+        pm10: number | null;
+        usEpaIndex: number | null;
+        gbDefraIndex: number | null;
+      } | null;
     };
   };
 };
