@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay } from 'msw';
 import { HttpResponse } from 'msw/http';
-import { Route, Routes, useParams } from 'react-router';
+import { Route, Routes, useLocation, useNavigate, useParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import type { DeletePropertyMutationVariables, PropertiesQueryVariables } from '../graphql/graphql';
 import { listItem, type PropertyListItem } from '../test/fixtures';
@@ -95,6 +95,34 @@ async function openDeleteDialog(street: string) {
   await user.click(await screen.findByRole('button', { name: `Delete ${street}` }));
   const dialog = screen.getByRole('dialog', { name: 'Delete property?' });
   return { user, dialog };
+}
+
+// Shows the router's query string and goes Back, as the browser would.
+function RouterProbe() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return (
+    <>
+      <output aria-label="URL search">{location.search}</output>
+      <button type="button" onClick={() => void navigate(-1)}>
+        Browser back
+      </button>
+    </>
+  );
+}
+
+function renderListWithProbe(route = '/') {
+  renderWithProviders(
+    <>
+      <ListPage />
+      <RouterProbe />
+    </>,
+    { route },
+  );
+}
+
+function urlSearch() {
+  return screen.getByRole('status', { name: 'URL search' }).textContent;
 }
 
 // The street of each body row, top to bottom.
@@ -210,6 +238,107 @@ describe('ListPage', () => {
     expect(requests[1]).toEqual({ filter: { zipCode: '02108' }, sort: 'CREATED_AT_DESC' });
   });
 
+  it('FR-11 AC3a: Apply writes the filters to the URL, and a sort change adds sort=asc and keeps them', async () => {
+    serveProperties(() => [newest]);
+    const user = userEvent.setup();
+    renderListWithProbe();
+    await screen.findByRole('link', { name: '3 Newest St' });
+
+    await user.type(screen.getByRole('textbox', { name: 'City' }), ' Fountain Hills ');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'State' }), 'AZ – Arizona');
+    await user.type(screen.getByRole('textbox', { name: 'Zip code' }), '85268');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(urlSearch()).toBe('?city=Fountain+Hills&state=AZ&zip=85268');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort' }), 'Oldest first');
+
+    expect(urlSearch()).toBe('?city=Fountain+Hills&state=AZ&zip=85268&sort=asc');
+  });
+
+  it('FR-11 AC3a: opening a URL with filters and sort fills the inputs and sends them in the first request', async () => {
+    const requests = serveProperties(() => [newest]);
+
+    renderListWithProbe('/?city=fountain&state=AZ&zip=85268&sort=asc');
+
+    expect(await screen.findByRole('link', { name: '3 Newest St' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'City' })).toHaveValue('fountain');
+    expect(screen.getByRole('combobox', { name: 'State' })).toHaveValue('AZ');
+    expect(screen.getByRole('textbox', { name: 'Zip code' })).toHaveValue('85268');
+    expect(screen.getByRole('combobox', { name: 'Sort' })).toHaveValue('CREATED_AT_ASC');
+    expect(requests).toEqual([
+      {
+        filter: { city: 'fountain', state: 'AZ', zipCode: '85268' },
+        sort: 'CREATED_AT_ASC',
+      },
+    ]);
+  });
+
+  it('FR-11 AC3a: Back restores the previous filter in the inputs, the request and the rows', async () => {
+    const requests = serveProperties(({ filter }) =>
+      filter?.city === 'Austin' ? [middle] : filter?.city === 'Boston' ? [oldest] : [],
+    );
+    const user = userEvent.setup();
+    renderListWithProbe();
+    await screen.findByText('No properties yet');
+    const city = () => screen.getByRole('textbox', { name: 'City' });
+
+    await user.type(city(), 'Austin');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+    await expect.poll(rowStreets).toEqual(['2 Middle Ave']);
+    await user.clear(city());
+    await user.type(city(), 'Boston');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+    await expect.poll(rowStreets).toEqual(['1 Oldest Rd']);
+
+    await user.click(screen.getByRole('button', { name: 'Browser back' }));
+
+    expect(urlSearch()).toBe('?city=Austin');
+    expect(city()).toHaveValue('Austin');
+    await expect.poll(rowStreets).toEqual(['2 Middle Ave']);
+    expect(requests.at(-1)).toEqual({ filter: { city: 'Austin' }, sort: 'CREATED_AT_DESC' });
+  });
+
+  it('FR-11 AC3a: applying the same filters again adds no history entry', async () => {
+    serveProperties(() => [middle]);
+    const user = userEvent.setup();
+    renderListWithProbe();
+    await screen.findByRole('link', { name: '2 Middle Ave' });
+
+    await user.type(screen.getByRole('textbox', { name: 'City' }), 'Austin');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+    expect(urlSearch()).toBe('?city=Austin');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+    await user.click(screen.getByRole('button', { name: 'Browser back' }));
+
+    expect(urlSearch()).toBe('');
+    expect(screen.getByRole('textbox', { name: 'City' })).toHaveValue('');
+  });
+
+  it('FR-11 AC3a: City text typed but not applied survives a sort change', async () => {
+    serveProperties(() => [newest]);
+    const user = userEvent.setup();
+    renderListWithProbe();
+    await screen.findByRole('link', { name: '3 Newest St' });
+
+    await user.type(screen.getByRole('textbox', { name: 'City' }), 'Aus');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort' }), 'Oldest first');
+
+    expect(urlSearch()).toBe('?sort=asc');
+    expect(screen.getByRole('textbox', { name: 'City' })).toHaveValue('Aus');
+  });
+
+  it('FR-11 AC3a: an invalid state in the URL is ignored and the valid city is still applied', async () => {
+    const requests = serveProperties(() => [middle]);
+
+    renderListWithProbe('/?state=XX&city=austin');
+
+    expect(await screen.findByRole('link', { name: '2 Middle Ave' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'State' })).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: 'City' })).toHaveValue('austin');
+    expect(requests).toEqual([{ filter: { city: 'austin' }, sort: 'CREATED_AT_DESC' }]);
+    expect(urlSearch()).toBe('?state=XX&city=austin');
+  });
+
   it('FR-11 AC3: City accepts at most 100 characters and Zip code at most 5', async () => {
     renderWithProviders(<ListPage />);
     await screen.findByText('No properties yet');
@@ -273,19 +402,20 @@ describe('ListPage', () => {
   });
 
   it.each(['City', 'Zip code'])(
-    'FR-11 AC6: a whitespace-only %s is a blank filter: left out, and the empty state is "No properties yet"',
+    'FR-11 AC6: a whitespace-only %s is a blank filter: left out of the URL and the request, and the empty state is "No properties yet"',
     async (field) => {
       const requests = serveProperties(() => []);
       const user = userEvent.setup();
-      renderWithProviders(<ListPage />);
+      renderListWithProbe();
       await screen.findByText('No properties yet');
 
       await user.type(screen.getByRole('textbox', { name: field }), '   ');
       await user.click(screen.getByRole('button', { name: 'Apply' }));
 
-      await expect.poll(() => requests).toHaveLength(2);
-      expect(requests[1]).toEqual({ filter: {}, sort: 'CREATED_AT_DESC' });
-      expect(await screen.findByText('No properties yet')).toBeInTheDocument();
+      // The URL would not change, so Apply does not navigate and nothing is re-fetched.
+      expect(urlSearch()).toBe('');
+      expect(requests).toEqual([{ filter: {}, sort: 'CREATED_AT_DESC' }]);
+      expect(screen.getByText('No properties yet')).toBeInTheDocument();
       expect(screen.queryByText('No properties match the filters')).not.toBeInTheDocument();
     },
   );
