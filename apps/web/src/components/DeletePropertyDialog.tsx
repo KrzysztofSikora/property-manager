@@ -62,16 +62,16 @@ export function DeletePropertyDialog({ property, onClose, onDeleted, onNotFound 
         if (deleteProperty.isPending) event.preventDefault();
       }}
       onClose={onClose}
-      className="m-auto rounded p-6 shadow-lg backdrop:bg-black/40"
+      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-card border border-line bg-surface p-6 text-ink shadow-xl backdrop:bg-ink/40"
     >
-      <h2 id={headingId} className="mb-2 text-lg font-bold">
+      <h2 id={headingId} className="mb-2 text-lg font-semibold">
         Delete property?
       </h2>
-      <p className="mb-4">
+      <p className="mb-4 text-muted">
         {property.street}, {property.city}, {property.state} {property.zipCode}
       </p>
       {deleteProperty.isError && !handedOff && (
-        <p role="alert" className="mb-4 text-red-700">
+        <p role="alert" className="mb-4 rounded-control bg-danger-soft px-3 py-2 text-danger">
           {failureMessage(deleteProperty.error)}
         </p>
       )}
@@ -80,7 +80,7 @@ export function DeletePropertyDialog({ property, onClose, onDeleted, onNotFound 
           type="button"
           onClick={() => dialogRef.current?.close()}
           disabled={deleteProperty.isPending}
-          className="rounded border px-3 py-1 disabled:opacity-50"
+          className="rounded-control border border-line bg-surface px-3.5 py-2 font-semibold hover:bg-ground disabled:opacity-50"
         >
           Cancel
         </button>
@@ -88,7 +88,7 @@ export function DeletePropertyDialog({ property, onClose, onDeleted, onNotFound 
           type="button"
           onClick={confirm}
           disabled={deleteProperty.isPending}
-          className="rounded bg-red-700 px-3 py-1 text-white disabled:opacity-50"
+          className="rounded-control bg-danger px-3.5 py-2 font-semibold text-white hover:bg-danger/90 disabled:opacity-50"
         >
           Delete
         </button>
