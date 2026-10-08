@@ -7,7 +7,7 @@ describe('AppRoutes', () => {
   it.each([
     ['/', 'Properties'],
     ['/properties/new', 'New property'],
-    ['/properties/abc-123', 'Property abc-123'],
+    ['/properties/abc-123', 'Property not found'],
     ['/no/such/page', 'Page not found'],
   ])('%s renders the "%s" heading', async (route, heading) => {
     renderWithProviders(<AppRoutes />, { route });

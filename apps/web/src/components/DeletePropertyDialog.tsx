@@ -15,6 +15,8 @@ type Props = {
   // Runs on every close (Cancel, Esc, after a delete). The caller unmounts the dialog.
   onClose: () => void;
   onDeleted?: () => void;
+  // When set, `PROPERTY_NOT_FOUND` calls it instead of showing "no longer exists".
+  onNotFound?: () => void;
 };
 
 function failureMessage(error: unknown): string {
@@ -24,7 +26,7 @@ function failureMessage(error: unknown): string {
 }
 
 // Mounted = open: the dialog opens as a modal on mount, and any close hands back to `onClose`.
-export function DeletePropertyDialog({ property, onClose, onDeleted }: Props) {
+export function DeletePropertyDialog({ property, onClose, onDeleted, onNotFound }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingId = useId();
   const deleteProperty = useDeleteProperty();
@@ -34,11 +36,18 @@ export function DeletePropertyDialog({ property, onClose, onDeleted }: Props) {
     if (dialog && !dialog.open) dialog.showModal();
   }, []);
 
+  // A gone property handed to `onNotFound` gets no message: the caller leaves the page.
+  const handedOff =
+    onNotFound !== undefined && errorCode(deleteProperty.error) === 'PROPERTY_NOT_FOUND';
+
   function confirm() {
     deleteProperty.mutate(property.id, {
       onSuccess: () => {
         onDeleted?.();
         dialogRef.current?.close();
+      },
+      onError: (error) => {
+        if (onNotFound && errorCode(error) === 'PROPERTY_NOT_FOUND') onNotFound();
       },
     });
   }
@@ -56,7 +65,7 @@ export function DeletePropertyDialog({ property, onClose, onDeleted }: Props) {
       <p className="mb-4">
         {property.street}, {property.city}, {property.state} {property.zipCode}
       </p>
-      {deleteProperty.isError && (
+      {deleteProperty.isError && !handedOff && (
         <p role="alert" className="mb-4 text-red-700">
           {failureMessage(deleteProperty.error)}
         </p>

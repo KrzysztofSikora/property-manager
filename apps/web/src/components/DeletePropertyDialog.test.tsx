@@ -87,4 +87,45 @@ describe('DeletePropertyDialog', () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(onDeleted).not.toHaveBeenCalled();
   });
+
+  it('with onNotFound, PROPERTY_NOT_FOUND calls it instead of showing a message', async () => {
+    serveDelete(() =>
+      HttpResponse.json({
+        data: null,
+        errors: [
+          {
+            message: 'No property with this id exists.',
+            extensions: { code: 'PROPERTY_NOT_FOUND' },
+          },
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+    const onNotFound = vi.fn();
+    renderWithProviders(
+      <DeletePropertyDialog property={property} onClose={vi.fn()} onNotFound={onNotFound} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await expect.poll(() => onNotFound.mock.calls.length).toBe(1);
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('with onNotFound, any other failure still shows the generic message', async () => {
+    serveDelete(() => HttpResponse.error());
+    const user = userEvent.setup();
+    const onNotFound = vi.fn();
+    renderWithProviders(
+      <DeletePropertyDialog property={property} onClose={vi.fn()} onNotFound={onNotFound} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not delete the property, try again',
+    );
+    expect(onNotFound).not.toHaveBeenCalled();
+  });
 });

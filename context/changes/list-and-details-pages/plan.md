@@ -330,7 +330,7 @@ Documents are declared with `graphql(...)` in the hook files, and codegen genera
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: List page (4167fe4)
-- [ ] Phase 2: Delete from the list
+- [x] Phase 2: Delete from the list (6160c38)
 - [ ] Phase 3: Details page
 
 ## Deviations
@@ -359,3 +359,10 @@ Documents are declared with `graphql(...)` in the hook files, and codegen genera
   cover the "active entry is not re-fetched" half.
 - Phase 2, ListPage AC1 test: the row now has an action cell, so the expected cells end with
   "Delete".
+- Phase 3, `DeletePropertyDialog` (not in the phase 3 file list): plan says `PROPERTY_NOT_FOUND`
+  on the details page navigates to `/`; the dialog only showed a message. It gains an optional
+  `onNotFound` prop: when set, that code calls it and shows no message (no flash before the
+  navigation commits). The list page does not pass it, so its behaviour is unchanged. Two
+  dialog tests cover it.
+- Phase 3, `routes.test.tsx`: the details row now expects "Property not found" (the phase 1
+  deviation is closed).

@@ -24,6 +24,9 @@ export type PropertySort =
   /** Newest first. */
   | 'CREATED_AT_DESC';
 
+export type WeatherUnits =
+  | 'IMPERIAL';
+
 export type DeletePropertyMutationVariables = Exact<{
   id: string | number;
 }>;
@@ -38,6 +41,13 @@ export type PropertiesQueryVariables = Exact<{
 
 
 export type PropertiesQuery = { properties: { totalCount: number, items: Array<{ id: string, street: string, city: string, state: string, zipCode: string, createdAt: string }> } };
+
+export type PropertyQueryVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type PropertyQuery = { property: { id: string, street: string, city: string, state: string, zipCode: string, lat: number, long: number, createdAt: string, weatherData: { units: WeatherUnits, current: { temperature: number, feelsLike: number, weatherDescriptions: Array<string>, weatherIcons: Array<string>, windSpeed: number, windDir: string, humidity: number } } } | null };
 
 export class TypedDocumentString<TResult, TVariables>
   extends String
@@ -78,3 +88,29 @@ export const PropertiesDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<PropertiesQuery, PropertiesQueryVariables>;
+export const PropertyDocument = new TypedDocumentString(`
+    query Property($id: ID!) {
+  property(id: $id) {
+    id
+    street
+    city
+    state
+    zipCode
+    lat
+    long
+    createdAt
+    weatherData {
+      units
+      current {
+        temperature
+        feelsLike
+        weatherDescriptions
+        weatherIcons
+        windSpeed
+        windDir
+        humidity
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<PropertyQuery, PropertyQueryVariables>;
