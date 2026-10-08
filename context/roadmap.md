@@ -17,6 +17,7 @@ export) proportionate to a small app.
 | S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs), FR-12 (AC1–AC5) | S-03 | M | done |
 | S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04 | M | done |
 | S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-15 | S-05 | M | done |
+| S-07 | #9 | list-filters-in-url | slice | FR-11 AC3a (Should) | S-04 | S | in-progress |
 
 Order follows risk: tooling and schema first, then the Weatherstack integration (the only
 third-party unknown, R-01 – R-05) and the concurrency-sensitive duplicate rule, then the
@@ -214,7 +215,8 @@ Commits reference their issue with `Refs #<n>`; the last commit of an item uses 
 Should items from the PRD, picked up only after S-06 is `done`:
 
 - #9 FR-11 AC3a: list filters reflected in the URL query string (`useSearchParams`, zod-parsed),
-  so a reload keeps them.
+  so a reload keeps them. Picked up as S-07 (`list-filters-in-url`); filters and sort both go
+  in the URL.
 - #10 FR-11 AC4: UI pagination (20 per page, page indicator and total) using the API's
   `limit`/`offset`.
 - #11 FR-12 AC6: details page shows observation time, pressure, precipitation, cloud cover, UV
