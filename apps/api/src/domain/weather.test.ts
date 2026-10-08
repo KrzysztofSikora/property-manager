@@ -58,19 +58,6 @@ describe('toCurrentWeather', () => {
     expect(() => toCurrentWeather(current)).toThrow(ZodError);
   });
 
-  it('TR-03: parses without astro, air_quality and other non-key fields', () => {
-    const current = weatherstackResponse({
-      current: {
-        astro: undefined,
-        air_quality: undefined,
-        pressure: undefined,
-        uv_index: undefined,
-      },
-    }).current;
-
-    expect(toCurrentWeather(current).temperature).toBe(82);
-  });
-
   it.each([null, 'current', []])('fails when current is %j', (value) => {
     expect(() => toCurrentWeather(value)).toThrow(ZodError);
   });
@@ -189,6 +176,23 @@ describe('toCurrentWeather optional fields', () => {
       ...withoutPath({ ...SAMPLE_KEY_FIELDS, ...SAMPLE_OPTIONAL_WEATHER }, path),
       raw: current,
     });
+  });
+
+  it('TR-03: parses without astro, air_quality, pressure and uv_index together', () => {
+    const current = weatherstackResponse({
+      current: {
+        astro: undefined,
+        air_quality: undefined,
+        pressure: undefined,
+        uv_index: undefined,
+      },
+    }).current;
+    const expected = [['astro'], ['airQuality'], ['pressure'], ['uvIndex']].reduce(withoutPath, {
+      ...SAMPLE_KEY_FIELDS,
+      ...SAMPLE_OPTIONAL_WEATHER,
+    });
+
+    expect(toCurrentWeather(current)).toEqual({ ...expected, raw: current });
   });
 
   it.each([

@@ -59,7 +59,8 @@ Closes #11 (FR-12 AC6) and #12 (typed non-key `CurrentWeather` fields).
 - Weatherstack's unit table for `units=f` gives °F, mph, pressure in **mb**, precipitation in
   **in**, visibility in **miles**. The docs site (docs.apilayer.com) renders client-side and
   could not be fetched in this session. Only "in" is confirmed, by the PRD (FR-12 AC6). "mb" and
-  "mi" come from the Weatherstack units table as previously known and are UNVERIFIED (see Risks).
+  "mi" come from the Weatherstack units table as previously known. They were confirmed from
+  `units=f` samples after the commit (see Risks).
   Air-quality pollutants are in µg/m³.
 - US EPA index scale: 1 Good, 2 Moderate, 3 Unhealthy for Sensitive Groups, 4 Unhealthy,
   5 Very Unhealthy, 6 Hazardous.
@@ -194,7 +195,8 @@ Closes #11 (FR-12 AC6) and #12 (typed non-key `CurrentWeather` fields).
     read well, the units look right ("mb", "mi", "in", "µg/m³") and "01:13 PM UTC" is clear.
   - In GraphiQL, `property(id)` returns the typed fields.
   - **Before the commit:** confirm "mb" and "mi" against the Weatherstack docs in a browser
-    (see Risks). If either is wrong, fix the labels and tests first.
+    (see Risks). If either is wrong, fix the labels and tests first. Done after the commit,
+    from samples (see Risks, review R1).
 - Commit: one Conventional Commit, `feat(details): show extra weather fields` with
   `Closes #11` and `Closes #12`.
 
@@ -203,6 +205,14 @@ Closes #11 (FR-12 AC6) and #12 (typed non-key `CurrentWeather` fields).
   docs site did not render, and context7 has no Weatherstack docs (plan review). Not blocking,
   since it only affects two unit labels. The human check resolves it, and it must be done
   before the commit. If it is wrong, change the label strings and the test expectations.
+  - Resolved 2026-10-08 (review R1), after the commit: the official units table still does not
+    render (weatherstack.com/documentation, docs.apilayer.com), and context7's
+    `/apilayer/weatherstack` names only °F and mph for `f`. The `units=f` samples settle both
+    labels. Pressure: `docs/samples/weatherstack-current.json` has `"unit":"f"` and
+    `"pressure":1010`, which is mb (inHg would be about 30). Visibility: a published `units=f`
+    response (davidwalsh.name/weatherstack-an-amazing-weather-api) has `"visibility":10`, the
+    imperial cap, and the metric examples show 16, the km cap. Our sample's 6 fits both. "mb" and
+    "mi" stay as shipped.
 - `PROPERTY_FIELDS` in `apps/api/test/operations.ts` is shared by every API operation, so
   adding fields changes every whole-object assertion on a property. Phase 1 lists the two
   `toEqual` checks this affects (plan review).
@@ -213,7 +223,7 @@ Closes #11 (FR-12 AC6) and #12 (typed non-key `CurrentWeather` fields).
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [ ] Phase 1: Typed extra weather fields on the API and the details page
+- [x] Phase 1: Typed extra weather fields on the API and the details page (9f766f3)
 
 ## Deviations
 - Phase 1, small and local: the sample's optional typed values are one shared

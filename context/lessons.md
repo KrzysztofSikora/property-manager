@@ -61,3 +61,13 @@
 - Scope: `/plan` and `/mutation` for changes that move where a module reads its state (URL,
   cache, props, API args). Before the run, look up the earlier `mutation.md` `strengthen`
   rows for the touched lines and confirm that each test still reaches them.
+
+## Add a module to *Mutation targets* before running Stryker on it
+- Why: CLAUDE.md allows Stryker only on the targets listed in `context/test-plan.md`. In S-09,
+  `/mutation` also ran on `apps/web/src/lib/format.ts` (`epaIndexLabel`), which was not listed,
+  recorded "100% -> 100%" with no earlier baseline, and left the suggested test-plan row
+  unadded. The run was harmless, but the record broke the rule and invented a baseline.
+- Seen in: details-extra-weather, review
+- Scope: `/mutation`. If a change adds logic worth mutating outside the listed targets, add its
+  *Mutation targets* row to `context/test-plan.md` first (or ask), then run. A module's first
+  run records "baseline N%", never "N% -> N%".
