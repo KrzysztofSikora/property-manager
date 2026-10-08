@@ -1,9 +1,9 @@
 import { US_STATES } from '@property-manager/shared';
-import { type SubmitEvent, useState } from 'react';
+import { type SubmitEvent, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { type DeletableProperty, DeletePropertyDialog } from '../components/DeletePropertyDialog';
 import type { PropertySort } from '../graphql/graphql';
-import { useProperties } from '../hooks/useProperties';
+import { PAGE_SIZE, useProperties } from '../hooks/useProperties';
 import { formatDateTime } from '../lib/format';
 import { parseListSearch, toListSearch } from '../lib/list-search';
 
@@ -22,10 +22,13 @@ function formText(data: FormData, name: string): string {
 }
 
 export function ListPage() {
-  // Filters apply on submit, sort on change. Both live in the URL, so reload and Back keep them.
+  // Filters apply on submit, sort on change. They and the page live in the URL, so reload and
+  // Back keep them. A filter or sort change leaves `page` out, which goes back to page 1.
   const [searchParams, setSearchParams] = useSearchParams();
-  const { filter, sort } = parseListSearch(searchParams);
-  const properties = useProperties({ filter, sort });
+  const { filter, sort, page } = parseListSearch(searchParams);
+  const properties = useProperties({ filter, sort, page });
+  const totalCount = properties.data?.properties.totalCount ?? 0;
+  const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   // The row whose Delete was clicked. The dialog is mounted (and open) only while it is set.
   const [toDelete, setToDelete] = useState<DeletableProperty | null>(null);
 
@@ -41,9 +44,23 @@ export function ListPage() {
       sort,
     });
     // Unchanged filters would push a duplicate history entry, so Back would seem to do nothing.
-    // Compare canonical forms: a hand-edited link may order its keys differently.
-    const current = toListSearch(parseListSearch(searchParams));
+    // Compare canonical forms without the page: a hand-edited link may order its keys
+    // differently, and an unchanged Apply keeps the page.
+    const current = toListSearch({ filter, sort });
     if (next.toString() !== current.toString()) setSearchParams(next);
+  }
+
+  // A page past the end (an old link, or the last row of the last page deleted) moves to the
+  // last page. Placeholder data belongs to the previous page, so it is not checked.
+  const pastTheEnd = properties.isSuccess && !properties.isPlaceholderData && page > pageCount;
+  useEffect(() => {
+    if (pastTheEnd) {
+      setSearchParams(toListSearch({ filter, sort, page: pageCount }), { replace: true });
+    }
+  }, [pastTheEnd, filter, sort, pageCount, setSearchParams]);
+
+  function goToPage(next: number) {
+    setSearchParams(toListSearch({ filter, sort, page: next }));
   }
 
   const filtered = Object.values(filter).some((value) => value.trim() !== '');
@@ -138,9 +155,7 @@ export function ListPage() {
       ) : (
         <>
           <p className="mb-2 text-sm text-gray-600">
-            {properties.data.properties.totalCount === 1
-              ? '1 property'
-              : `${String(properties.data.properties.totalCount)} properties`}
+            {totalCount === 1 ? '1 property' : `${String(totalCount)} properties`}
             {properties.isPlaceholderData && <span role="status"> · Updating…</span>}
           </p>
           <table className="w-full text-left text-sm">
@@ -184,6 +199,33 @@ export function ListPage() {
               ))}
             </tbody>
           </table>
+          {totalCount > PAGE_SIZE && (
+            <nav aria-label="Pagination" className="mt-3 flex items-center gap-3 text-sm">
+              <button
+                type="button"
+                disabled={page === 1 || properties.isPlaceholderData}
+                onClick={() => {
+                  goToPage(page - 1);
+                }}
+                className="rounded border px-3 py-1 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span>
+                Page {page} of {pageCount}
+              </span>
+              <button
+                type="button"
+                disabled={page >= pageCount || properties.isPlaceholderData}
+                onClick={() => {
+                  goToPage(page + 1);
+                }}
+                className="rounded border px-3 py-1 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </nav>
+          )}
         </>
       )}
 
