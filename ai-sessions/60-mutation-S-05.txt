@@ -1,0 +1,189 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /mutation create-property-page                                                
+
+● I'll start by gathering the change context: plan, test-plan targets, and the
+  diff.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● S-05 isn't scheduled for a mutation step per the test plan, but since you
+  requested it explicitly, I'll run it against the targets: error mapping in
+  graphql-errors.ts, the guard/cache-invalidation logic in useCreateProperty.ts,
+  and just the submit handler logic in CreatePage.tsx (skipping the JSX).
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● 101 of 107 mutants were killed (3 of those by timeout, so no timeout
+  inflation; see lesson 1), and 6 survived. Next I'll read the page tests so I
+  can triage the survivors.
+
+  Read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+● Of the 6 survivors, 3 are equivalent mutants in graphql-errors.ts's ?. drops,
+  while 3 real gaps exist in CreatePage.tsx: a missing preventDefault (causes
+  page reload/data loss), a stale form alert when setFormMessage(null) is
+  removed, and a crash when issues.zipCode?.[0] loses its optional chaining with
+  a valid zip but invalid other field—none of the AC1 tests caught this since
+  they all used invalid zips. I'll write stronger tests to cover these three
+  real gaps.
+
+● Update(apps/web/src/pages/CreatePage.test.tsx)
+  ⎿  Added 22 lines, removed 2 lines
+      123      expect(requests).toHaveLength(1);
+      124    });
+      125  
+      126 -  it('replaces the field messages on the next submit', async (
+          -) => {                                                        
+      127 -    serveCreate(failure('PROPERTY_ALREADY_EXISTS', 'exists'));
+      126 +  it('replaces the field and form messages on the next submit'
+          +, async () => {                                               
+      127 +    const requests = serveCreate(failure('PROPERTY_ALREADY_EXI
+          +STS', 'exists'));                                             
+      128      const user = await fillAndSubmit({ ...valid, zipCode: '852
+           6' });
+      129      expect(inputs.zipCode()).toHaveAccessibleDescription('must
+            be 5 digits');
+      130  
+     ...
+      134      expect(await screen.findByRole('alert')).toHaveTextContent
+           (/already exists/i);
+      135      expect(inputs.zipCode()).not.toHaveAccessibleDescription()
+           ;
+      136      expect(inputs.zipCode()).not.toHaveAttribute('aria-invalid
+           ');
+      137 +                                                              
+      138 +    // Only the street is invalid now (the zip is valid): its 
+          +message replaces the alert.                                   
+      139 +    await user.clear(inputs.street());                        
+      140 +    await user.click(screen.getByRole('button', { name: 'Creat
+          +e property' }));                                              
+      141 +                                                              
+      142 +    expect(inputs.street()).toHaveAccessibleDescription('must 
+          +not be empty');                                               
+      143 +    expect(inputs.zipCode()).not.toHaveAccessibleDescription()
+          +;                                                             
+      144 +    expect(screen.queryByRole('alert')).not.toBeInTheDocument(
+          +);                                                            
+      145 +    expect(requests).toHaveLength(1);                         
+      146    });
+      147  
+      148 +  it('cancels the native form submission, so the browser does 
+          +not reload the page', () => {                                 
+      149 +    serveCreate();                                            
+      150 +    renderPage();                                             
+      151 +                                                              
+      152 +    const form = screen.getByRole('button', { name: 'Create pr
+          +operty' }).closest('form');                                   
+      153 +    if (form === null) throw new Error('the submit button is n
+          +ot in a form');                                               
+      154 +                                                              
+      155 +    // `fireEvent` returns false when a handler called `preven
+          +tDefault()`.                                                  
+      156 +    expect(fireEvent.submit(form)).toBe(false);               
+      157 +  });                                                         
+      158 +                                                              
+      159    it('FR-13 AC2: sends the normalized address once, disables t
+           he button while pending, then opens the details page', async (
+           ) => {
+      160      const requests = serveCreate(async () => {
+      161        await delay(50);
+  ⎿  PostToolUse:Edit hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/web/src/pages/CreatePage.test.tsx):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src/pages/
+     CreatePage.test.tsx
+       156:12  error  Unsafe call of a type that could not be resolved          
+          @typescript-eslint/no-unsafe-call
+       156:22  error  Unsafe member access .submit on a type that cannot be 
+     resolved  @typescript-eslint/no-unsafe-member-access
+
+     ✖ 2 problems (2 errors, 0 warnings)
+
+● Bash(sed -i "1s/.*/import { fireEvent, screen } from
+      '@testing-library\/react';/" apps/web/src/pages/CreatePage.test.tsx &&
+      head -1 apps/web/src/pages/CreatePage.tes…)
+  ⎿  import { fireEvent, screen } from '@testing-library/react';
+
+      Test Files  1 passed (1)
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/CreatePage.test.tsx (+1 -1)
+      1 -import { screen } from '@testing-library/react';                
+      1 +import { fireEvent, screen } from '@testing-library/react';     
+      2  import userEvent from '@testing-library/user-event';
+      3  import { delay } from 'msw';
+      4  import { HttpResponse } from 'msw/http';
+
+● The hook flagged a lint error because it ran before I added the fireEvent
+  import. The ESLint run after the import passed cleanly. Now I'll re-run
+  Stryker on the same targets.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● The 5 timeouts come from mutants that empty a handler or block, causing
+  findBy-based tests to hang and fail legitimately — these are real kills, not
+  load artifacts. I'll now write up mutation.md.
+
+● Write(context/changes/create-property-page/mutation.md)
+  ⎿  Wrote 46 lines to context/changes/create-property-page/mutation.md
+       1 # Mutation check: create-property-page
+       3 Targets: `apps/web/src/lib/graphql-errors.ts` (whole file), `app
+         s/web/src/hooks/useCreateProperty.ts`
+         bmit` handler; JSX skipped as
+       5 presentation) · Tests: `apps/web/vitest.config.ts` (command runn
+       6 Score: 94.4% -> 97.2% (before 98 / 6 / 0 / 3; after 99 / 3 / 0 /
+          5 killed / survived / no
+       8 
+       9 Per file after: `graphql-errors.ts` 95.5% (3 equivalent survivor
+      10 `CreatePage.tsx` 100%.
+     … +74 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The mutation score went from 94.4% to 97.2%, and none of the surviving mutants
+  points to a bug in production code.
+
+  - What I mutated: lib/graphql-errors.ts, hooks/useCreateProperty.ts and the
+    submit handler in CreatePage.tsx (lines 33–67). The test plan has no
+    mutation step for S-05, so this run happened only because you asked for it.
+  - Before: 98 killed, 6 survived, 3 timed out.
+  - After: 99 killed, 3 survived, 5 timed out. The 3 left are in
+    graphql-errors.ts and are equivalent: those ?. checks are only reached after
+    errorCode() has already read errors[0].extensions.code, so they can't
+    change the result.
+  - Timeouts: these mutants empty a handler or a block, which leaves a findBy
+    waiting forever. They are real catches, not slowdowns from parallel runs.
+
+  Tests changed (only CreatePage.test.tsx; one extended, one added):
+  - "replaces the field and form messages on the next submit" now does a third
+    submit where only the street is invalid. It catches two gaps:
+    - When the zip was valid and another field wasn't, the page threw and showed
+      no message. Every earlier test had an invalid zip, so none noticed.
+    - An old form-level alert stayed on screen next to new field errors.
+  - "cancels the native form submission" is new. Without preventDefault() a real
+    browser would reload the page and lose what the user typed.
+
+  All 109 web tests pass, and the new test file passes lint and format checks.
+
+  The decisions are in context/changes/create-property-page/mutation.md. It also
+  suggests:
+  - adding the submit handler and useCreateProperty.ts as mutation targets in
+    the test plan (both scored 100%);
+  - folding one possibly redundant fieldErrors test into a table. That's from
+    reading the tests: with this setup, Stryker can't say which test caught
+    which mutant.
+
+  Suggested rule for context/lessons.md: when code handles validation results 
+  field by field, include a case where exactly one field is invalid and the 
+  others are valid. Every AC1 test here combined several invalid fields, which
+  hid the crash.
+
+  Nothing is committed yet.
+
+✻ Baked for 9m 28s · done 11:48 AM
