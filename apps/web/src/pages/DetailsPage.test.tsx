@@ -65,16 +65,16 @@ function details(scope: HTMLElement) {
   );
 }
 
-// The first `<dl>`: address, coordinates, creation date and key weather (FR-12 AC1).
-function keyDetails() {
-  const list = screen.getAllByRole('term')[0]?.closest('dl');
-  if (!list) throw new Error('no <dl> on the page');
-  return details(list);
+// The `<dt>` → `<dd>` text of the region called `name` (a hero section or a card).
+function region(name: string) {
+  return details(screen.getByRole('region', { name }));
 }
 
-// The extra weather group under the `h2` called `name` (FR-12 AC6).
-function group(name: string) {
-  return details(screen.getByRole('region', { name }));
+// The hero temperature: its unit sits in a nested span, so match on the whole text.
+function temperature(text: string) {
+  return within(screen.getByRole('region', { name: 'Current weather' })).getByText(
+    (_content, element) => element?.textContent === text,
+  );
 }
 
 function withCurrent(current: Partial<PropertyFixture['weatherData']['current']>) {
@@ -84,34 +84,50 @@ function withCurrent(current: Partial<PropertyFixture['weatherData']['current']>
   });
 }
 
-const WEATHER_DETAILS = {
-  Observed: '01:13 PM UTC',
-  Pressure: '1010 mb',
-  Precipitation: '0 in',
+const TILES = {
+  Wind: '6 mph NE',
+  Humidity: '34 %',
   'Cloud cover': '0 %',
   'UV index': '0',
+  Pressure: '1010 mb',
   Visibility: '6 mi',
 };
 
-const ASTRONOMY = {
+const LOCATION = {
+  Street: '15528 E Golden Eagle Blvd',
+  City: 'Fountain Hills',
+  State: 'AZ',
+  'Zip code': '85268',
+  Latitude: '33.609',
+  Longitude: '-111.729',
+};
+
+const PRECIPITATION = {
+  Precipitation: '0 in',
+  'Cloud cover': '0 %',
+  Observed: '01:13 PM UTC',
+};
+
+const SUN_AND_MOON = {
   Sunrise: '06:25 AM',
   Sunset: '06:03 PM',
   Moonrise: '03:22 AM',
   Moonset: '04:27 PM',
   'Moon phase': 'Waning Crescent',
-  'Moon illumination': '15 %',
+  Illumination: '15 %',
 };
 
 const AIR_QUALITY = {
-  CO: '112 µg/m³',
-  'NO₂': '6.9 µg/m³',
-  'O₃': '21 µg/m³',
-  'SO₂': '0.2 µg/m³',
   'PM2.5': '4.6 µg/m³',
   PM10: '10.4 µg/m³',
-  'US EPA index': '1 (Good)',
+  'O₃': '21 µg/m³',
+  'NO₂': '6.9 µg/m³',
+  'SO₂': '0.2 µg/m³',
+  CO: '112 µg/m³',
   'GB DEFRA index': '1',
 };
+
+const STREET = '15528 E Golden Eagle Blvd';
 
 describe('DetailsPage', () => {
   it('FR-12 AC1: shows the address, coordinates, creation date and key weather with units', async () => {
@@ -119,23 +135,19 @@ describe('DetailsPage', () => {
 
     renderDetails();
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' }),
-    ).toBeInTheDocument();
-    expect(keyDetails()).toEqual({
-      Address: '15528 E Golden Eagle Blvd, Fountain Hills, AZ 85268',
-      Coordinates: '33.609, -111.729',
-      Created: 'Sep 14, 2026, 3:42 PM',
-      Temperature: '82 °F',
-      'Feels like': '79 °F',
-      Conditions: 'Clear',
-      Wind: '6 mph NE',
-      Humidity: '34 %',
-    });
-    expect(screen.getByRole('img', { name: 'Clear' })).toHaveAttribute(
+    expect(await screen.findByRole('heading', { level: 1, name: STREET })).toBeInTheDocument();
+    const subLine = screen.getByText(/^Fountain Hills, AZ 85268 · created/);
+    expect(subLine).toHaveTextContent('Fountain Hills, AZ 85268 · created Sep 14, 2026, 3:42 PM');
+    const hero = screen.getByRole('region', { name: 'Current weather' });
+    expect(temperature('82 °F')).toHaveTextContent(/^82 °F$/);
+    expect(within(hero).getByText('Clear')).toBeInTheDocument();
+    expect(within(hero).getByText(/^Feels like 79 °F/)).toBeInTheDocument();
+    expect(details(hero)).toMatchObject({ Wind: '6 mph NE', Humidity: '34 %' });
+    expect(within(hero).getByRole('img', { name: 'Clear' })).toHaveAttribute(
       'src',
       property.weatherData.current.weatherIcons[0],
     );
+    expect(region('Location')).toEqual(LOCATION);
     expect(ids).toEqual(['id-9']);
   });
 
@@ -144,11 +156,15 @@ describe('DetailsPage', () => {
 
     renderDetails();
 
+    const location = await screen.findByRole('region', { name: 'Location' });
     expect(
-      await screen.findByText(
-        /Coordinates are those of the town Weatherstack resolved the address to, not of the building\./,
+      within(location).getByText(
+        'Coordinates are those of the town Weatherstack resolved the address to, not of the building.',
       ),
-    ).toHaveTextContent('Weather is as of when the property was created.');
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Weather is as of when the property was created. It is not refreshed.'),
+    ).toBeInTheDocument();
   });
 
   it('FR-12 AC3: an unknown id shows "Property not found" with a link back to the list', async () => {
@@ -249,32 +265,17 @@ describe('DetailsPage', () => {
   });
 
   it('FR-12 AC5: empty description and icon lists leave out the conditions and the icon', async () => {
-    const bare = propertyFixture({
-      id: 'id-9',
-      weatherData: {
-        units: 'IMPERIAL',
-        current: {
-          ...property.weatherData.current,
-          weatherDescriptions: [],
-          weatherIcons: [],
-        },
-      },
-    });
-    serveProperty(found(bare));
+    serveProperty(found(withCurrent({ weatherDescriptions: [], weatherIcons: [] })));
 
     renderDetails();
 
-    await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
-    expect(Object.keys(keyDetails())).toEqual([
-      'Address',
-      'Coordinates',
-      'Created',
-      'Temperature',
-      'Feels like',
-      'Wind',
-      'Humidity',
-    ]);
+    await screen.findByRole('heading', { level: 1, name: STREET });
+    const hero = screen.getByRole('region', { name: 'Current weather' });
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(within(hero).queryByText('Clear')).not.toBeInTheDocument();
+    expect(temperature('82 °F')).toBeInTheDocument();
+    expect(within(hero).getByText(/^Feels like 79 °F/)).toBeInTheDocument();
+    expect(details(hero)).toEqual(TILES);
   });
 
   it('FR-12 AC6: shows the extra weather, astronomy and air quality with units', async () => {
@@ -282,13 +283,19 @@ describe('DetailsPage', () => {
 
     renderDetails();
 
-    await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
+    await screen.findByRole('heading', { level: 1, name: STREET });
     expect(
       screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
-    ).toEqual(['Weather details', 'Astronomy', 'Air quality']);
-    expect(group('Weather details')).toEqual(WEATHER_DETAILS);
-    expect(group('Astronomy')).toEqual(ASTRONOMY);
-    expect(group('Air quality')).toEqual(AIR_QUALITY);
+    ).toEqual(['Location', 'Air quality', 'Sun and moon', 'Precipitation']);
+    const hero = screen.getByRole('region', { name: 'Current weather' });
+    expect(details(hero)).toEqual(TILES);
+    expect(within(hero).getByText('Feels like 79 °F · observed 01:13 PM UTC')).toBeInTheDocument();
+    expect(region('Precipitation')).toEqual(PRECIPITATION);
+    expect(region('Sun and moon')).toEqual(SUN_AND_MOON);
+    expect(region('Air quality')).toEqual(AIR_QUALITY);
+    expect(
+      within(screen.getByRole('region', { name: 'Air quality' })).getByText('US EPA 1 (Good)'),
+    ).toBeInTheDocument();
   });
 
   it('FR-12 AC6: zero values are shown, not left out', async () => {
@@ -304,60 +311,91 @@ describe('DetailsPage', () => {
 
     renderDetails();
 
-    await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
-    expect(group('Weather details')).toMatchObject({ Precipitation: '0 in', 'UV index': '0' });
-    expect(group('Astronomy')).toEqual({ 'Moon illumination': '0 %' });
+    await screen.findByRole('heading', { level: 1, name: STREET });
+    expect(region('Current weather')).toHaveProperty('UV index', '0');
+    expect(region('Precipitation')).toHaveProperty('Precipitation', '0 in');
+    expect(region('Sun and moon')).toEqual({ Illumination: '0 %' });
   });
 
   it.each([
-    ['astro', { astro: null }, 'Astronomy'],
+    ['astro', { astro: null }, 'Sun and moon'],
     ['airQuality', { airQuality: null }, 'Air quality'],
   ] as const)(
-    'FR-12 AC5: a missing %s leaves out its group, the rest still shows',
+    'FR-12 AC5: a missing %s leaves out its card, the rest still shows',
     async (_name, current, missing) => {
       serveProperty(found(withCurrent(current)));
 
       renderDetails();
 
-      await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
+      await screen.findByRole('heading', { level: 1, name: STREET });
       expect(screen.queryByRole('region', { name: missing })).not.toBeInTheDocument();
-      expect(screen.getAllByRole('region')).toHaveLength(2);
-      expect(group('Weather details')).toEqual(WEATHER_DETAILS);
-      expect(keyDetails()).toHaveProperty('Temperature', '82 °F');
+      expect(screen.getAllByRole('region')).toHaveLength(4);
+      expect(region('Current weather')).toEqual(TILES);
+      expect(region('Precipitation')).toEqual(PRECIPITATION);
+      expect(temperature('82 °F')).toBeInTheDocument();
     },
   );
 
-  it('FR-12 AC5: a missing pressure leaves out only its row', async () => {
+  it('FR-12 AC5: an air quality with only the US EPA index shows the card with only the badge', async () => {
+    const airQuality = {
+      co: null,
+      no2: null,
+      o3: null,
+      so2: null,
+      pm2_5: null,
+      pm10: null,
+      usEpaIndex: 1,
+      gbDefraIndex: null,
+    };
+    serveProperty(found(withCurrent({ airQuality })));
+
+    renderDetails();
+
+    const card = await screen.findByRole('region', { name: 'Air quality' });
+    expect(within(card).getByText('US EPA 1 (Good)')).toBeInTheDocument();
+    expect(within(card).queryAllByRole('term')).toHaveLength(0);
+  });
+
+  it('FR-12 AC5: a missing US EPA index leaves out only the badge', async () => {
+    const { airQuality } = property.weatherData.current;
+    if (!airQuality) throw new Error('the fixture has air quality');
+    serveProperty(found(withCurrent({ airQuality: { ...airQuality, usEpaIndex: null } })));
+
+    renderDetails();
+
+    const card = await screen.findByRole('region', { name: 'Air quality' });
+    expect(region('Air quality')).toEqual(AIR_QUALITY);
+    expect(within(card).queryByText(/US EPA/)).not.toBeInTheDocument();
+  });
+
+  it('FR-12 AC5: a missing pressure leaves out only its tile', async () => {
     serveProperty(found(withCurrent({ pressure: null })));
 
     renderDetails();
 
-    await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
-    expect(group('Weather details')).toEqual({ ...WEATHER_DETAILS, Pressure: undefined });
-    expect(group('Weather details')).not.toHaveProperty('Pressure');
-    expect(group('Astronomy')).toEqual(ASTRONOMY);
-    expect(group('Air quality')).toEqual(AIR_QUALITY);
+    await screen.findByRole('heading', { level: 1, name: STREET });
+    expect(region('Current weather')).toEqual({ ...TILES, Pressure: undefined });
+    expect(region('Current weather')).not.toHaveProperty('Pressure');
+    expect(region('Precipitation')).toEqual(PRECIPITATION);
+    expect(region('Sun and moon')).toEqual(SUN_AND_MOON);
+    expect(region('Air quality')).toEqual(AIR_QUALITY);
   });
 
-  it('FR-12 AC5: a group whose fields are all missing is left out', async () => {
-    serveProperty(
-      found(
-        withCurrent({
-          observationTime: null,
-          pressure: null,
-          precip: null,
-          cloudCover: null,
-          uvIndex: null,
-          visibility: null,
-        }),
-      ),
-    );
+  it('FR-12 AC5: a card whose fields are all missing is left out', async () => {
+    serveProperty(found(withCurrent({ observationTime: null, precip: null, cloudCover: null })));
 
     renderDetails();
 
-    await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' });
-    expect(screen.queryByRole('region', { name: 'Weather details' })).not.toBeInTheDocument();
-    expect(group('Astronomy')).toEqual(ASTRONOMY);
+    await screen.findByRole('heading', { level: 1, name: STREET });
+    expect(screen.queryByRole('region', { name: 'Precipitation' })).not.toBeInTheDocument();
+    expect(region('Current weather')).toEqual({
+      Wind: '6 mph NE',
+      Humidity: '34 %',
+      'UV index': '0',
+      Pressure: '1010 mb',
+      Visibility: '6 mi',
+    });
+    expect(region('Sun and moon')).toEqual(SUN_AND_MOON);
   });
 
   it('NFR-09: shows a loading status while the property loads', async () => {
@@ -369,9 +407,7 @@ describe('DetailsPage', () => {
     renderDetails();
 
     expect(screen.getByRole('status')).toHaveTextContent('Loading property…');
-    expect(
-      await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: STREET })).toBeInTheDocument();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
@@ -386,9 +422,7 @@ describe('DetailsPage', () => {
     fail = false;
     await user.click(within(alert).getByRole('button', { name: 'Retry' }));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: '15528 E Golden Eagle Blvd' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: STREET })).toBeInTheDocument();
     expect(ids).toEqual(['id-9', 'id-9']);
   });
 });

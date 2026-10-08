@@ -346,8 +346,8 @@ spacer, `Link` "New property" styled as the primary button with `PlusIcon`. `<ma
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: Theme tokens and app shell (35c67e6)
-- [ ] Phase 2: List page
-- [ ] Phase 3: Details page
+- [x] Phase 2: List page (0ed8922)
+- [x] Phase 3: Details page
 - [ ] Phase 4: Create page and responsive pass
 
 ## Deviations

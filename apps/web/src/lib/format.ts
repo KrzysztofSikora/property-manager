@@ -23,3 +23,13 @@ export function epaIndexLabel(index: number): string {
   const label = EPA_INDEX_LABELS[index - 1];
   return label === undefined ? String(index) : `${String(index)} (${label})`;
 }
+
+export type EpaIndexTone = 'good' | 'fair' | 'poor' | 'neutral';
+
+// Badge colour for a US EPA index: 1 good, 2-3 fair, 4-6 poor, any other value neutral.
+export function epaIndexTone(index: number): EpaIndexTone {
+  if (index === 1) return 'good';
+  if (index === 2 || index === 3) return 'fair';
+  if (index >= 4 && index <= 6) return 'poor';
+  return 'neutral';
+}

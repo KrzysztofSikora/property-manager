@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { epaIndexLabel, formatDateTime } from './format';
+import { epaIndexLabel, epaIndexTone, formatDateTime } from './format';
 
 describe('formatDateTime', () => {
   it('formats an ISO date-time as en-US medium date and short time in the viewer time zone', () => {
@@ -27,5 +27,19 @@ describe('epaIndexLabel', () => {
     [7, '7'],
   ])('TR-28: shows index %i outside 1-6 as the bare number', (index, label) => {
     expect(epaIndexLabel(index)).toBe(label);
+  });
+});
+
+describe('epaIndexTone', () => {
+  it.each([
+    [0, 'neutral'],
+    [1, 'good'],
+    [2, 'fair'],
+    [3, 'fair'],
+    [4, 'poor'],
+    [6, 'poor'],
+    [7, 'neutral'],
+  ] as const)('TR-28: gives US EPA index %i the %s badge tone', (index, tone) => {
+    expect(epaIndexTone(index)).toBe(tone);
   });
 });

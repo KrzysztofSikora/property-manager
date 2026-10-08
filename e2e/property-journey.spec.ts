@@ -18,14 +18,20 @@ test('create, see weather, find it in the list, filter, delete', async ({ page }
   await expect(page.getByRole('heading', { level: 1, name: street })).toBeVisible();
   await expect(page.getByText('82 °F', { exact: true })).toBeVisible();
   await expect(page.getByText('Clear', { exact: true })).toBeVisible();
-  await expect(page.getByText('33.609, -111.729', { exact: true })).toBeVisible();
+  const location = page.getByRole('region', { name: 'Location' });
+  await expect(location.getByText('33.609', { exact: true })).toBeVisible();
+  await expect(location.getByText('-111.729', { exact: true })).toBeVisible();
 
   // A reload of the deep link goes through the SPA fallback and the API again.
   await page.reload();
   await expect(page.getByRole('heading', { level: 1, name: street })).toBeVisible();
 
   // List, newest first: the new property is row 1, the older one row 2 (row 0 is the header).
-  await page.getByRole('link', { name: 'Properties', exact: true }).click();
+  // The breadcrumb has a "Properties" link too, so go through the app bar.
+  await page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Properties', exact: true })
+    .click();
   const rows = page.getByRole('row');
   await expect(rows.nth(1).getByRole('link', { name: street })).toBeVisible();
   await expect(rows.nth(2).getByRole('link', { name: otherStreet })).toBeVisible();
