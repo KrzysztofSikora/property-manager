@@ -1,0 +1,208 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /mutation list-and-details-pages                                              
+
+  Searched for 1 pattern, ran 3 shell commands (ctrl+o to expand)
+
+● I'll focus mutation testing on the real logic changes: error mapping in
+  graphql-errors.ts, query filtering in useProperties.ts, cache invalidation in
+  useDeleteProperty.ts, and the sort guard/filtered-state logic in ListPage.tsx.
+  I'm skipping thin wrappers, presentation components, and generated GraphQL
+  code.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Tests pass (52, about 2 s). Now running Stryker on the four targets at
+  concurrency 4.
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● Baseline is 82.6% with 16 survivors. I'm now adding three tests: switching the
+  sort back to "Newest first", a parametrised case for whitespace-only filters,
+  and a hook test for the delete cache rule.
+
+● Update(apps/web/src/pages/ListPage.test.tsx)
+  ⎿  Added 4 lines
+      139      await user.selectOptions(screen.getByRole('combobox', { na
+           me: 'Sort' }), 'Oldest first');
+      140  
+      141      await expect.poll(rowStreets).toEqual(['1 Oldest Rd', '2 M
+           iddle Ave', '3 Newest St']);
+      142 +    await user.selectOptions(screen.getByRole('combobox', { na
+          +me: 'Sort' }), 'Newest first');                               
+      143 +                                                              
+      144 +    await expect.poll(rowStreets).toEqual(['3 Newest St', '2 M
+          +iddle Ave', '1 Oldest Rd']);                                  
+      145      expect(requests.map((variables) => variables.sort)).toEqua
+           l([
+      146        'CREATED_AT_DESC',
+      147        'CREATED_AT_ASC',
+      148 +      'CREATED_AT_DESC',                                      
+      149      ]);
+      150    });
+      151  
+
+● Update(apps/web/src/pages/ListPage.test.tsx)
+  ⎿  Added 18 lines
+      244      );
+      245    });
+      246  
+      247 +  it.each(['City', 'Zip code'])(                              
+      248 +    'FR-11 AC6: a whitespace-only %s is a blank filter: left o
+          +ut, and the empty state is "No properties yet"',              
+      249 +    async (field) => {                                        
+      250 +      const requests = serveProperties(() => []);             
+      251 +      const user = userEvent.setup();                         
+      252 +      renderWithProviders(<ListPage />);                      
+      253 +      await screen.findByText('No properties yet');           
+      254 +                                                              
+      255 +      await user.type(screen.getByRole('textbox', { name: fiel
+          +d }), '   ');                                                 
+      256 +      await user.click(screen.getByRole('button', { name: 'App
+          +ly' }));                                                      
+      257 +                                                              
+      258 +      await expect.poll(() => requests).toHaveLength(2);      
+      259 +      expect(requests[1]).toEqual({ filter: {}, sort: 'CREATED
+          +_AT_DESC' });                                                 
+      260 +      expect(await screen.findByText('No properties yet')).toB
+          +eInTheDocument();                                             
+      261 +      expect(screen.queryByText('No properties match the filte
+          +rs')).not.toBeInTheDocument();                                
+      262 +    },                                                        
+      263 +  );                                                          
+      264 +                                                              
+      265    it('FR-11 AC6: a failed request shows an error, and Retry re
+           quests again and shows the rows', async () => {
+      266      let calls = 0;
+      267      server.use(
+
+● Write(apps/web/src/hooks/useDeleteProperty.test.tsx)
+  ⎿  Wrote 33 lines to apps/web/src/hooks/useDeleteProperty.test.tsx
+       1 import { QueryClient, QueryClientProvider } from '@tanstack/reac
+         t-query';
+       2 import { renderHook, waitFor } from '@testing-library/react';
+       4 import type { ReactNode } from 'react';
+       5 import { describe, expect, it } from 'vitest';
+       6 import { api, server } from '../test/msw';
+       7 import { useDeleteProperty } from './useDeleteProperty';
+       9 describe('useDeleteProperty', () => {
+      10   it('drops the cached details of the deleted property and keeps
+          those of others', async () => {
+     … +35 lines (ctrl+o to expand)
+  ⎿  PostToolUse:Write hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/web/src/hooks/useDeleteProperty.test.tsx):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src/hooks/
+     useDeleteProperty.test.tsx
+       26:25  error  Returning a void expression from an arrow function 
+     shorthand is forbidden. Please add braces to the arrow function  
+     @typescript-eslint/no-confusing-void-expression
+
+     ✖ 1 problem (1 error, 0 warnings)
+       1 error and 0 warnings potentially fixable with the `--fix` option.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager && sed -i 's/
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));/
+      await expect.p…)
+  ⎿  Checking formatting...
+     All matched files use Prettier code style!
+     $ tsc -p tsconfig.app.json && tsc -p tsconfig.node.json
+           Tests  55 passed (55)
+  ⎿  Updated apps/web/src/hooks/useDeleteProperty.test.tsx (+2 -2)
+      1  import { QueryClient, QueryClientProvider } from '@tanstack/reac
+         t-query';
+      2 -import { renderHook, waitFor } from '@testing-library/react';   
+      2 +import { renderHook } from '@testing-library/react';            
+      3  import { HttpResponse } from 'msw/http';
+      4  import type { ReactNode } from 'react';
+      5  import { describe, expect, it } from 'vitest';
+     ...
+      23  
+      24      result.current.mutate('id-2');
+      25  
+      26 -    await waitFor(() => expect(result.current.isSuccess).toBe(t
+         -rue));                                                         
+      26 +    await expect.poll(() => result.current.isSuccess).toBe(true
+         +);                                                             
+      27      // Re-opening the deleted property's page fetches it instea
+          d of showing stale details.
+      28      expect(queryClient.getQueryData(['properties', 'detail', 'i
+          d-2'])).toBeUndefined();
+      29      expect(queryClient.getQueryData(['properties', 'detail', 'i
+          d-3'])).toEqual({
+
+● Tests pass (55). Re-running Stryker on the same scope.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Up to 92.4%. Five mutants still time out, so I'm re-running them at
+  concurrency 1 to confirm they are real hangs and not load (per lessons.md).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(context/changes/list-and-details-pages/mutation.md)
+  ⎿  Wrote 57 lines to context/changes/list-and-details-pages/mutation.md
+       1 # Mutation check: list-and-details-pages
+       3 Targets: `apps/web/src/lib/graphql-errors.ts`, `apps/web/src/hoo
+         ks/useProperties.ts`,
+         istPage.tsx:9-43` ·
+         oncurrency 4`
+       6 Score: 82.61% -> 92.39% (before 71 / 16 / 0 / 5, after 80 / 7 / 
+       7 no coverage / timeout)
+       8 
+         execute.ts` unchanged. The
+         e four were run:
+     … +107 lines (ctrl+o to expand)
+
+● I ran the mutation check on the S-04 code. The score went from 82.6% to 92.4%,
+  and no production code was changed. The plan had said S-04 needed no mutation
+  step, since it doesn't change execute.ts, but the change added four pieces of
+  logic that fit the skill's criteria, so I mutated those:
+
+  - graphql-errors.ts: reads the error code the UI acts on. All 12 mutants were
+    already killed.
+  - useProperties.ts: builds the list query (blank filters left out, values
+    trimmed).
+  - useDeleteProperty.ts: decides what the cache drops or reloads after a
+    delete.
+  - ListPage.tsx:9-43: the sort guard, reading the filter form, and which empty
+    message to show.
+
+  Tests added (9 survivors now killed):
+  - Sort back to "Newest first": the existing sort test now switches back and
+    checks the order and the request.
+  - Whitespace-only City or Zip code: one parametrised test checks the filter is
+    left out of the request and the page says "No properties yet", not "No
+    properties match the filters".
+  - New hooks/useDeleteProperty.test.tsx: after a delete, the cached details of
+    that property are gone and another property's details are kept.
+
+  7 survivors remain, all recorded with a reason: 6 can't change any outcome,
+  and 1 is accepted. That one is removing event.preventDefault(): in a real
+  browser, Apply would reload the page and lose the filters, but jsdom never
+  navigates. I noted it as something the S-06 Playwright tests should cover.
+
+  Timeouts: 5 mutants timed out. Re-run alone at concurrency 1, 2 were killed
+  and 3 still hung (the page stays loading forever). So none of them was hiding
+  a survivor.
+
+  Bugs: none found.
+
+  The 55 web tests pass, and lint, typecheck and format are clean. Nothing is
+  committed yet. Everything is recorded in
+  context/changes/list-and-details-pages/mutation.md.
+
+  Test plan: I suggest adding useProperties.ts, useDeleteProperty.ts and
+  graphql-errors.ts to Mutation targets through /test-plan, with this run as
+  their baseline. I didn't propose a new rule for lessons.md, because no
+  survivor showed a weakness that comes up again and again.
+
+✻ Cooked for 9m 39s · done 11:12 AM

@@ -1,0 +1,987 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement list-and-details-pages                                             
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Starting Phase 1: building the / list page with sorting, filtering,
+  loading/empty/error states, and detail links, validated by ListPage.test.tsx
+  plus codegen, typecheck, lint, format, and unit tests. I'm noting that roadmap
+  and some plan files are already modified/untracked before I begin.
+
+● Bash(sed -i 's/| S-03 | M | planned |/| S-03 | M | in-progress |/'
+      context/roadmap.md && grep -n "S-04" context/roadmap.md | head -3; find
+      apps/web -path '*/node_mod…)
+  ⎿  17:| S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs), FR
+     -12 (AC1–AC5) | S-03 | M | in-progress |
+     18:| S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04 | M
+     … +404 lines (ctrl+o to expand)
+  ⎿  Updated context/roadmap.md (+1 -1)
+      14  | S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1
+          –AC3, AC6), FR-07, FR-10 | F-02 | M | done |
+      15  | S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5)
+          , FR-06, FR-08, FR-10 | S-01 | M | done |
+      16  | S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-0
+          2, FR-03, FR-04, FR-09, FR-10 | S-01 | M | done |
+      17 -| S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs)
+         -, FR-12 (AC1–AC5) | S-03 | M | planned |                       
+      17 +| S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs)
+         +, FR-12 (AC1–AC5) | S-03 | M | in-progress |                   
+      18  | S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04
+           | M | todo |
+      19  | S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-1
+          5 | S-05 | M | todo |
+      20  
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Bash(head -20 packages/shared/src/states.ts; tail -15
+      packages/shared/src/states.ts; source ~/.nvm/nvm.sh && nvm use >/dev/null
+      && pnpm --filter @property-manager/we…)
+  ⎿  /** The 50 US states plus DC, keyed by USPS code. */
+     export const US_STATES = {
+       AL: 'Alabama',
+     … +46 lines (ctrl+o to expand)
+  ⎿  Updated pnpm-lock.yaml (+16 -0)
+      263  
+      264    apps/web:
+      265      dependencies:
+      266 +      '@property-manager/shared':                             
+      267 +        specifier: workspace:*                                
+      268 +        version: link:../../packages/shared                   
+      269        '@tanstack/react-query':
+      270          specifier: ^5.104.1
+      271          version: 5.104.1(react@19.3.0)
+     ...
+      300        '@testing-library/react':
+      301          specifier: ^16.3.3
+      302          version: 16.3.3(@testing-library/dom@10.4.2)(@types/re
+           act-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(reac
+           t-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      303 +      '@testing-library/user-event':                          
+      304 +        specifier: ^14.6.7                                    
+      305 +        version: 14.6.7(@testing-library/dom@10.4.2)          
+      306        '@types/node':
+      307          specifier: ^24.19.1
+      308          version: 24.19.1
+     ...
+      1979        '@types/react-dom':
+      1980          optional: true
+      1981  
+      1982 +  '@testing-library/user-event@14.6.7':                      
+      1983 +    resolution: {integrity: sha512-MPCpX8bxe8zS+JmmTwLp8jd0dy
+           +1rAm60Te/SL8JrQM3qvQJcBOs1d7IefJMyZzqM3EWBrDn/LWDt1BCGu4ASfg=
+           +=}                                                           
+      1984 +    engines: {node: '>=12', npm: '>=6'}                      
+      1985 +    peerDependencies:                                        
+      1986 +      '@testing-library/dom': '>=7.21.4'                     
+      1987 +                                                             
+      1988    '@types/aria-query@5.0.4':
+      1989      resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brpl
+            hcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw=
+            =}
+      1990  
+     ...
+      6088        '@types/react': 19.3.0
+      6089        '@types/react-dom': 19.3.0(@types/react@19.3.0)
+      6090  
+      6091 +  '@testing-library/user-event@14.6.7(@testing-library/dom@10
+           +.4.2)':                                                      
+      6092 +    dependencies:                                            
+      6093 +      '@testing-library/dom': 10.4.2                         
+      6094 +                                                             
+      6095    '@types/aria-query@5.0.4': {}
+      6096  
+      6097    '@types/chai@5.2.3':
+  ⎿  Updated apps/web/package.json (+2 -0)
+      11      "test:mutation": "stryker run"
+      12    },
+      13    "dependencies": {
+      14 +    "@property-manager/shared": "workspace:*",                 
+      15      "@tanstack/react-query": "^5.104.1",
+      16      "react": "^19.3.0",
+      17      "react-dom": "^19.3.0",
+     ...
+      25      "@testing-library/dom": "^10.4.2",
+      26      "@testing-library/jest-dom": "^7.0.1",
+      27      "@testing-library/react": "^16.3.3",
+      28 +    "@testing-library/user-event": "^14.6.7",                  
+      29      "@types/node": "^24.19.1",
+      30      "@types/react": "^19.3.0",
+      31      "@types/react-dom": "^19.3.0",
+
+● Dependencies are added. Next I'm writing the test setup (dialog polyfill, UTC
+  time zone) and fixtures, then the hook and the list page, test-first.
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Now the hook, then codegen.
+
+● Bash(mkdir -p apps/web/src/hooks && cat > apps/web/src/hooks/useProperties.ts
+      <<'EOF'
+      import { keepPreviousData, useQuery } from '@tanstack/react-query';…)
+  ⎿  ✔ Generate
+     ✔ Generate to apps/web/src/graphql/
+     ✔ Generate outputs
+     … +8 lines (ctrl+o to expand)
+  ⎿  Deleted apps/web/src/components/ApiStatus.test.tsx (+0 -23)
+       1 -import { screen } from '@testing-library/react';               
+       2 -import { HttpResponse } from 'msw/http';                       
+       3 -import { describe, expect, it } from 'vitest';                 
+       4 -import { api, server } from '../test/msw';                     
+       5 -import { renderWithProviders } from '../test/render';          
+       6 -import { ApiStatus } from './ApiStatus';                       
+       7 -                                                               
+       8 -describe('ApiStatus', () => {                                  
+       9 -  it('shows checking, then ok when the health query succeeds', 
+         -async () => {                                                  
+      10 -    renderWithProviders(<ApiStatus />);                        
+      11 -                                                               
+      12 -    expect(screen.getByText('API: checking…')).toBeInTheDocumen
+         -t();                                                           
+      13 -    expect(await screen.findByText('API: ok')).toBeInTheDocumen
+         -t();                                                           
+      14 -  });                                                          
+      15 -                                                               
+      16 -  it('shows unreachable on a network error', async () => {     
+      17 -    server.use(api.query('Health', () => HttpResponse.error()))
+         -;                                                              
+      18 -                                                               
+      19 -    renderWithProviders(<ApiStatus />);                        
+      20 -                                                               
+      21 -    expect(await screen.findByText('API: unreachable')).toBeInT
+         -heDocument();                                                  
+      22 -  });                                                          
+      23 -});                                                            
+  ⎿  Deleted apps/web/src/components/ApiStatus.tsx (+0 -26)
+       1 -import { useQuery } from '@tanstack/react-query';              
+       2 -import { graphql } from '../graphql';                          
+       3 -import { execute } from '../lib/execute';                      
+       4 -                                                               
+       5 -// Placeholder until S-04: proves codegen → execute() → TanStac
+         -k Query → Vite proxy.                                          
+       6 -const HealthQuery = graphql(`                                  
+       7 -  query Health {                                               
+       8 -    health                                                     
+       9 -  }                                                            
+      10 -`);                                                            
+      11 -                                                               
+      12 -export function ApiStatus() {                                  
+      13 -  const { isPending, isError } = useQuery({                    
+      14 -    queryKey: ['health'],                                      
+      15 -    queryFn: () => execute(HealthQuery),                       
+      16 -    // Show "unreachable" at once instead of after TanStack's d
+         -efault three retries.                                          
+      17 -    retry: false,                                              
+      18 -  });                                                          
+      19 -                                                               
+      20 -  const label = isPending ? 'checking…' : isError ? 'unreachabl
+         -e' : 'ok';                                                     
+      21 -  return (                                                     
+      22 -    <p role="status" className="text-sm text-gray-500">        
+      23 -      API: {label}                                             
+      24 -    </p>                                                       
+      25 -  );                                                           
+      26 -}                                                              
+  ⎿  Created apps/web/src/hooks/useProperties.ts (+41 -0)
+       1 +import { keepPreviousData, useQuery } from '@tanstack/react-que
+         +ry';                                                           
+       2 +import { graphql } from '../graphql';                          
+       3 +import type { PropertyFilter, PropertySort } from '../graphql/g
+         +raphql';                                                       
+       4 +import { execute } from '../lib/execute';                      
+       5 +                                                               
+       6 +const PropertiesQuery = graphql(`                              
+       7 +  query Properties($filter: PropertyFilter, $sort: PropertySort
+         +) {                                                            
+       8 +    properties(filter: $filter, sort: $sort) {                 
+       9 +      items {                                                  
+      10 +        id                                                     
+      11 +        street                                                 
+      12 +        city                                                   
+      13 +        state                                                  
+      14 +        zipCode                                                
+      15 +        createdAt                                              
+      16 +      }                                                        
+      17 +      totalCount                                               
+      18 +    }                                                          
+      19 +  }                                                            
+      20 +`);                                                            
+      21 +                                                               
+      22 +export type PropertiesFilter = { city: string; state: string; z
+         +ipCode: string };                                              
+      23 +                                                               
+      24 +// Blank values are left out, so the request carries only the f
+         +ilters the user set.                                           
+      25 +function toFilter({ city, state, zipCode }: PropertiesFilter): 
+         +PropertyFilter {                                               
+      26 +  const filter: PropertyFilter = {};                           
+      27 +  if (city.trim()) filter.city = city.trim();                  
+      28 +  if (state) filter.state = state;                             
+      29 +  if (zipCode.trim()) filter.zipCode = zipCode.trim();         
+      30 +  return filter;                                               
+      31 +}                                                              
+      32 +                                                               
+      33 +export function useProperties({ filter, sort }: { filter: Prope
+         +rtiesFilter; sort: PropertySort }) {                           
+      34 +  return useQuery({                                            
+      35 +    queryKey: ['properties', 'list', { filter, sort }],        
+      36 +    // No `limit`: the list shows every match (pagination is #1
+         +0).                                                            
+      37 +    queryFn: () => execute(PropertiesQuery, { filter: toFilter(
+         +filter), sort }),                                              
+      38 +    // Keep the current rows on screen while a new sort or filt
+         +er loads.                                                      
+      39 +    placeholderData: keepPreviousData,                         
+      40 +  });                                                          
+     … 1 more lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/app/Layout.tsx (+0 -2)
+      1  import { Link, Outlet } from 'react-router';
+      2 -import { ApiStatus } from '../components/ApiStatus';            
+      2  
+      3  export function Layout() {
+      4    return (
+     ...
+      10            </Link>
+      11            <Link to="/properties/new">New property</Link>
+      12          </nav>
+      14 -        <ApiStatus />                                          
+      13        </header>
+      14        <main>
+      15          <Outlet />
+  ⎿  Updated apps/web/src/main.tsx (+2 -1)
+      10    throw new Error('index.html has no #root element');
+      11  }
+      12  
+      13 -const queryClient = new QueryClient();                         
+      13 +// No automatic retries: the error states show at once, and the
+         +ir Retry button is the retry.                                  
+      14 +const queryClient = new QueryClient({ defaultOptions: { queries
+         +: { retry: false } } });                                       
+      15  
+      16  createRoot(root).render(
+      17    <StrictMode>
+  ⎿  … 2 more files changed
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Bash(cat > apps/web/src/test/fixtures.ts <<'EOF'
+      import type { PropertiesQuery } from '../graphql/graphql';…)
+  ⎿  Created apps/web/src/test/fixtures.ts (+62 -0)
+       1 +import type { PropertiesQuery } from '../graphql/graphql';     
+       2 +                                                               
+       3 +// A stored property as the API returns it: the PRD's canonical
+         + address, with the key weather                                 
+       4 +// fields of the recorded Weatherstack sample. `raw` is left ou
+         +t because no page asks for it.                                 
+       5 +export function propertyFixture(overrides: Partial<PropertyFixt
+         +ure> = {}): PropertyFixture {                                  
+       6 +  return {                                                     
+       7 +    id: '0b6f5c2e-6a51-4d8e-9f1e-3c2a7d9b4e10',                
+       8 +    street: '15528 E Golden Eagle Blvd',                       
+       9 +    city: 'Fountain Hills',                                    
+      10 +    state: 'AZ',                                               
+      11 +    zipCode: '85268',                                          
+      12 +    lat: 33.609,                                               
+      13 +    long: -111.729,                                            
+      14 +    createdAt: '2026-09-14T15:42:00.000Z',                     
+      15 +    weatherData: {                                             
+      16 +      units: 'IMPERIAL',                                       
+      17 +      current: {                                               
+      18 +        temperature: 82,                                       
+      19 +        feelsLike: 79,                                         
+      20 +        weatherDescriptions: ['Clear'],                        
+      21 +        weatherIcons: [                                        
+      22 +          'https://cdn.worldweatheronline.com/images/wsymbols01
+         +_png_64/wsymbol_0008_clear_sky_night.png',                     
+      23 +        ],                                                     
+      24 +        windSpeed: 6,                                          
+      25 +        windDir: 'NE',                                         
+      26 +        humidity: 34,                                          
+      27 +      },                                                       
+      28 +    },                                                         
+      29 +    ...overrides,                                              
+      30 +  };                                                           
+      31 +}                                                              
+      32 +                                                               
+      33 +export type PropertyFixture = {                                
+      34 +  id: string;                                                  
+      35 +  street: string;                                              
+      36 +  city: string;                                                
+      37 +  state: string;                                               
+      38 +  zipCode: string;                                             
+      39 +  lat: number;                                                 
+      40 +  long: number;                                                
+     … 22 more lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/test/msw.ts (+7 -2)
+       5  // MSW 3 scopes GraphQL handlers to an endpoint. Relative to th
+          e jsdom origin, like the app.
+       6  export const api = graphql.link('/graphql');
+       7  
+       8 -// Default: the API is up. Tests override per case with `server
+         -.use(...)`.                                                    
+       9 -export const handlers = [api.query('Health', () => HttpResponse
+         -.json({ data: { health: 'ok' } }))];                           
+       8 +// Defaults: no properties stored. Tests override per case with
+         + `server.use(...)`.                                            
+       9 +export const handlers = [                                      
+      10 +  api.query('Properties', () =>                                
+      11 +    HttpResponse.json({ data: { properties: { items: [], totalC
+         +ount: 0 } } }),                                                
+      12 +  ),                                                           
+      13 +  api.query('Property', () => HttpResponse.json({ data: { prope
+         +rty: null } })),                                               
+      14 +];                                                             
+      15  
+      16  export const server = setupServer(...handlers);
+  ⎿  Updated apps/web/src/test/setup.ts (+17 -0)
+       3  import { afterAll, afterEach, beforeAll } from 'vitest';
+       4  import { server } from './msw';
+       5  
+       6 +// jsdom has no `showModal()` / `close()` on <dialog>, only the
+         + `open` attribute. This covers                                 
+       7 +// what the components use; modality, focus and Esc are checked
+         + in a real browser.                                            
+       8 +if (typeof HTMLDialogElement.prototype.showModal !== 'function'
+         +) {                                                            
+       9 +  HTMLDialogElement.prototype.showModal = function showModal(th
+         +is: HTMLDialogElement) {                                       
+      10 +    this.open = true;                                          
+      11 +  };                                                           
+      12 +  HTMLDialogElement.prototype.close = function close(          
+      13 +    this: HTMLDialogElement,                                   
+      14 +    returnValue?: string,                                      
+      15 +  ) {                                                          
+      16 +    if (!this.open) return;                                    
+      17 +    this.open = false;                                         
+      18 +    if (returnValue !== undefined) this.returnValue = returnVal
+         +ue;                                                            
+      19 +    this.dispatchEvent(new Event('close'));                    
+      20 +  };                                                           
+      21 +}                                                              
+      22 +                                                               
+      23  beforeAll(() => {
+      24    server.listen({ onUnhandledFrame: 'error' });
+      25  });
+  ⎿  Updated apps/web/vitest.config.ts (+2 -0)
+       9      environment: 'jsdom',
+      10      include: ['src/**/*.test.{ts,tsx}'],
+      11      setupFiles: ['src/test/setup.ts'],
+      12 +    // Dates render in the viewer's time zone. Pinned so assert
+         +ions read the same everywhere.                                 
+      13 +    env: { TZ: 'UTC' },                                        
+      14    },
+      15  });
+
+● Tests first for formatDateTime, with a non-midnight UTC time to prove the TZ
+  pin:
+
+● Bash(cat > apps/web/src/lib/format.test.ts <<'EOF'
+      import { describe, expect, it } from 'vitest';…)
+  ⎿       × formats an ISO date-time as en-US medium date and short time in
+      the viewer time zone 16ms
+     ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+     … +3 lines (ctrl+o to expand)
+  ⎿  Created apps/web/src/lib/format.test.ts (+11 -0)
+       1 +import { describe, expect, it } from 'vitest';                 
+       2 +import { formatDateTime } from './format';                     
+       3 +                                                               
+       4 +describe('formatDateTime', () => {                             
+       5 +  it('formats an ISO date-time as en-US medium date and short t
+         +ime in the viewer time zone', () => {                          
+       6 +    // Web tests run with TZ=UTC. A non-midnight time near the 
+         +day boundary would shift date and                              
+       7 +    // hour under any other zone, so this also proves the pin h
+         +olds.                                                          
+       8 +    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).to
+         +Be('UTC');                                                     
+       9 +    expect(formatDateTime('2026-09-14T23:42:00.000Z')).toBe('Se
+         +p 14, 2026, 11:42 PM');                                        
+      10 +  });                                                          
+      11 +});                                                            
+  ⎿  Created apps/web/src/lib/format.ts (+3 -0)
+      1 +export function formatDateTime(iso: string): string {           
+      2 +  throw new Error(iso);                                         
+      3 +}                                                               
+
+● Bash(cat > apps/web/src/lib/format.ts <<'EOF'
+      // Created once: building an Intl formatter is slow. Uses the viewer's
+      time zone.…)
+  ⎿        Tests  1 passed (1)
+  ⎿  Updated apps/web/src/lib/format.ts (+4 -1)
+      1 +// Created once: building an Intl formatter is slow. Uses the vi
+        +ewer's time zone.                                               
+      2 +const dateTimeFormat = new Intl.DateTimeFormat('en-US', { dateSt
+        +yle: 'medium', timeStyle: 'short' });                           
+      3 +                                                                
+      4  export function formatDateTime(iso: string): string {
+      2 -  throw new Error(iso);                                         
+      5 +  return dateTimeFormat.format(new Date(iso));                  
+      6  }
+
+  Read 1 file (ctrl+o to expand)
+
+● Write(apps/web/src/pages/ListPage.test.tsx)
+  ⎿  Wrote 227 lines to apps/web/src/pages/ListPage.test.tsx
+       1 import { screen, within } from '@testing-library/react';
+       2 import userEvent from '@testing-library/user-event';
+       3 import { delay } from 'msw';
+       5 import { Route, Routes, useParams } from 'react-router';
+       6 import { describe, expect, it } from 'vitest';
+       7 import type { PropertiesQueryVariables } from '../graphql/graphq
+         l';
+         s';
+       9 import { api, server } from '../test/msw';
+      10 import { renderWithProviders } from '../test/render';
+     … +268 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Failing for the right reason (placeholder page). Now the page:
+
+● Write(apps/web/src/pages/ListPage.tsx)
+  ⎿  Added 151 lines, removed 1 line
+        1 +import { US_STATES } from '@property-manager/shared';         
+        2 +import { type FormEvent, useState } from 'react';             
+        3 +import { Link } from 'react-router';                          
+        4 +import type { PropertySort } from '../graphql/graphql';       
+        5 +import { type PropertiesFilter, useProperties } from '../hooks
+          +/useProperties';                                              
+        6 +import { formatDateTime } from '../lib/format';               
+        7 +                                                              
+        8 +const NO_FILTER: PropertiesFilter = { city: '', state: '', zip
+          +Code: '' };                                                   
+        9 +                                                              
+       10 +const SORT_OPTIONS: { value: PropertySort; label: string }[] =
+          + [                                                            
+       11 +  { value: 'CREATED_AT_DESC', label: 'Newest first' },        
+       12 +  { value: 'CREATED_AT_ASC', label: 'Oldest first' },         
+       13 +];                                                            
+       14 +                                                              
+       15 +function isPropertySort(value: string): value is PropertySort 
+          +{                                                             
+       16 +  return SORT_OPTIONS.some((option) => option.value === value)
+          +;                                                             
+       17 +}                                                             
+       18 +                                                              
+       19 +function formText(data: FormData, name: string): string {     
+       20 +  const value = data.get(name);                               
+       21 +  return typeof value === 'string' ? value : '';              
+       22 +}                                                             
+       23 +                                                              
+       24  export function ListPage() {
+        2 -  return <h1 className="text-2xl font-bold">Properties</h1>;  
+       25 +  // Filters apply on submit, sort on change. Kept in componen
+          +t state; URL state is #9.                                     
+       26 +  const [filter, setFilter] = useState<PropertiesFilter>(NO_FI
+          +LTER);                                                        
+       27 +  const [sort, setSort] = useState<PropertySort>('CREATED_AT_D
+          +ESC');                                                        
+       28 +  const properties = useProperties({ filter, sort });         
+       29 +                                                              
+       30 +  function applyFilter(event: FormEvent<HTMLFormElement>) {   
+       31 +    event.preventDefault();                                   
+       32 +    const data = new FormData(event.currentTarget);           
+       33 +    setFilter({                                               
+       34 +      city: formText(data, 'city'),                           
+       35 +      state: formText(data, 'state'),                         
+       36 +      zipCode: formText(data, 'zipCode'),                     
+       37 +    });                                                       
+       38 +  }                                                           
+       39 +                                                              
+       40 +  const filtered = Object.values(filter).some((value) => value
+          +.trim() !== '');                                              
+       41 +                                                              
+       42 +  return (                                                    
+       43 +    <>                                                        
+       44 +      <h1 className="mb-4 text-2xl font-bold">Properties</h1> 
+       45 +                                                              
+       46 +      <div className="mb-4 flex flex-wrap items-end justify-be
+          +tween gap-4">                                                 
+       47 +        <form onSubmit={applyFilter} className="flex flex-wrap
+          + items-end gap-3">                                            
+       48 +          <label className="flex flex-col text-sm">           
+       49 +            City                                              
+       50 +            <input name="city" maxLength={100} className="roun
+          +ded border px-2 py-1" />                                      
+       51 +          </label>                                            
+       52 +          <label className="flex flex-col text-sm">           
+       53 +            State                                             
+       54 +            <select name="state" className="rounded border px-
+          +2 py-1">                                                      
+       55 +              <option value="">All states</option>            
+       56 +              {Object.entries(US_STATES).map(([code, name]) =>
+          + (                                                            
+       57 +                <option key={code} value={code}>              
+       58 +                  {code} – {name}                             
+       59 +                </option>                                     
+       60 +              ))}                                             
+       61 +            </select>                                         
+       62 +          </label>                                            
+       63 +          <label className="flex flex-col text-sm">           
+       64 +            Zip code                                          
+       65 +            <input                                            
+       66 +              name="zipCode"                                  
+       67 +              maxLength={5}                                   
+       68 +              inputMode="numeric"                             
+       69 +              className="w-24 rounded border px-2 py-1"       
+       70 +            />                                                
+       71 +          </label>                                            
+       72 +          <button type="submit" className="rounded bg-gray-800
+          + px-3 py-1 text-white">                                       
+       73 +            Apply                                             
+       74 +          </button>                                           
+       75 +        </form>                                               
+       76 +                                                              
+       77 +        <label className="flex flex-col text-sm">             
+       78 +          Sort                                                
+       79 +          <select                                             
+       80 +            value={sort}                                      
+       81 +            onChange={(event) => {                            
+       82 +              if (isPropertySort(event.target.value)) setSort(
+          +event.target.value);                                          
+       83 +            }}                                                
+       84 +            className="rounded border px-2 py-1"              
+       85 +          >                                                   
+       86 +            {SORT_OPTIONS.map((option) => (                   
+       87 +              <option key={option.value} value={option.value}>
+       88 +                {option.label}                                
+       89 +              </option>                                       
+       90 +            ))}                                               
+       91 +          </select>                                           
+       92 +        </label>                                              
+       93 +      </div>                                                  
+       94 +                                                              
+       95 +      {properties.isPending ? (                               
+       96 +        <p role="status">Loading properties…</p>              
+       97 +      ) : properties.isError ? (                              
+       98 +        <div role="alert" className="flex items-center gap-3 t
+          +ext-red-700">                                                 
+       99 +          <p>Could not load properties</p>                    
+      100 +          <button                                             
+      101 +            type="button"                                     
+      102 +            onClick={() => void properties.refetch()}         
+      103 +            className="rounded border px-3 py-1"              
+      104 +          >                                                   
+      105 +            Retry                                             
+      106 +          </button>                                           
+      107 +        </div>                                                
+      108 +      ) : properties.data.properties.items.length === 0 ? (   
+      109 +        <div>                                                 
+      110 +          <p>{filtered ? 'No properties match the filters' : '
+          +No properties yet'}</p>                                       
+      111 +          <Link to="/properties/new" className="text-blue-700 
+          +underline">                                                   
+      112 +            Add a property                                    
+      113 +          </Link>                                             
+      114 +        </div>                                                
+      115 +      ) : (                                                   
+      116 +        <>                                                    
+      117 +          <p className="mb-2 text-sm text-gray-600">          
+      118 +            {properties.data.properties.totalCount === 1      
+      119 +              ? '1 property'                                  
+      120 +              : `${String(properties.data.properties.totalCoun
+          +t)} properties`}                                              
+      121 +            {properties.isPlaceholderData && <span role="statu
+          +s"> · Updating…</span>}                                       
+      122 +          </p>                                                
+      123 +          <table className="w-full text-left text-sm">        
+      124 +            <thead>                                           
+      125 +              <tr className="border-b">                       
+      126 +                <th className="py-2">Street</th>              
+      127 +                <th>City</th>                                 
+      128 +                <th>State</th>                                
+      129 +                <th>Zip code</th>                             
+      130 +                <th>Created</th>                              
+      131 +              </tr>                                           
+      132 +            </thead>                                          
+      133 +            <tbody>                                           
+      134 +              {properties.data.properties.items.map((property)
+          + => (                                                         
+      135 +                <tr key={property.id} className="border-b">   
+      136 +                  <td className="py-2">                       
+      137 +                    <Link to={`/properties/${property.id}`} cl
+          +assName="text-blue-700 underline">                            
+      138 +                      {property.street}                       
+      139 +                    </Link>                                   
+      140 +                  </td>                                       
+      141 +                  <td>{property.city}</td>                    
+      142 +                  <td>{property.state}</td>                   
+      143 +                  <td>{property.zipCode}</td>                 
+      144 +                  <td>{formatDateTime(property.createdAt)}</td
+          +>                                                             
+      145 +                </tr>                                         
+      146 +              ))}                                             
+      147 +            </tbody>                                          
+      148 +          </table>                                            
+      149 +        </>                                                   
+      150 +      )}                                                      
+      151 +    </>                                                       
+      152 +  );                                                          
+      153  }
+  ⎿  PostToolUse:Write hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/web/src/pages/ListPage.tsx):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src/pages/
+     ListPage.tsx
+       30:31  error  `FormEvent` is deprecated. FormEvent doesn't actually 
+     exist.
+     You probably meant to use {@link ChangeEvent}, {@link InputEvent}, {@link 
+     SubmitEvent}, or just {@link SyntheticEvent} instead
+     depending on the event type  @typescript-eslint/no-deprecated
+
+     ✖ 1 problem (1 error, 0 warnings)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(sed -i "s/import { type FormEvent, useState } from 'react';/import { type
+      SubmitEvent, useState } from 'react';/; s/function applyFilter(event:
+      FormEvent<HTMLFo…)
+  ⎿        Tests  11 passed (11)
+  ⎿  Updated apps/web/src/pages/ListPage.tsx (+2 -2)
+      1  import { US_STATES } from '@property-manager/shared';
+      2 -import { type FormEvent, useState } from 'react';               
+      2 +import { type SubmitEvent, useState } from 'react';             
+      3  import { Link } from 'react-router';
+      4  import type { PropertySort } from '../graphql/graphql';
+      5  import { type PropertiesFilter, useProperties } from '../hooks/u
+         seProperties';
+     ...
+      27    const [sort, setSort] = useState<PropertySort>('CREATED_AT_DE
+          SC');
+      28    const properties = useProperties({ filter, sort });
+      29  
+      30 -  function applyFilter(event: FormEvent<HTMLFormElement>) {    
+      30 +  function applyFilter(event: SubmitEvent<HTMLFormElement>) {  
+      31      event.preventDefault();
+      32      const data = new FormData(event.currentTarget);
+      33      setFilter({
+
+● All 11 pass. Now routes.test.tsx (drop the "API: ok" test) and
+  execute.test.ts, which used the removed HealthDocument:
+
+● Bash(python3 - <<'EOF'
+      p='apps/web/src/app/routes.test.tsx'…)
+  ⎿  diff --git a/apps/web/src/lib/execute.test.ts b/apps/web/src/lib/execu
+     te.test.ts
+     index e9424d6..5efa3e2 100644
+     … +77 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/app/routes.test.tsx (+0 -5)
+      15      expect(await screen.findByRole('heading', { level: 1, name:
+           heading })).toBeInTheDocument();
+      16    });
+      17  
+      18 -  it('renders the API status line in the layout', async () => {
+      19 -    renderWithProviders(<AppRoutes />);                        
+      20 -                                                               
+      21 -    expect(await screen.findByText('API: ok')).toBeInTheDocumen
+         -t();                                                           
+      22 -  });                                                          
+      18  });
+  ⎿  Updated apps/web/src/lib/execute.test.ts (+16 -13)
+       1  import { HttpResponse } from 'msw/http';
+       2  import { describe, expect, it } from 'vitest';
+       3 -import { HealthDocument } from '../graphql/graphql';           
+       3 +import { PropertiesDocument } from '../graphql/graphql';       
+       4  import { api, server } from '../test/msw';
+       5  import { execute, GraphQLRequestError } from './execute';
+       6  
+       7 +// The default `Properties` handler returns an empty page.     
+       8 +const properties = { items: [], totalCount: 0 };               
+       9 +                                                               
+      10  describe('execute', () => {
+      11    it('returns the data of a successful response', async () => {
+       9 -    await expect(execute(HealthDocument)).resolves.toEqual({ he
+         -alth: 'ok' });                                                 
+      12 +    await expect(execute(PropertiesDocument, {})).resolves.toEq
+         +ual(properties);                                               
+      13    });
+      14  
+      15    it.each([
+      16      ['without data', undefined],
+      14 -    ['with partial data', { health: null }],                   
+      17 +    ['with partial data', { properties: null }],               
+      18    ])('throws GraphQLRequestError for an errors payload %s', asy
+          nc (_name, data) => {
+      19      server.use(
+      17 -      api.query('Health', () =>                                
+      20 +      api.query('Properties', () =>                            
+      21          HttpResponse.json({ data, errors: [{ message: 'boom', e
+          xtensions: { code: 'X' } }] }),
+      22        ),
+      23      );
+      24  
+      22 -    const error = await execute(HealthDocument).catch((e: unkno
+         -wn) => e);                                                     
+      25 +    const error = await execute(PropertiesDocument, {}).catch((
+         +e: unknown) => e);                                             
+      26  
+      27      expect(error).toBeInstanceOf(GraphQLRequestError);
+      28      expect(error).toMatchObject({
+     ...
+      34  
+      35    it.each([
+      36      ['a non-JSON body', 500, () => new Response('down', { statu
+          s: 500 })],
+      34 -    ['a data payload', 502, () => HttpResponse.json({ data: { h
+         -ealth: 'ok' } }, { status: 502 })],                            
+      37 +    ['a data payload', 502, () => HttpResponse.json({ data: { p
+         +roperties } }, { status: 502 })],                              
+      38    ])(
+      39      'throws GraphQLRequestError with the status on an HTTP erro
+          r with %s',
+     … 41 more lines (ctrl+o to expand)
+
+● Bash(sed -i "s/resolves.toEqual(properties);/resolves.toEqual({ properties
+      });/" apps/web/src/lib/execute.test.ts && source ~/.nvm/nvm.sh && nvm use
+      >/dev/null && pn…)  ⎿   M apps/web/src/graphql/gql.ts
+      M apps/web/src/graphql/graphql.ts
+     apps/web/src/graphql/graphql.ts:0
+     … +17 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/lib/execute.test.ts (+1 -1)
+       9  
+      10  describe('execute', () => {
+      11    it('returns the data of a successful response', async () => {
+      12 -    await expect(execute(PropertiesDocument, {})).resolves.toEq
+         -ual(properties);                                               
+      12 +    await expect(execute(PropertiesDocument, {})).resolves.toEq
+         +ual({ properties });                                           
+      13    });
+      14  
+      15    it.each([
+  ⎿  Updated apps/web/src/app/routes.test.tsx (+0 -1)
+      14  
+      15      expect(await screen.findByRole('heading', { level: 1, name:
+           heading })).toBeInTheDocument();
+      16    });
+      17 -                                                               
+      17  });
+  ⎿  Updated apps/web/src/lib/format.ts (+4 -1)
+      1  // Created once: building an Intl formatter is slow. Uses the vi
+         ewer's time zone.
+      2 -const dateTimeFormat = new Intl.DateTimeFormat('en-US', { dateSt
+        -yle: 'medium', timeStyle: 'short' });                           
+      2 +const dateTimeFormat = new Intl.DateTimeFormat('en-US', {       
+      3 +  dateStyle: 'medium',                                          
+      4 +  timeStyle: 'short',                                           
+      5 +});                                                             
+      6  
+      7  export function formatDateTime(iso: string): string {
+      8    return dateTimeFormat.format(new Date(iso));
+  ⎿  (timeout 10m)
+
+● Typecheck failed; looking at it:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● TS infers TVariables from the literal {}, which matches the no-variables
+  branch of execute's rest type. I'll pass a non-empty variables object in the
+  test and note the quirk as a follow-up.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager && sed -i
+      "s/execute(PropertiesDocument, {})/execute(PropertiesDocument,
+      variables)/g; s|^const prope…)
+  ⎿  // The default `Properties` handler returns an empty page.
+     const properties = { items: [], totalCount: 0 };
+     const variables = { sort: 'CREATED_AT_DESC' } as const;
+     … +12 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/lib/execute.test.ts (+6 -5)
+       6  
+       7  // The default `Properties` handler returns an empty page.
+       8  const properties = { items: [], totalCount: 0 };
+       9 +const variables = { sort: 'CREATED_AT_DESC' } as const;        
+      10  
+      11  describe('execute', () => {
+      12    it('returns the data of a successful response', async () => {
+      12 -    await expect(execute(PropertiesDocument, {})).resolves.toEq
+         -ual({ properties });                                           
+      13 +    await expect(execute(PropertiesDocument, variables)).resolv
+         +es.toEqual({ properties });                                    
+      14    });
+      15  
+      16    it.each([
+     ...
+      23        ),
+      24      );
+      25  
+      25 -    const error = await execute(PropertiesDocument, {}).catch((
+         -e: unknown) => e);                                             
+      26 +    const error = await execute(PropertiesDocument, variables).
+         +catch((e: unknown) => e);                                      
+      27  
+      28      expect(error).toBeInstanceOf(GraphQLRequestError);
+      29      expect(error).toMatchObject({
+     ...
+      41      async (_name, status, reply) => {
+      42        server.use(api.query('Properties', reply));
+      43  
+      43 -      const error = await execute(PropertiesDocument, {}).catch
+         -((e: unknown) => e);                                           
+      44 +      const error = await execute(PropertiesDocument, variables
+         +).catch((e: unknown) => e);                                    
+      45  
+      46        expect(error).toBeInstanceOf(GraphQLRequestError);
+      47        expect(error).toMatchObject({ status, errors: [] });
+     ...
+      56    ])('throws GraphQLRequestError on HTTP 200 with %s', async (_
+          name, reply) => {
+      57      server.use(api.query('Properties', reply));
+      58  
+      58 -    const error = await execute(PropertiesDocument, {}).catch((
+         -e: unknown) => e);                                             
+      59 +    const error = await execute(PropertiesDocument, variables).
+         +catch((e: unknown) => e);                                      
+      60  
+      61      expect(error).toBeInstanceOf(GraphQLRequestError);
+      62      expect(error).toMatchObject({ status: 200, errors: [] });
+     ...
+      78        }),
+      79      );
+      80  
+      80 -    await execute(PropertiesDocument, {});                     
+     … 4 more lines (ctrl+o to expand)
+  ⎿  (timeout 10m)
+
+● All green. One quick sanity check that the tests can fail: I'll break the
+  blank-filter dropping and confirm AC1/AC3 catch it.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The tests catch the break, and the code is restored. Now the Cookbook notes in
+  the test plan and the plan's Deviations:
+
+● Update(context/test-plan.md)
+  ⎿  Added 8 lines
+      198     `api.query('Properties', ...)`, `api.mutation('CreateProper
+           ty', ...)`). Query by
+      199     role or label, act with `userEvent`, assert what is on scre
+           en and which requests MSW
+      200     recorded.
+      201 +   The default handlers return no properties (`Properties` → e
+          +mpty page, `Property` → `null`).                              
+      202 +   Every operation a page sends needs a handler (`onUnhandledF
+          +rame: 'error'`). Override with                                
+      203 +   `server.use(...)` and push the request `variables` to an ar
+          +ray inside the handler to assert                              
+      204 +   them. Build data with `propertyFixture({...})` / `listItem(
+          +{...})` from                                                  
+      205 +   `apps/web/src/test/fixtures.ts`. The web project runs with 
+          +`TZ=UTC`                                                      
+      206 +   (`apps/web/vitest.config.ts`), so formatted dates are stabl
+          +e. `setup.ts` polyfills                                       
+      207 +   `<dialog>` `showModal()` / `close()` (jsdom has neither; `c
+          +lose()` fires `close`); check                                 
+      208 +   modality, focus and Esc in a real browser.                 
+      209  8. Run `pnpm test:unit`. Make the test fail once (break the co
+           de or the expectation) to see that
+      210     it can fail, then restore.
+      211  
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/list-and-details-pages/plan.md'…)
+  ⎿  All matched files use Prettier code style!
+  ⎿  Updated context/changes/list-and-details-pages/plan.md (+16 -1)
+      334  - [ ] Phase 3: Details page
+      335  
+      336  ## Deviations
+      337 -<filled during implementation>                                
+      337 +                                                              
+      338 +- Phase 1, `routes.test.tsx`: plan says the details row expect
+          +s "Property not found"; the                                   
+      339 +  details page is still the phase 1 placeholder (`Property <id
+          +>`), so the row stays until                                   
+      340 +  phase 3. Only the "API: ok" test is dropped now.            
+      341 +- Phase 1, FR-11 AC7: plan says click through `AppRoutes`; the
+          + test renders `ListPage` with a                               
+      342 +  probe `/properties/:id` route instead, so it does not depend
+          + on the details page, which                                   
+      343 +  phase 3 rewrites. It asserts the id that reached the route. 
+      344 +- Phase 1, `apps/web/src/lib/execute.test.ts` (not in the plan
+          +'s file list): it used the removed                            
+      345 +  `HealthDocument`. It now uses `PropertiesDocument` with the 
+          +same cases. `execute.ts` is                                   
+      346 +  unchanged.                                                  
+      347 +- Phase 1, TZ pin: `test.env: { TZ: 'UTC' }` in `apps/web/vite
+          +st.config.ts` holds (the                                      
+      348 +  `format.test.ts` case at 23:42 UTC checks the resolved zone 
+          +and the formatted day/hour).                                  
+      349 +  No fallback needed.                                         
+      350 +- Follow-up (not fixed, outside the phase): `execute(doc, {})`
+          + does not type-check for a                                    
+      351 +  document whose variables are all optional. TS infers `TVaria
+          +bles` from `{}`, which matches                                
+      352 +  the no-variables branch of the rest type. Callers pass a non
+          +-empty object today.                                          
+
+● Phase 1 (list page) is built and all the automated checks pass. It's waiting
+  on your manual check in the browser before I commit.
+
+  What changed
+  - apps/web/package.json, pnpm-lock.yaml: added @property-manager/shared
+    (workspace:*) and @testing-library/user-event 14.6.7 as a dev dependency.
+  - apps/web/src/hooks/useProperties.ts (new): the Properties query and hook.
+    Query key is ['properties','list',{filter,sort}], previous rows stay on
+    screen while a new sort or filter loads, blank filter values are dropped,
+    and no limit is sent.
+  - apps/web/src/pages/ListPage.tsx: the table (street links to the details
+    page), the City/State/Zip filter form applied on Apply or Enter (max lengths
+    100 and 5), the Sort select, the property count with "Updating…", and the
+    loading, empty, no-match and error-with-Retry states.
+  - apps/web/src/pages/ListPage.test.tsx (new): 11 tests covering FR-11 AC1,
+    AC2, AC3, AC6 and AC7.
+  - apps/web/src/lib/format.ts and format.test.ts (new): formatDateTime, with a
+    test that also proves the UTC pin works.
+  - apps/web/src/test/setup.ts: stand-in showModal() / close() for <dialog>,
+    which jsdom lacks. apps/web/vitest.config.ts: web tests run with TZ=UTC.
+  - apps/web/src/test/fixtures.ts (new): propertyFixture and listItem.
+    apps/web/src/test/msw.ts: the default mocks now answer Properties (empty)
+    and Property (null); the Health mock is gone.
+  - ApiStatus.tsx and its test are deleted, and Layout.tsx no longer renders it.
+  - main.tsx: the app's query client no longer retries failed queries.
+  - apps/web/src/app/routes.test.tsx: dropped the "API: ok" test.
+    apps/web/src/lib/execute.test.ts: switched from Health to Properties.
+  - apps/web/src/graphql/*: regenerated. context/test-plan.md: Cookbook notes
+    for the web tests. context/roadmap.md: S-04 → in-progress.
+
+  Checks
+  - pnpm codegen: regenerated, and a second run changes nothing.
+  - pnpm typecheck, pnpm lint, pnpm format:check: pass.
+  - pnpm vitest run --project web: 25 passed. pnpm test:unit: 369 passed.
+  - To confirm the tests can fail, I broke the blank-filter dropping: 3 tests
+    failed. Then I restored it.
+
+  Deviations (logged in the plan)
+  - The details route in routes.test.tsx still expects the placeholder heading.
+    The plan wanted "Property not found", but that only exists after phase 3.
+  - The FR-11 AC7 test checks the street link with a stand-in details route
+    instead of the real routes, so it won't break when phase 3 rewrites the
+    details page.
+  - execute.test.ts wasn't in the plan's file list, but it used the removed
+    Health document, so it had to change. execute.ts itself is unchanged.
+  - Follow-up, not fixed: execute(doc, {}) fails to type-check for a query whose
+    variables are all optional. Every current caller passes a non-empty object.
+
+  Your checks
+  - [ ] Run docker compose up -d postgres && pnpm dev, create a few properties
+    (the create page doesn't exist until S-05, so use the API at
+    http://localhost:4000/graphql), then open http://localhost:5173/. Check the
+    table, sort (Newest/Oldest first) and the City/State/Zip filters, and that
+    dates show in your local time.
+  - [ ] Stop the API and reload /: "Could not load properties" should appear
+    immediately, with no retry delay. Start the API again and click Retry: the
+    rows should come back.
+
+  Once you confirm, I'll stage the files listed above plus plan.md and propose:
+  feat(list-and-details-pages): list page with sort, filters and 
+  loading/empty/error states with Refs #6.
+
+  Should plan-review.md and the context/roadmap.md change go into this commit
+  too? I'll leave plan-S-04.txt and plan-review S-04.txt alone.
+
+✻ Worked for 4m 37s · done 10:46 AM

@@ -1,0 +1,659 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement list-and-details-pages                                             
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Starting Phase 3: building the /properties/:id details page with all key
+  fields, precision note, not-found/loading/error states, and delete redirecting
+  to / cleanly. I'll run codegen, typecheck, lint, format, and tests, then
+  verify manually in pnpm dev, folding the Phase 2 plan.md update into this
+  commit while leaving the untracked export files untouched.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Writing the hook, then the page.
+
+● Bash(cat > apps/web/src/hooks/useProperty.ts <<'EOF'
+      import { useQuery } from '@tanstack/react-query';…)
+  ⎿  ✔ Load GraphQL documents
+     ❯ Generate
+     ✔ Generate
+     … +10 lines (ctrl+o to expand)
+  ⎿  Created apps/web/src/hooks/useProperty.ts (+39 -0)
+       1 +import { useQuery } from '@tanstack/react-query';              
+       2 +import { graphql } from '../graphql';                          
+       3 +import { execute } from '../lib/execute';                      
+       4 +                                                               
+       5 +// Every field the details page shows. `raw` is left out until 
+         +#11.                                                           
+       6 +const PropertyQuery = graphql(`                                
+       7 +  query Property($id: ID!) {                                   
+       8 +    property(id: $id) {                                        
+       9 +      id                                                       
+      10 +      street                                                   
+      11 +      city                                                     
+      12 +      state                                                    
+      13 +      zipCode                                                  
+      14 +      lat                                                      
+      15 +      long                                                     
+      16 +      createdAt                                                
+      17 +      weatherData {                                            
+      18 +        units                                                  
+      19 +        current {                                              
+      20 +          temperature                                          
+      21 +          feelsLike                                            
+      22 +          weatherDescriptions                                  
+      23 +          weatherIcons                                         
+      24 +          windSpeed                                            
+      25 +          windDir                                              
+      26 +          humidity                                             
+      27 +        }                                                      
+      28 +      }                                                        
+      29 +    }                                                          
+      30 +  }                                                            
+      31 +`);                                                            
+      32 +                                                               
+      33 +// `data.property` is `null` when no property has this id (unkn
+         +own or malformed).                                             
+      34 +export function useProperty(id: string) {                      
+      35 +  return useQuery({                                            
+      36 +    queryKey: ['properties', 'detail', id],                    
+      37 +    queryFn: () => execute(PropertyQuery, { id }),             
+      38 +  });                                                          
+      39 +}                                                              
+  ⎿  Updated apps/web/src/graphql/gql.ts (+6 -0)
+      17  type Documents = {
+      18      "\n  mutation DeleteProperty($id: ID!) {\n    deletePropert
+          y(id: $id)\n  }\n": typeof types.DeletePropertyDocument,
+      19      "\n  query Properties($filter: PropertyFilter, $sort: Prope
+          rtySort) {\n    properties(filter: $filter, sort: $sort) {\n   
+             items {\n        id\n        street\n        city\n        s
+          tate\n        zipCode\n        createdAt\n      }\n      totalC
+          ount\n    }\n  }\n": typeof types.PropertiesDocument,
+      20 +    "\n  query Property($id: ID!) {\n    property(id: $id) {\n 
+         +     id\n      street\n      city\n      state\n      zipCode\n
+         +      lat\n      long\n      createdAt\n      weatherData {\n  
+         +      units\n        current {\n          temperature\n        
+         +  feelsLike\n          weatherDescriptions\n          weatherIc
+         +ons\n          windSpeed\n          windDir\n          humidity
+         +\n        }\n      }\n    }\n  }\n": typeof types.PropertyDocum
+         +ent,                                                           
+      21  };
+      22  const documents: Documents = {
+      23      "\n  mutation DeleteProperty($id: ID!) {\n    deletePropert
+          y(id: $id)\n  }\n": types.DeletePropertyDocument,
+      24      "\n  query Properties($filter: PropertyFilter, $sort: Prope
+          rtySort) {\n    properties(filter: $filter, sort: $sort) {\n   
+             items {\n        id\n        street\n        city\n        s
+          tate\n        zipCode\n        createdAt\n      }\n      totalC
+          ount\n    }\n  }\n": types.PropertiesDocument,
+      25 +    "\n  query Property($id: ID!) {\n    property(id: $id) {\n 
+         +     id\n      street\n      city\n      state\n      zipCode\n
+         +      lat\n      long\n      createdAt\n      weatherData {\n  
+         +      units\n        current {\n          temperature\n        
+         +  feelsLike\n          weatherDescriptions\n          weatherIc
+         +ons\n          windSpeed\n          windDir\n          humidity
+         +\n        }\n      }\n    }\n  }\n": types.PropertyDocument,   
+      26  };
+      27  
+      28  /**
+     ...
+      33   * The graphql function is used to parse GraphQL queries into a
+           document that can be used by GraphQL clients.
+      34   */
+      35  export function graphql(source: "\n  query Properties($filter: 
+          PropertyFilter, $sort: PropertySort) {\n    properties(filter: 
+          $filter, sort: $sort) {\n      items {\n        id\n        str
+          eet\n        city\n        state\n        zipCode\n        crea
+          tedAt\n      }\n      totalCount\n    }\n  }\n"): typeof import
+          ('./graphql.ts').PropertiesDocument;
+      36 +/**                                                            
+      37 + * The graphql function is used to parse GraphQL queries into a
+         + document that can be used by GraphQL clients.                 
+      38 + */                                                            
+      39 +export function graphql(source: "\n  query Property($id: ID!) {
+         +\n    property(id: $id) {\n      id\n      street\n      city\n
+         +      state\n      zipCode\n      lat\n      long\n      create
+         +dAt\n      weatherData {\n        units\n        current {\n   
+         +       temperature\n          feelsLike\n          weatherDescr
+         +iptions\n          weatherIcons\n          windSpeed\n         
+         + windDir\n          humidity\n        }\n      }\n    }\n  }\n"
+         +): typeof import('./graphql.ts').PropertyDocument;             
+      40  
+      41  
+      42  export function graphql(source: string) {
+  ⎿  Updated apps/web/src/graphql/graphql.ts (+37 -1)
+      24    /** Newest first. */
+      25    | 'CREATED_AT_DESC';
+      26  
+      27 +export type WeatherUnits =                                     
+      28 +  | 'IMPERIAL';                                                
+      29 +                                                               
+      30  export type DeletePropertyMutationVariables = Exact<{
+      31    id: string | number;
+      32  }>;
+     ...
+      42  
+      43  export type PropertiesQuery = { properties: { totalCount: numbe
+          r, items: Array<{ id: string, street: string, city: string, sta
+          te: string, zipCode: string, createdAt: string }> } };
+      44  
+      45 +export type PropertyQueryVariables = Exact<{                   
+      46 +  id: string | number;                                         
+      47 +}>;                                                            
+      48 +                                                               
+      49 +                                                               
+      50 +export type PropertyQuery = { property: { id: string, street: s
+         +tring, city: string, state: string, zipCode: string, lat: numbe
+         +r, long: number, createdAt: string, weatherData: { units: Weath
+         +erUnits, current: { temperature: number, feelsLike: number, wea
+         +therDescriptions: Array<string>, weatherIcons: Array<string>, w
+         +indSpeed: number, windDir: string, humidity: number } } } | nul
+         +l };                                                           
+      51 +                                                               
+      52  export class TypedDocumentString<TResult, TVariables>
+      53    extends String
+      54    implements DocumentTypeDecoration<TResult, TVariables>
+     ...
+       87      totalCount
+       88    }
+       89  }
+       80 -    `) as unknown as TypedDocumentString<PropertiesQuery, Prop
+          -ertiesQueryVariables>;                                        
+       90   No newline at end of file
+       91 +    `) as unknown as TypedDocumentString<PropertiesQuery, Prop
+          +ertiesQueryVariables>;                                        
+       92 +export const PropertyDocument = new TypedDocumentString(`     
+       93 +    query Property($id: ID!) {                                
+       94 +  property(id: $id) {                                         
+       95 +    id                                                        
+       96 +    street                                                    
+       97 +    city                                                      
+       98 +    state                                                     
+       99 +    zipCode                                                   
+      100 +    lat                                                       
+      101 +    long                                                      
+      102 +    createdAt                                                 
+      103 +    weatherData {                                             
+     … 15 more lines (ctrl+o to expand)
+
+● Now the page. The dialog needs one small addition: a way for the details page
+  to hear about PROPERTY_NOT_FOUND (it currently only shows the message). I'll
+  add an optional onNotFound prop.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='apps/web/src/components/DeletePropertyDialog.tsx'…)
+  ⎿   apps/web/src/components/DeletePropertyDialog.tsx | 7 ++++++-
+      1 file changed, 6 insertions(+), 1 deletion(-)
+  ⎿  Updated apps/web/src/components/DeletePropertyDialog.tsx (+6 -1)
+      15    // Runs on every close (Cancel, Esc, after a delete). The cal
+          ler unmounts the dialog.
+      16    onClose: () => void;
+      17    onDeleted?: () => void;
+      18 +  // When set, `PROPERTY_NOT_FOUND` calls it instead of showing
+         + "no longer exists".                                           
+      19 +  onNotFound?: () => void;                                     
+      20  };
+      21  
+      22  function failureMessage(error: unknown): string {
+     ...
+      26  }
+      27  
+      28  // Mounted = open: the dialog opens as a modal on mount, and an
+          y close hands back to `onClose`.
+      27 -export function DeletePropertyDialog({ property, onClose, onDel
+         -eted }: Props) {                                               
+      29 +export function DeletePropertyDialog({ property, onClose, onDel
+         +eted, onNotFound }: Props) {                                   
+      30    const dialogRef = useRef<HTMLDialogElement>(null);
+      31    const headingId = useId();
+      32    const deleteProperty = useDeleteProperty();
+     ...
+      42          onDeleted?.();
+      43          dialogRef.current?.close();
+      44        },
+      45 +      onError: (error) => {                                    
+      46 +        if (onNotFound && errorCode(error) === 'PROPERTY_NOT_FO
+         +UND') onNotFound();                                            
+      47 +      },                                                       
+      48      });
+      49    }
+      50  
+
+● To avoid any flash of the message before the navigation commits (React Router
+  may wrap navigation in a transition), the dialog also hides the message when
+  onNotFound handles it.
+
+● Bash(python3 - <<'EOF'
+      p='apps/web/src/components/DeletePropertyDialog.tsx'…)
+  ⎿  Updated apps/web/src/components/DeletePropertyDialog.tsx (+5 -1)
+      36      if (dialog && !dialog.open) dialog.showModal();
+      37    }, []);
+      38  
+      39 +  // A gone property handed to `onNotFound` gets no message: th
+         +e caller leaves the page.                                      
+      40 +  const handedOff =                                            
+      41 +    onNotFound !== undefined && errorCode(deleteProperty.error)
+         + === 'PROPERTY_NOT_FOUND';                                     
+      42 +                                                               
+      43    function confirm() {
+      44      deleteProperty.mutate(property.id, {
+      45        onSuccess: () => {
+     ...
+      65        <p className="mb-4">
+      66          {property.street}, {property.city}, {property.state} {p
+          roperty.zipCode}
+      67        </p>
+      64 -      {deleteProperty.isError && (                             
+      68 +      {deleteProperty.isError && !handedOff && (               
+      69          <p role="alert" className="mb-4 text-red-700">
+      70            {failureMessage(deleteProperty.error)}
+      71          </p>
+  ⎿  Updated apps/web/src/pages/DetailsPage.tsx (+110 -2)
+        1 -import { useParams } from 'react-router';                     
+        1 +import { useState } from 'react';                             
+        2 +import { Link, useNavigate, useParams } from 'react-router';  
+        3 +import { DeletePropertyDialog } from '../components/DeleteProp
+          +ertyDialog';                                                  
+        4 +import { useProperty } from '../hooks/useProperty';           
+        5 +import { formatDateTime } from '../lib/format';               
+        6  
+        7  export function DetailsPage() {
+        8    const { id = '' } = useParams();
+        5 -  return <h1 className="text-2xl font-bold">Property {id}</h1>
+          -;                                                             
+        9 +  const navigate = useNavigate();                             
+       10 +  const query = useProperty(id);                              
+       11 +  const [deleting, setDeleting] = useState(false);            
+       12 +                                                              
+       13 +  if (query.isPending) return <p role="status">Loading propert
+          +y…</p>;                                                       
+       14 +                                                              
+       15 +  if (query.isError) {                                        
+       16 +    return (                                                  
+       17 +      <div role="alert" className="flex items-center gap-3 tex
+          +t-red-700">                                                   
+       18 +        <p>Could not load the property</p>                    
+       19 +        <button                                               
+       20 +          type="button"                                       
+       21 +          onClick={() => void query.refetch()}                
+       22 +          className="rounded border px-3 py-1"                
+       23 +        >                                                     
+       24 +          Retry                                               
+       25 +        </button>                                             
+       26 +      </div>                                                  
+       27 +    );                                                        
+       28 +  }                                                           
+       29 +                                                              
+       30 +  const property = query.data.property;                       
+       31 +  if (!property) {                                            
+       32 +    return (                                                  
+       33 +      <>                                                      
+       34 +        <h1 className="mb-4 text-2xl font-bold">Property not f
+          +ound</h1>                                                     
+       35 +        <Link to="/" className="text-blue-700 underline">     
+       36 +          Back to properties                                  
+       37 +        </Link>                                               
+       38 +      </>                                                     
+     … 76 more lines (ctrl+o to expand)
+
+● Now the tests, rendered through AppRoutes.
+
+● Bash(cat > apps/web/src/pages/DetailsPage.test.tsx <<'EOF'
+      import { screen, within } from '@testing-library/react';…)
+  ⎿   RUN  v5.0.3 /home/krzysztof/projects/taskTreeCover/property-manager
+     … +5 lines (ctrl+o to expand)
+  ⎿  Created apps/web/src/pages/DetailsPage.test.tsx (+220 -0)
+        1 +import { screen, within } from '@testing-library/react';      
+        2 +import userEvent from '@testing-library/user-event';          
+        3 +import { delay } from 'msw';                                  
+        4 +import { HttpResponse } from 'msw/http';                      
+        5 +import { describe, expect, it } from 'vitest';                
+        6 +import { AppRoutes } from '../app/routes';                    
+        7 +import type { DeletePropertyMutationVariables, PropertyQueryVa
+          +riables } from '../graphql/graphql';                          
+        8 +import { type PropertyFixture, propertyFixture } from '../test
+          +/fixtures';                                                   
+        9 +import { api, server } from '../test/msw';                    
+       10 +import { renderWithProviders } from '../test/render';         
+       11 +                                                              
+       12 +const property = propertyFixture({ id: 'id-9' });             
+       13 +                                                              
+       14 +// Serves `respond()` for `Property` and records the id of eve
+          +ry request.                                                   
+       15 +function serveProperty(respond: () => Response | Promise<Respo
+          +nse>) {                                                       
+       16 +  const ids: string[] = [];                                   
+       17 +  server.use(                                                 
+       18 +    api.query<object, PropertyQueryVariables>('Property', ({ v
+          +ariables }) => {                                              
+       19 +      // Codegen types an `ID` input as `string | number`. The
+          + app sends strings.                                           
+       20 +      ids.push(String(variables.id));                         
+       21 +      return respond();                                       
+       22 +    }),                                                       
+       23 +  );                                                          
+       24 +  return ids;                                                 
+       25 +}                                                             
+       26 +                                                              
+       27 +function found(value: PropertyFixture) {                      
+       28 +  return () => HttpResponse.json({ data: { property: value } }
+          +);                                                            
+       29 +}                                                             
+       30 +                                                              
+       31 +// Serves `DeleteProperty` with `respond` and records the id o
+          +f every request.                                              
+       32 +function serveDelete(respond: (id: string) => Response) {     
+       33 +  const ids: string[] = [];                                   
+       34 +  server.use(                                                 
+       35 +    api.mutation<object, DeletePropertyMutationVariables>('Del
+          +eteProperty', ({ variables }) => {                            
+       36 +      const id = String(variables.id);                        
+       37 +      ids.push(id);                                           
+       38 +      return respond(id);                                     
+       39 +    }),                                                       
+       40 +  );                                                          
+     … 180 more lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/app/routes.test.tsx (+1 -1)
+       7    it.each([
+       8      ['/', 'Properties'],
+       9      ['/properties/new', 'New property'],
+      10 -    ['/properties/abc-123', 'Property abc-123'],               
+      10 +    ['/properties/abc-123', 'Property not found'],             
+      11      ['/no/such/page', 'Page not found'],
+      12    ])('%s renders the "%s" heading', async (route, heading) => {
+      13      renderWithProviders(<AppRoutes />, { route });
+
+● All 50 tests pass, but I want to double-check two things: that the no-refetch
+  assertion catches a prefix invalidation, and that the "no message" suppression
+  is actually verified before the dialog unmounts. Since the details test can't
+  catch that, I'll add a dialog unit test.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Both AC4 tests fail for the right reason under a prefix invalidation; hook
+  restored. Now the dialog unit test for onNotFound:
+
+● Bash(python3 - <<'EOF'
+      p='apps/web/src/components/DeletePropertyDialog.test.tsx'…)
+  ⎿  $ prettier --write .
+           Tests  52 passed (52)
+        Start at  10:54:46
+     … +26 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/components/DeletePropertyDialog.test.tsx (+41 -0)
+       87      expect(onClose).not.toHaveBeenCalled();
+       88      expect(onDeleted).not.toHaveBeenCalled();
+       89    });
+       90 +                                                              
+       91 +  it('with onNotFound, PROPERTY_NOT_FOUND calls it instead of 
+          +showing a message', async () => {                             
+       92 +    serveDelete(() =>                                         
+       93 +      HttpResponse.json({                                     
+       94 +        data: null,                                           
+       95 +        errors: [                                             
+       96 +          {                                                   
+       97 +            message: 'No property with this id exists.',      
+       98 +            extensions: { code: 'PROPERTY_NOT_FOUND' },       
+       99 +          },                                                  
+      100 +        ],                                                    
+      101 +      }),                                                     
+      102 +    );                                                        
+      103 +    const user = userEvent.setup();                           
+      104 +    const onNotFound = vi.fn();                               
+      105 +    renderWithProviders(                                      
+      106 +      <DeletePropertyDialog property={property} onClose={vi.fn
+          +()} onNotFound={onNotFound} />,                               
+      107 +    );                                                        
+      108 +                                                              
+      109 +    await user.click(screen.getByRole('button', { name: 'Delet
+          +e' }));                                                       
+      110 +                                                              
+      111 +    await expect.poll(() => onNotFound.mock.calls.length).toBe
+          +(1);                                                          
+      112 +    expect(screen.getByRole('button', { name: 'Delete' })).toB
+          +eEnabled();                                                   
+      113 +    expect(screen.queryByRole('alert')).not.toBeInTheDocument(
+          +);                                                            
+      114 +  });                                                         
+      115 +                                                              
+      116 +  it('with onNotFound, any other failure still shows the gener
+          +ic message', async () => {                                    
+      117 +    serveDelete(() => HttpResponse.error());                  
+      118 +    const user = userEvent.setup();                           
+      119 +    const onNotFound = vi.fn();                               
+      120 +    renderWithProviders(                                      
+      121 +      <DeletePropertyDialog property={property} onClose={vi.fn
+          +()} onNotFound={onNotFound} />,                               
+      122 +    );                                                        
+      123 +                                                              
+      124 +    await user.click(screen.getByRole('button', { name: 'Delet
+          +e' }));                                                       
+      125 +                                                              
+      126 +    expect(await screen.findByRole('alert')).toHaveTextContent
+          +(                                                             
+     … 5 more lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/DetailsPage.test.tsx (+1 -3)
+      144      renderDetails();
+      145  
+      146      await user.click(await screen.findByRole('button', { name:
+            'Delete' }));
+      147 -    await user.click(                                         
+      148 -      within(screen.getByRole('dialog')).getByRole('button', {
+          - name: 'Delete' }),                                           
+      149 -    );                                                        
+      147 +    await user.click(within(screen.getByRole('dialog')).getByR
+          +ole('button', { name: 'Delete' }));                           
+      148  
+      149      expect(
+      150        await screen.findByRole('heading', { level: 1, name: 'Pr
+           operties' }),
+  ⎿  Updated apps/web/src/pages/DetailsPage.tsx (+2 -2)
+       95        </dl>
+       96  
+       97        <p className="mt-4 text-sm text-gray-600">
+       98 -        Coordinates are those of the town Weatherstack resolve
+          -d the address to, not of the                                  
+       99 -        building. Weather is as of when the property was creat
+          -ed.                                                           
+       98 +        Coordinates are those of the town Weatherstack resolve
+          +d the address to, not of the building.                        
+       99 +        Weather is as of when the property was created.       
+      100        </p>
+      101  
+      102        {deleting && (
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Every Must AC is listed. Now the test-plan TR-20 row and the plan's
+  Deviations.
+
+● Bash(python3 - <<'EOF'
+      p='context/test-plan.md'…)
+  ⎿  All matched files use Prettier code style!
+  ⎿  Updated context/test-plan.md (+1 -1)
+      44  | TR-17 | The adapter sends the wrong request: the query is not
+           the full normalized address, `units` is not `f`, or the base U
+          RL is not read from config (FR-05 AC2, D-03, A-11). | M | L | U
+           (MSW) | MSW handler records the request. Assert path `/current
+          `, `query` = `"15528 E Golden Eagle Blvd, Fountain Hills, AZ 85
+          268, United States"`, `units=f`, the host from `WEATHERSTACK_BA
+          SE_URL`, and `access_key` present (compared to the sentinel, ne
+          ver printed). | planned (S-01) |
+      45  | TR-18 | Env config: the API starts without a key and fails at
+           the first create, or the error message prints the value (FR-14
+           AC3). | M | L | U | Config schema test: missing `WEATHERSTACK_
+          KEY` → error names the variable. With an invalid value elsewher
+          e, the message does not contain the sentinel key. `main.ts` sta
+          rted without the key (unset or `''`) exits 1 naming the variabl
+          e (`apps/api/src/config/env.test.ts`, `apps/api/src/main.test.t
+          s`). | covered (F-01) |
+      46  | TR-19 | UI shows the wrong thing for an API error: a generic 
+          message instead of the per-code one, entered values lost, or `B
+          AD_USER_INPUT` not attached to fields (FR-13 AC3, AC4, NFR-09).
+           | M | M | U (web) | Testing Library + MSW GraphQL: `it.each` o
+          ver the four FR-10 create codes → the specific message, inputs 
+          keep their values. `BAD_USER_INPUT` with `fields: ['zipCode','s
+          tate']` → messages next to those inputs. Mapper unit table: eve
+          ry code in the shared error-code list has a message (fails when
+           a code is added without one). | planned (S-05) |
+      47 -| TR-20 | UI states are missing or wrong: no loading / empty / 
+         -error-with-retry, the delete dialog deletes on cancel, the list
+         - is not refreshed after delete, unknown id crashes the details 
+         -page, missing optional weather fields crash it (FR-11 AC5, AC6,
+         - FR-12 AC3 – AC5). | M | M | U (web) | Testing Library + MSW pe
+         -r AC: delayed handler → loading; empty list → empty state with 
+         -create link; network error → error state, retry re-requests. De
+         -lete: cancel sends no mutation, confirm sends it and the row di
+         -sappears. Details: `null` → not-found; a snapshot without `astr
+         -o` / `air_quality` renders. jsdom `<dialog>` support checked in
+         - S-04. | planned (S-04) |                                      
+      47 +| TR-20 | UI states are missing or wrong: no loading / empty / 
+         +error-with-retry, the delete dialog deletes on cancel, the list
+         + is not refreshed after delete, unknown id crashes the details 
+         +page, missing optional weather fields crash it (FR-11 AC5, AC6,
+         + FR-12 AC3 – AC5). | M | M | U (web) | Testing Library + MSW pe
+         +r AC: delayed handler → loading; empty list → empty state with 
+         +create link; network error → error state, retry re-requests. De
+         +lete: cancel sends no mutation, confirm sends it and the row di
+         +sappears. Details: `null` → not-found; a snapshot with empty de
+         +scription and icon lists renders without them (`astro` / `air_q
+         +uality` live only in `raw`, which the details page shows from #
+         +11). jsdom has no `<dialog>` API, so `test/setup.ts` polyfills 
+         +`showModal` / `close`. | covered (S-04): `ListPage.test.tsx`, `
+         +DeletePropertyDialog.test.tsx`, `DetailsPage.test.tsx` |       
+      48  | TR-21 | Client-side validation differs from the server's (FR-
+          13 AC1). The shared schema prevents drift, but the form may not
+           use it. | L | M | U (web) | Form test: an empty field, a 4-dig
+          it zip and `"XX"` show field messages and MSW records no reques
+          t. Rule logic is tested once, in `packages/shared`. | planned (
+          S-05) |
+      49  | TR-22 | Layering or type rules erode (resolver imports a repo
+          sitory, `any`, enum, `.js` import), which hurts the assessment 
+          (NFR-04, NFR-06). | M | M | static | ESLint + `tsc` in pre-comm
+          it and CI. Deliberate violations must fail: `tooling/guardrails
+          .test.ts` (`tooling` project) lints virtual files with the real
+           ESLint config and runs `tsc` on `tooling/fixtures/`. | covered
+           (F-01) |
+      50  | TR-23 | Generated GraphQL types drift from `schema.graphql`, 
+          so resolvers or the web compile against a stale contract. | M |
+           L | static | CI runs `pnpm codegen`, then `git diff --exit-cod
+          e` and an empty `git status --porcelain` on the generated direc
+          tories (so new untracked output also fails). Then `tsc`. | cove
+          red (F-01) |
+  ⎿  Updated context/changes/list-and-details-pages/plan.md (+7 -0)
+      359    cover the "active entry is not re-fetched" half.
+      360  - Phase 2, ListPage AC1 test: the row now has an action cell, 
+           so the expected cells end with
+      361    "Delete".
+      362 +- Phase 3, `DeletePropertyDialog` (not in the phase 3 file lis
+          +t): plan says `PROPERTY_NOT_FOUND`                            
+      363 +  on the details page navigates to `/`; the dialog only showed
+          + a message. It gains an optional                              
+      364 +  `onNotFound` prop: when set, that code calls it and shows no
+          + message (no flash before the                                 
+      365 +  navigation commits). The list page does not pass it, so its 
+          +behaviour is unchanged. Two                                   
+      366 +  dialog tests cover it.                                      
+      367 +- Phase 3, `routes.test.tsx`: the details row now expects "Pro
+          +perty not found" (the phase 1                                 
+      368 +  deviation is closed).                                       
+
+● Phase 3 (details page) is built and every automated check passes. It now needs
+  you to look at it in a browser before I commit.
+
+  What changed:
+  - apps/web/src/hooks/useProperty.ts (new): fetches one property with every
+    field except raw. If no property has that id, the result is null, which the
+    page shows as "Property not found".
+  - apps/web/src/pages/DetailsPage.tsx: the details page, with:
+    - loading, error-with-Retry and "Property not found" (with a link back)
+      states;
+    - the address, coordinates, creation date and weather with units (°F, mph 
+      NE, %);
+    - the conditions line and icon, each left out when its list is empty;
+    - the note that coordinates are town-level and the weather is as of
+      creation;
+    - Delete, which goes back to / after a delete and also when the property is
+      already gone.
+  - apps/web/src/pages/DetailsPage.test.tsx (new): 8 tests covering FR-12
+    AC1–AC5 and the loading/error states. They render the whole app's routes.
+  - apps/web/src/components/DeletePropertyDialog.tsx + test: a new optional
+    onNotFound prop and 2 tests for it (details below).
+  - apps/web/src/app/routes.test.tsx: the details route now expects "Property
+    not found".
+  - apps/web/src/graphql/*: regenerated by pnpm codegen.
+  - context/test-plan.md: TR-20 is now covered (S-04), with the test files named
+    and the new approach text.
+  - plan.md: deviations added (the Phase 2 hash was already in the working
+    tree).
+
+  Checks:
+
+  ┌───────────────────────┬─────────────────────────────────────────────────┐
+  │         Check         │                     Result                      │
+  ├───────────────────────┼─────────────────────────────────────────────────┤
+  │ pnpm codegen          │ ✅ only the expected output changed             │
+  ├───────────────────────┼─────────────────────────────────────────────────┤
+  │ pnpm typecheck / pnpm │                                                 │
+  │  lint / pnpm          │ ✅                                              │
+  │ format:check          │                                                 │
+  ├───────────────────────┼─────────────────────────────────────────────────┤
+  │ pnpm vitest run       │ ✅ 52 passed                                    │
+  │ --project web         │                                                 │
+  ├───────────────────────┼─────────────────────────────────────────────────┤
+  │ pnpm test:unit        │ ✅ 396 passed (30 files)                        │
+  ├───────────────────────┼─────────────────────────────────────────────────┤
+  │ AC grep               │ ✅ every Must AC from FR-11 and FR-12 appears   │
+  │                       │ in the tests                                    │
+  ├───────────────────────┼─────────────────────────────────────────────────┤
+  │                       │ ✅ I briefly made a delete refetch every        │
+  │ Do the delete tests   │ property query. Both AC4 tests then failed      │
+  │ catch a refetch?      │ because the property was requested twice. I     │
+  │                       │ restored the original.                          │
+  └───────────────────────┴─────────────────────────────────────────────────┘
+
+  Deviations:
+  - Delete dialog (not in the phase 3 file list). The plan says that if the
+    property is already gone when you delete it from the details page, the app
+    should go back to /. The dialog could only show "This property no longer
+    exists". It now takes an optional onNotFound prop. When it's set, the dialog
+    calls it and shows no message, so the message never appears before the page
+    changes. The list page doesn't pass it, so the list works as before.
+  - routes.test.tsx: the change deferred in phase 1 is now made.
+
+  Human checks. Please confirm these:
+  1. Run docker compose up -d postgres && pnpm dev, then open
+     http://localhost:5173/ and click a property's street.
+     - [ ] The weather icon loads, and the units and wording read well (°F, mph
+       + direction, %).
+     - [ ] The note about town-level coordinates and weather as of creation is
+       clear.
+     - [ ] Delete → confirm takes you back to the list, and the property is
+       gone.
+  2. Open http://localhost:5173/properties/does-not-exist.
+     - [ ] It shows "Property not found" with a link back to the list.
+
+  Once you confirm, I'll commit only the files listed above plus plan.md, with
+  this message:
+
+  feat(list-and-details-pages): details page with weather, precision note and 
+  delete
+
+  Refs #6
+
+  implement-S-04-1.txt, implement-S-04-2.txt, plan-S-04.txt and plan-review 
+  S-04.txt are untracked and will stay out of the commit. Should the footer be
+  Closes #6 instead? This is S-04's last phase, but a
+  docs(list-and-details-pages): close plan commit (adding this phase's hash to
+  plan.md) still follows. If that closing commit takes Closes #6, this one stays
+  Refs #6.
+
+✻ Worked for 2m 30s · done 10:55 AM

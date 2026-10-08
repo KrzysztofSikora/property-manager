@@ -1,0 +1,564 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement list-and-details-pages                                             
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I've implemented delete-from-list using a native <dialog> confirmation:
+  confirming calls DeleteProperty and refreshes the list, canceling does
+  nothing, and errors show specific messages. Now I'll run codegen, typecheck,
+  lint, format, web tests, and unit tests, plus a browser check of the modal.
+
+  Searched for 1 pattern, ran 3 shell commands (ctrl+o to expand)
+
+● Setting the roadmap to in-progress is already done. Writing the errorCode test
+  first.
+
+● Write(apps/web/src/lib/graphql-errors.test.ts)
+  ⎿  Wrote 42 lines to apps/web/src/lib/graphql-errors.test.ts
+       1 import { describe, expect, it } from 'vitest';
+       2 import { GraphQLRequestError } from './execute';
+       3 import { errorCode } from './graphql-errors';
+       4 
+       5 describe('errorCode', () => {
+       7     [
+       8       'a known code',
+       9       new GraphQLRequestError(200, [{ message: 'gone', extension
+         s: { code: 'PROPERTY_NOT_FOUND' } }]),
+      10       'PROPERTY_NOT_FOUND',
+     … +39 lines (ctrl+o to expand)
+  ⎿  PostToolUse:Write hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/web/src/lib/graphql-errors.test.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src/lib/gr
+     aphql-errors.test.ts
+       42:12  error  Unsafe call of a type that could not be resolved  
+     @typescript-eslint/no-unsafe-call
+
+     ✖ 1 problem (1 error, 0 warnings)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● It fails for the right reason: the module does not exist yet, which is also
+  why ESLint could not resolve the type. Now the implementation:
+
+● Write(apps/web/src/lib/graphql-errors.ts)
+  ⎿  Wrote 14 lines to apps/web/src/lib/graphql-errors.ts
+       1 import { ERROR_CODES, type ErrorCode } from '@property-manager/s
+       2 import { GraphQLRequestError } from './execute';
+       3 
+       4 function isErrorCode(value: unknown): value is ErrorCode {
+       6 }
+       7 
+          for a network or HTTP failure
+       9 // and for codes outside the contract. S-05 adds the per-code me
+         ssages here (TR-19).
+          {
+     … +7 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now the mutation hook and the dialog.
+
+● Write(apps/web/src/hooks/useDeleteProperty.ts)
+  ⎿  Wrote 34 lines to apps/web/src/hooks/useDeleteProperty.ts
+       1 import { type QueryClient, useMutation, useQueryClient } from '@
+         tanstack/react-query';
+       2 import { graphql } from '../graphql';
+       3 import { execute } from '../lib/execute';
+       4 import { errorCode } from '../lib/graphql-errors';
+       6 const DeletePropertyMutation = graphql(`
+       7   mutation DeleteProperty($id: ID!) {
+       8     deleteProperty(id: $id)
+       9   }
+      10 `);
+     … +33 lines (ctrl+o to expand)
+
+● Bash(source ~/.nvm/nvm.sh && nvm use >/dev/null && pnpm codegen 2>&1 | tail -5
+      && git status --short apps/web/src/graphql)
+  ⎿  ✔ Load GraphQL documents
+     ❯ Generate
+     ✔ Generate
+     … +4 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/graphql/gql.ts (+6 -0)
+      15   * Learn more about it here: https://the-guild.dev/graphql/code
+          gen/plugins/presets/preset-client#reducing-bundle-size
+      16   */
+      17  type Documents = {
+      18 +    "\n  mutation DeleteProperty($id: ID!) {\n    deletePropert
+         +y(id: $id)\n  }\n": typeof types.DeletePropertyDocument,       
+      19      "\n  query Properties($filter: PropertyFilter, $sort: Prope
+          rtySort) {\n    properties(filter: $filter, sort: $sort) {\n   
+             items {\n        id\n        street\n        city\n        s
+          tate\n        zipCode\n        createdAt\n      }\n      totalC
+          ount\n    }\n  }\n": typeof types.PropertiesDocument,
+      20  };
+      21  const documents: Documents = {
+      22 +    "\n  mutation DeleteProperty($id: ID!) {\n    deletePropert
+         +y(id: $id)\n  }\n": types.DeletePropertyDocument,              
+      23      "\n  query Properties($filter: PropertyFilter, $sort: Prope
+          rtySort) {\n    properties(filter: $filter, sort: $sort) {\n   
+             items {\n        id\n        street\n        city\n        s
+          tate\n        zipCode\n        createdAt\n      }\n      totalC
+          ount\n    }\n  }\n": types.PropertiesDocument,
+      24  };
+      25  
+      26  /**
+      27   * The graphql function is used to parse GraphQL queries into a
+           document that can be used by GraphQL clients.
+      28   */
+      29 +export function graphql(source: "\n  mutation DeleteProperty($i
+         +d: ID!) {\n    deleteProperty(id: $id)\n  }\n"): typeof import(
+         +'./graphql.ts').DeletePropertyDocument;                        
+      30 +/**                                                            
+      31 + * The graphql function is used to parse GraphQL queries into a
+         + document that can be used by GraphQL clients.                 
+      32 + */                                                            
+      33  export function graphql(source: "\n  query Properties($filter: 
+          PropertyFilter, $sort: PropertySort) {\n    properties(filter: 
+          $filter, sort: $sort) {\n      items {\n        id\n        str
+          eet\n        city\n        state\n        zipCode\n        crea
+          tedAt\n      }\n      totalCount\n    }\n  }\n"): typeof import
+          ('./graphql.ts').PropertiesDocument;
+      34  
+      35  
+  ⎿  Updated apps/web/src/graphql/graphql.ts (+12 -0)
+      24    /** Newest first. */
+      25    | 'CREATED_AT_DESC';
+      26  
+      27 +export type DeletePropertyMutationVariables = Exact<{          
+      28 +  id: string | number;                                         
+      29 +}>;                                                            
+      30 +                                                               
+      31 +                                                               
+      32 +export type DeletePropertyMutation = { deleteProperty: string }
+         +;                                                              
+      33 +                                                               
+      34  export type PropertiesQueryVariables = Exact<{
+      35    filter?: PropertyFilter | null | undefined;
+      36    sort?: PropertySort | null | undefined;
+     ...
+      58    }
+      59  }
+      60  
+      61 +export const DeletePropertyDocument = new TypedDocumentString(`
+      62 +    mutation DeleteProperty($id: ID!) {                        
+      63 +  deleteProperty(id: $id)                                      
+      64 +}                                                              
+      65 +    `) as unknown as TypedDocumentString<DeletePropertyMutation
+         +, DeletePropertyMutationVariables>;                            
+      66  export const PropertiesDocument = new TypedDocumentString(`
+      67      query Properties($filter: PropertyFilter, $sort: PropertySo
+          rt) {
+      68    properties(filter: $filter, sort: $sort) {
+
+● Checking the TanStack v5 docs on whether a promise returned from onError is
+  awaited:
+
+  Called context7 (ctrl+o to expand)
+
+● Confirmed: the hook-level callbacks are awaited before the mutation settles.
+  Now the dialog:
+
+● Write(apps/web/src/components/DeletePropertyDialog.tsx)
+  ⎿  Wrote 83 lines to apps/web/src/components/DeletePropertyDialog.tsx
+       1 import { useEffect, useId, useRef } from 'react';
+       2 import { useDeleteProperty } from '../hooks/useDeleteProperty';
+       3 import { errorCode } from '../lib/graphql-errors';
+       4 
+       5 export type DeletableProperty = {
+       6   id: string;
+       7   street: string;
+       8   city: string;
+       9   state: string;
+      10   zipCode: string;
+     … +78 lines (ctrl+o to expand)
+
+● Next, wiring the dialog into ListPage:
+
+● Bash(cd
+      /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src/pages
+      && python3 - <<'EOF'
+      p='ListPage.tsx'…)
+  ⎿  Updated apps/web/src/pages/ListPage.tsx (+20 -0)
+      1  import { US_STATES } from '@property-manager/shared';
+      2  import { type SubmitEvent, useState } from 'react';
+      3  import { Link } from 'react-router';
+      4 +import { type DeletableProperty, DeletePropertyDialog } from '..
+        +/components/DeletePropertyDialog';                              
+      5  import type { PropertySort } from '../graphql/graphql';
+      6  import { type PropertiesFilter, useProperties } from '../hooks/u
+         seProperties';
+      7  import { formatDateTime } from '../lib/format';
+     ...
+      27    const [filter, setFilter] = useState<PropertiesFilter>(NO_FIL
+          TER);
+      28    const [sort, setSort] = useState<PropertySort>('CREATED_AT_DE
+          SC');
+      29    const properties = useProperties({ filter, sort });
+      30 +  // The row whose Delete was clicked. The dialog is mounted (a
+         +nd open) only while it is set.                                 
+      31 +  const [toDelete, setToDelete] = useState<DeletableProperty | 
+         +null>(null);                                                   
+      32  
+      33    function applyFilter(event: SubmitEvent<HTMLFormElement>) {
+      34      event.preventDefault();
+     ...
+      131                  <th>State</th>
+      132                  <th>Zip code</th>
+      133                  <th>Created</th>
+      134 +                <th>                                          
+      135 +                  <span className="sr-only">Actions</span>    
+      136 +                </th>                                         
+      137                </tr>
+      138              </thead>
+      139              <tbody>
+     ...
+      148                    <td>{property.state}</td>
+      149                    <td>{property.zipCode}</td>
+      150                    <td>{formatDateTime(property.createdAt)}</td
+           >
+      151 +                  <td className="text-right">                 
+      152 +                    <button                                   
+      153 +                      type="button"                           
+      154 +                      aria-label={`Delete ${property.street}`}
+      155 +                      onClick={() => setToDelete(property)}   
+      156 +                      className="rounded border px-2 py-0.5 te
+          +xt-red-700"                                                   
+      157 +                    >                                         
+      158 +                      Delete                                  
+      159 +                    </button>                                 
+      160 +                  </td>                                       
+      161                  </tr>
+      162                ))}
+      163              </tbody>
+     … 10 more lines (ctrl+o to expand)
+
+● Now the tests: a dialog unit test plus the AC5 cases in ListPage.test.tsx.
+
+● Write(apps/web/src/components/DeletePropertyDialog.test.tsx)
+  ⎿  Wrote 88 lines to
+     apps/web/src/components/DeletePropertyDialog.test.tsx
+       1 import { screen, within } from '@testing-library/react';
+       2 import userEvent from '@testing-library/user-event';
+       3 import { delay } from 'msw';
+       4 import { HttpResponse } from 'msw/http';
+       5 import { describe, expect, it, vi } from 'vitest';
+         /graphql';
+       7 import { listItem } from '../test/fixtures';
+       8 import { api, server } from '../test/msw';
+       9 import { renderWithProviders } from '../test/render';
+      10 import { DeletePropertyDialog } from './DeletePropertyDialog';
+     … +96 lines (ctrl+o to expand)
+
+● Now the ListPage AC5 cases, appended inside the describe:
+
+● Bash(python3 - <<'EOF'
+      p='ListPage.test.tsx'…)
+  ⎿  $ prettier --write .
+     AssertionError: expected [ '1 Oldest Rd', 'Boston', 'MA', …(3) ] to de
+     eply equal [ '1 Oldest Rd', 'Boston', 'MA', …(2) ]
+     … +31 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/ListPage.test.tsx (+104 -1)
+       4  import { HttpResponse } from 'msw/http';
+       5  import { Route, Routes, useParams } from 'react-router';
+       6  import { describe, expect, it } from 'vitest';
+       7 -import type { PropertiesQueryVariables } from '../graphql/graph
+         -ql';                                                           
+       7 +import type { DeletePropertyMutationVariables, PropertiesQueryV
+         +ariables } from '../graphql/graphql';                          
+       8  import { listItem, type PropertyListItem } from '../test/fixtur
+          es';
+       9  import { api, server } from '../test/msw';
+      10  import { renderWithProviders } from '../test/render';
+     ...
+       51    return requests;
+       52  }
+       53  
+       54 +// A stored list that `DeleteProperty` changes: `Properties` s
+          +erves what is left, and both                                  
+       55 +// operations are recorded.                                   
+       56 +function serveStore(                                          
+       57 +  initial: PropertyListItem[],                                
+       58 +  respondDelete: (id: string, remove: () => void) => Response 
+          += (id, remove) => {                                           
+       59 +    remove();                                                 
+       60 +    return HttpResponse.json({ data: { deleteProperty: id } })
+          +;                                                             
+       61 +  },                                                          
+       62 +) {                                                           
+       63 +  let items = initial;                                        
+       64 +  const listRequests: PropertiesQueryVariables[] = [];        
+       65 +  const deletedIds: string[] = [];                            
+       66 +  server.use(                                                 
+       67 +    api.query<object, PropertiesQueryVariables>('Properties', 
+          +({ variables }) => {                                          
+       68 +      listRequests.push(variables);                           
+       69 +      return HttpResponse.json(propertiesPayload(items));     
+       70 +    }),                                                       
+       71 +    api.mutation<object, DeletePropertyMutationVariables>('Del
+          +eteProperty', ({ variables }) => {                            
+       72 +      deletedIds.push(variables.id);                          
+       73 +      return respondDelete(variables.id, () => {              
+       74 +        items = items.filter((item) => item.id !== variables.i
+          +d);                                                           
+       75 +      });                                                     
+       76 +    }),                                                       
+       77 +  );                                                          
+       78 +  return { listRequests, deletedIds };                        
+       79 +}                                                             
+       80 +                                                              
+       81 +function notFoundResponse() {                                 
+       82 +  return HttpResponse.json({                                  
+     … 81 more lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/ListPage.tsx (+1 -3)
+      165          </>
+      166        )}
+      167  
+      168 -      {toDelete && (                                          
+      169 -        <DeletePropertyDialog property={toDelete} onClose={() 
+          -=> setToDelete(null)} />                                      
+      170 -      )}                                                      
+      168 +      {toDelete && <DeletePropertyDialog property={toDelete} o
+          +nClose={() => setToDelete(null)} />}                          
+      169      </>
+      170    );
+      171  }
+
+● The only failure is the expected new action cell in AC1. I'll update that
+  expectation:
+
+● Bash(sed -i "s/expect(cells).toEqual(\['1 Oldest Rd', 'Boston', 'MA', '02108',
+      'Sep 14, 2026, 11:42 PM'\]);/expect(cells).toEqual([\n      '1 Oldest
+      Rd',\n      'Bos…)
+  ⎿  $ prettier --write .
+      Test Files  6 passed (6)
+           Tests  42 passed (42)
+     … +16 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/ListPage.test.tsx (+8 -1)
+      112      const cells = within(screen.getAllByRole('row')[3] as HTML
+           Element)
+      113        .getAllByRole('cell')
+      114        .map((cell) => cell.textContent);
+      115 -    expect(cells).toEqual(['1 Oldest Rd', 'Boston', 'MA', '021
+          -08', 'Sep 14, 2026, 11:42 PM']);                              
+      115 +    expect(cells).toEqual([                                   
+      116 +      '1 Oldest Rd',                                          
+      117 +      'Boston',                                               
+      118 +      'MA',                                                   
+      119 +      '02108',                                                
+      120 +      'Sep 14, 2026, 11:42 PM',                               
+      121 +      'Delete',                                               
+      122 +    ]);                                                       
+      123      expect(screen.getByRole('columnheader', { name: 'Zip code'
+            })).toBeInTheDocument();
+      124      expect(screen.getByText('3 properties')).toBeInTheDocument
+           ();
+      125      expect(requests).toEqual([{ filter: {}, sort: 'CREATED_AT_
+           DESC' }]);
+
+● All 42 web tests pass. Running the full agent checks:
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Two kinds of fixes. Codegen types ID input variables as string | number, so
+  the test recorders need String(...). ESLint also wants braces on the two void
+  arrow callbacks.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src
+      && python3 - <<'EOF'
+      import re…)
+  ⎿  sponse.json(propertiesPayload(items));
+         }),
+         api.mutation<object, DeletePropertyMutationVariables>('DeletePrope
+     … +35 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/components/DeletePropertyDialog.test.tsx (+4 -2)
+      16    const ids: string[] = [];
+      17    server.use(
+      18      api.mutation<object, DeletePropertyMutationVariables>('Dele
+          teProperty', ({ variables }) => {
+      19 -      ids.push(variables.id);                                  
+      20 -      return respond(variables.id);                            
+      19 +      // Codegen types an `ID` input as `string | number`. The 
+         +app sends strings.                                             
+      20 +      const id = String(variables.id);                         
+      21 +      ids.push(id);                                            
+      22 +      return respond(id);                                      
+      23      }),
+      24    );
+      25    return ids;
+
+● Bash(python3 - <<'EOF'
+      def edit(p, pairs):…)
+  ⎿  $ prettier --write .
+     apps/web typecheck: Done
+     apps/api typecheck: Done
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/ListPage.test.tsx (+5 -3)
+      69        return HttpResponse.json(propertiesPayload(items));
+      70      }),
+      71      api.mutation<object, DeletePropertyMutationVariables>('Dele
+          teProperty', ({ variables }) => {
+      72 -      deletedIds.push(variables.id);                           
+      73 -      return respondDelete(variables.id, () => {               
+      74 -        items = items.filter((item) => item.id !== variables.id
+         -);                                                             
+      72 +      // Codegen types an `ID` input as `string | number`. The 
+         +app sends strings.                                             
+      73 +      const id = String(variables.id);                         
+      74 +      deletedIds.push(id);                                     
+      75 +      return respondDelete(id, () => {                         
+      76 +        items = items.filter((item) => item.id !== id);        
+      77        });
+      78      }),
+      79    );
+  ⎿  Updated apps/web/src/pages/ListPage.tsx (+11 -2)
+      152                      <button
+      153                        type="button"
+      154                        aria-label={`Delete ${property.street}`}
+      155 -                      onClick={() => setToDelete(property)}   
+      155 +                      onClick={() => {                        
+      156 +                        setToDelete(property);                
+      157 +                      }}                                      
+      158                        className="rounded border px-2 py-0.5 te
+           xt-red-700"
+      159                      >
+      160                        Delete
+     ...
+      167          </>
+      168        )}
+      169  
+      168 -      {toDelete && <DeletePropertyDialog property={toDelete} o
+          -nClose={() => setToDelete(null)} />}                          
+      170 +      {toDelete && (                                          
+      171 +        <DeletePropertyDialog                                 
+      172 +          property={toDelete}                                 
+      173 +          onClose={() => {                                    
+      174 +            setToDelete(null);                                
+      175 +          }}                                                  
+      176 +        />                                                    
+      177 +      )}                                                      
+      178      </>
+      179    );
+      180  }
+  ⎿  (timeout 6m 40s)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All checks are green. I'll log the small drifts under Deviations:
+
+● Bash(cat >> context/changes/list-and-details-pages/plan.md <<'EOF'
+      - Phase 2, `useDeleteProperty`: the hook's `onSuccess` / `onError` return
+      the invalidation…)
+  ⎿    cover the "active entry is not re-fetched" half.
+     - Phase 2, ListPage AC1 test: the row now has an action cell, so the e
+     xpected cells end with
+       "Delete".
+  ⎿  Updated context/changes/list-and-details-pages/plan.md (+9 -0)
+      350  - Follow-up (not fixed, outside the phase): `execute(doc, {})`
+            does not type-check for a
+      351    document whose variables are all optional. TS infers `TVaria
+           bles` from `{}`, which matches
+      352    the no-variables branch of the rest type. Callers pass a non
+           -empty object today.
+      353 +- Phase 2, `useDeleteProperty`: the hook's `onSuccess` / `onEr
+          +ror` return the invalidation                                  
+      354 +  promise, so the mutation stays pending until the list has re
+          +-fetched. The dialog closes on a                              
+      355 +  list that no longer has the row. TanStack awaits hook-level 
+          +callbacks (context7, `mutation.ts`).                          
+      356 +- Phase 2, tests: codegen types an `ID` input variable as `str
+          +ing | number`, so the MSW                                     
+      357 +  recorders convert it with `String(...)`. The removal of an i
+          +nactive cached details entry is                               
+      358 +  not asserted in phase 2 (no details query exists yet). Phase
+          + 3's delete-from-details tests                                
+      359 +  cover the "active entry is not re-fetched" half.            
+      360 +- Phase 2, ListPage AC1 test: the row now has an action cell, 
+          +so the expected cells end with                                
+      361 +  "Delete".                                                   
+
+● Phase 2 is built and all the automated checks pass. I haven't committed yet:
+  the plan's human check comes first, and only you can do it.
+
+  Changes
+  - apps/web/src/lib/graphql-errors.ts (new): errorCode(error) returns the error
+    code from the API's first error. It returns nothing for codes it doesn't
+    know, a missing code, or errors that aren't GraphQL errors.
+  - apps/web/src/lib/graphql-errors.test.ts (new): a 9-case table for errorCode.
+  - apps/web/src/hooks/useDeleteProperty.ts (new): the delete mutation. After a
+    successful delete, or when the API says the property no longer exists, it
+    reloads the list. It also drops a cached details entry for that property,
+    but only when no page is using it.
+  - apps/web/src/components/DeletePropertyDialog.tsx (new): a native <dialog>
+    that opens when it is added to the page and closes by removing itself.
+    Delete is disabled while the request runs, and an error message appears
+    inside the dialog.
+  - apps/web/src/components/DeletePropertyDialog.test.tsx (new): tests that it
+    opens, Cancel sends nothing, Delete is disabled while pending, and a failure
+    keeps the dialog open.
+  - apps/web/src/pages/ListPage.tsx: each row has a Delete button (labelled
+    Delete <street> for screen readers) that opens the dialog.
+  - apps/web/src/pages/ListPage.test.tsx: tests for confirm, cancel, "no longer
+    exists", and a network error. Each one checks which requests were sent. The
+    AC1 test now expects the extra "Delete" cell in each row.
+  - apps/web/src/graphql/{gql,graphql}.ts: regenerated by pnpm codegen for the
+    new delete mutation.
+  - context/changes/list-and-details-pages/plan.md: three deviations logged.
+
+  Agent checks
+
+  ┌──────────────────────────┬──────────────────────────────────────────────┐
+  │          Check           │                    Result                    │
+  ├──────────────────────────┼──────────────────────────────────────────────┤
+  │ pnpm codegen             │ output is stable on a second run and passes  │
+  │                          │ the format check                             │
+  ├──────────────────────────┼──────────────────────────────────────────────┤
+  │ pnpm typecheck           │ pass                                         │
+  ├──────────────────────────┼──────────────────────────────────────────────┤
+  │ pnpm lint                │ pass                                         │
+  ├──────────────────────────┼──────────────────────────────────────────────┤
+  │ pnpm format:check        │ pass                                         │
+  ├──────────────────────────┼──────────────────────────────────────────────┤
+  │ pnpm vitest run          │ 42/42 pass                                   │
+  │ --project web            │                                              │
+  ├──────────────────────────┼──────────────────────────────────────────────┤
+  │ pnpm test:unit           │ 386/386 pass                                 │
+  └──────────────────────────┴──────────────────────────────────────────────┘
+
+  Deviations (small, logged in plan.md)
+  - After a delete, the dialog waits for the list to reload before it closes, so
+    the row is already gone when it closes.
+  - Codegen types the id variable as string | number, so the test mocks convert
+    it with String(...).
+  - No test yet checks that a cached details entry is dropped after a delete
+    from the list. No details page exists until phase 3, which tests the related
+    case of deleting while the details page is open.
+
+  Human checks. Please confirm these:
+  - [ ] Start the database with docker compose up -d postgres, then pnpm dev,
+    and open http://localhost:5173 with a few properties created.
+  - [ ] Click Delete on a row. The dialog should be modal: the page behind it is
+    dimmed, and Tab keeps focus inside the dialog.
+  - [ ] Press Esc. The dialog should close and the row should stay. In the API
+    log or the Network tab, there should be no DeleteProperty request.
+  - [ ] Open it again and click Delete. The dialog should close and the row
+    should disappear.
+
+  Once you confirm, I'll commit only the files above plus plan.md. The three
+  untracked .txt files at the repo root will stay out of the commit. Proposed
+  message:
+
+  feat(list-and-details-pages): delete a property from the list with a confirm 
+  dialog
+
+  Refs #6
+
+  Next is Phase 3 (Details page). Running /clear first is a good idea.
+
+✻ Cogitated for 3m 32s · done 10:51 AM

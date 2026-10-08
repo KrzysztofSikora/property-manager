@@ -1,0 +1,135 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan list-and-details-pages                                                  
+
+  Searched for 1 pattern, listed 2 directories, ran 2 shell commands (ctrl+o to expand)
+
+● Now the web app code.
+
+  Searched for 1 pattern, listed 1 directory, ran 4 shell commands (ctrl+o to expand)
+
+● Checking how jsdom handles <dialog>, then I'll draft the decisions.
+
+  Called context7, ran 2 shell commands (ctrl+o to expand)
+
+● User answered Claude's questions:
+  ⎿  · How should the list filters (city, state, zip) apply? → Submit form 
+     (suggested)
+     · What control should the state filter be? → Select from shared table 
+     (suggested)
+     · What happens when a delete fails (e.g. PROPERTY_NOT_FOUND because it was 
+     already deleted, or network error)? → Error in dialog, refresh (suggested)
+
+● User answered Claude's questions:
+  ⎿  · The header's ApiStatus ('API: ok') is marked 'placeholder until S-04'. 
+     What should happen to it? → Remove it (suggested)
+     · How should creation dates be shown? → Viewer's local time (suggested)
+
+● Research is done, and your five answers are recorded. Here is the phase split
+  I propose:
+
+  1. List page. Adds the test groundwork: @testing-library/user-event, a
+     <dialog> polyfill in the test setup (jsdom 30 has no showModal/close),
+     TZ=UTC, a property fixture factory and the dependency on
+     @property-manager/shared. It also removes ApiStatus. The / page gets the
+     table, the sort control, the filter form (city, a state select, zip,
+     applied on submit), loading/empty/error-with-retry states and a link from
+     each row to its details page. Tested with Testing Library + MSW for FR-11
+     AC1, AC2, AC3, AC6 and AC7.
+  2. Delete from the list. A reusable DeletePropertyDialog built on native
+     <dialog>, plus a useDeleteProperty mutation that invalidates
+     ['properties']. A failed delete shows its error in the dialog, and a
+     PROPERTY_NOT_FOUND also refreshes the list. Proves FR-11 AC5 (confirm
+     deletes, cancel sends no mutation) and both failure cases.
+  3. Details page. The /properties/:id page shows the full address, coordinates
+     with the city-level precision note, the creation date and the key weather
+     fields with units and icon. It has a not-found state and delete with a
+     return to the list. Missing optional fields are omitted. Proves FR-12
+     AC1–AC5 and its loading and error states.
+
+  Should I go ahead with these three phases, or would you rather merge or split
+  any of them?
+
+✻ Cooked for 1m 19s · done 10:33 AM
+
+❯ proceed with the three phases                                                 
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Write(context/changes/list-and-details-pages/plan.md)
+  ⎿  Wrote 309 lines to context/changes/list-and-details-pages/plan.md
+       1 # Plan: list-and-details-pages (S-04)
+       2 
+       4 
+       5 The web app shows the stored properties and lets the user delete
+          them (issue #6). When S-04 is
+       7 
+       8 - FR-11 AC1: `/` shows a table of every matching property (no `l
+         imit`) with street, city, state,
+      10 - FR-11 AC2: a sort control switches to "Oldest first". The list
+          is re-fetched with
+     … +493 lines (ctrl+o to expand)
+
+● Bash(sed -i 's/^| S-04 | #6 | list-and-details-pages | slice | FR-11 (Must
+      ACs), FR-12 (AC1–AC5) | S-03 | M | todo |$/| S-04 | #6 |
+      list-and-details-pages | slice |…)
+  ⎿  17:| S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs), FR
+     -12 (AC1–AC5) | S-03 | M | planned |
+  ⎿  Updated context/roadmap.md (+1 -1)
+      14  | S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1
+          –AC3, AC6), FR-07, FR-10 | F-02 | M | done |
+      15  | S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5)
+          , FR-06, FR-08, FR-10 | S-01 | M | done |
+      16  | S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-0
+          2, FR-03, FR-04, FR-09, FR-10 | S-01 | M | done |
+      17 -| S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs)
+         -, FR-12 (AC1–AC5) | S-03 | M | todo |                          
+      17 +| S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs)
+         +, FR-12 (AC1–AC5) | S-03 | M | planned |                       
+      18  | S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04
+           | M | todo |
+      19  | S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-1
+          5 | S-05 | M | todo |
+      20  
+
+● The plan for S-04 is written to
+  context/changes/list-and-details-pages/plan.md, and the roadmap now marks S-04
+  as planned. It has the three phases you agreed to:
+
+  1. List page: table, sort control, a filter form applied on submit (with a
+     state select), loading/empty/error-with-retry states and links to the
+     details page. Covers FR-11 AC1, AC2, AC3, AC6 and AC7.
+  2. Delete from the list: a native <dialog> for confirmation. A failed delete
+     shows its message in the dialog, and PROPERTY_NOT_FOUND also refreshes the
+     list. Covers FR-11 AC5.
+  3. Details page: all the fields with units, the note that coordinates are
+     town-level, the not-found state, and delete that returns to the list.
+     Covers FR-12 AC1–AC5 and finishes TR-20.
+
+  Things research turned up that the plan now accounts for:
+
+  - jsdom has no <dialog> support. Version 30.1.2 has no showModal() or close(),
+    so the test setup adds them. To keep tests reliable, the dialog only exists
+    on the page while it is open.
+  - A test library is missing. The test plan's Cookbook assumes
+    @testing-library/user-event, but it isn't installed. Phase 1 adds it, along
+    with the web app's dependency on @property-manager/shared.
+  - FR-12 AC5 is narrower than it reads. Every key weather field is required in
+    the schema, and astro/air_quality only exist in raw, which S-04 doesn't
+    fetch. So the only fields that can be missing are the description and the
+    icon (empty lists), and that is what the AC5 test checks.
+  - No mutation step for S-04. No Stryker target is touched; execute.ts doesn't
+    change.
+
+  One risk to settle during Phase 1: pinning the test time zone to UTC needs
+  checking against when Intl first reads it. The plan has a fallback if the
+  first approach doesn't hold.
+
+  Next step: /plan-review list-and-details-pages
+
+✻ Churned for 1m 56s · done 10:35 AM

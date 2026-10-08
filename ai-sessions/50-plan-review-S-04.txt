@@ -1,0 +1,175 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan-review list-and-details-pages                                           
+  ⎿  Running in the background as @plan-review
+
+● Agent "/plan-review list-and-details-pages" finished · 2m 33s
+
+● The plan review for list-and-details-pages is done. The verdict is ready with 
+  notes: no blockers, one major issue and four minor ones. The full review is in
+  context/changes/list-and-details-pages/plan-review.md, and plan.md was not
+  changed.
+
+  Major
+  1. Deleting from the details page will briefly show "Property not found."
+     After a delete, the plan refreshes everything cached under ['properties'].
+     TanStack Query runs that refresh before the page's own callback can drop
+     the details query or navigate away. So the deleted property's details get
+     fetched again, come back null, and the not-found state flashes up. The same
+     happens when the delete fails with PROPERTY_NOT_FOUND. The planned AC4
+     test would still pass, so nothing would catch it.
+     - Fix: leave that property's details query out of the refresh.
+     - Test: add one that checks no second Property request is sent after the
+       delete.
+
+  Minor
+  2. The error state takes about 7 seconds to appear in the real app. The query
+  client in main.tsx:13 keeps the default 3 retries. The tests turn retries off,
+  so they won't show this. The ApiStatus component being deleted turned retries
+  off for exactly this reason. Either pick a retry policy or mention the delay
+  in the manual check.
+  3. Filter values that are too long aren't handled. The API rejects filter
+  values over 100 characters, and the plan doesn't say what the page does then.
+  The generic error's Retry would never succeed. Setting maxLength on the inputs
+  (100 for City, 5 for Zip) prevents it.
+  4. TR-20's description will be out of date. It talks about a snapshot without
+  astro / air_quality, but the plan proves FR-12 AC5 a different way. Phase 3
+  only changes TR-20's status, so the description needs updating too.
+  5. The "Delete failure" decision contradicts the details page. It says the
+  dialog stays open with a message on PROPERTY_NOT_FOUND. On the details page
+  the user is sent to / straight away, so nobody sees that message. The plan
+  should say so.
+
+  Every file and line number the plan cites matches the repo, and its library
+  claims are correct (jsdom has no dialog methods, user-event is 14.6.7). Every
+  Must acceptance criterion in scope maps to a test, and nothing listed as out
+  of scope has crept back in.
+
+  Should I update plan.md to address these, starting with the delete flash?
+
+✻ Baked for 11s · done 10:38 AM
+
+❯ yes, fix all five in plan.md                                                  
+
+  Searched for 1 pattern, read 1 file, called context7, ran 2 shell commands (ctrl+o to expand)
+
+● I'm applying the five fixes to plan.md. The TanStack filter API for fix 1
+  checks out against the docs.
+
+● Bash(cat > /tmp/claude-1000/-home-krzysztof-projects-taskTreeCover-property-ma
+      nager/4378ef48-1010-4824-84ae-1452d5fc81f0/scratchpad/fix.py <<'EOF'
+      import sys…)
+  ⎿  Checking formatting...
+     All matched files use Prettier code style!
+      context/roadmap.md | 2 +-
+      1 file changed, 1 insertion(+), 1 deletion(-)
+  ⎿  Updated context/changes/list-and-details-pages/plan.md (+44 -16)
+      26  - FR-12 AC4: delete with confirmation returns the user to `/`.
+      27  - FR-12 AC5: a snapshot with no description or icon (empty arra
+          ys) renders without errors and
+      28    leaves those parts out.
+      29 -- NFR-09 for both views: explicit loading, empty and error stat
+         -es. A failed delete shows a                                    
+      30 -  message in the dialog, with a specific one for `PROPERTY_NOT_
+         -FOUND`.                                                        
+      29 +- NFR-09 for both views: explicit loading, empty and error stat
+         +es. On the list page a failed                                  
+      30 +  delete shows a message in the dialog, with a specific one for
+         + `PROPERTY_NOT_FOUND`. On the                                  
+      31 +  details page `PROPERTY_NOT_FOUND` navigates to `/` instead (t
+         +he property is gone either way).                               
+      32 +- After a delete from the details page, the deleted property's 
+         +`Property` query is not                                        
+      33 +  re-fetched, so "Property not found" never flashes.           
+      34  - Test-plan row TR-20 is `covered`.
+      35  
+      36  ## Scope
+     ...
+      47      `DetailsPage` and `DeletePropertyDialog`.
+      48    - `lib/format.ts` (date formatting) and `lib/graphql-errors.t
+          s` (reads the error code).
+      49    - The `ApiStatus` component and the web `Health` document are
+           removed.
+      50 +  - The production `QueryClient` (`main.tsx`) turns query retri
+         +es off.                                                        
+      51    - Test-plan updates: TR-20 status and the Cookbook web notes 
+          (default handlers, dialog
+      52      polyfill, TZ).
+      53  - Out:
+     ...
+      70    loading state and then not-found, and `ApiStatus` is removed.
+      71  - `apps/web/src/components/ApiStatus.tsx:5`: "Placeholder until
+           S-04". `Layout.tsx:2,14` renders
+      72    it.
+      73 +- `apps/web/src/main.tsx:13`: `new QueryClient()` with defaults
+         +, so queries retry 3 times with                                
+      74 +  backoff (about 7 s before an error shows). `ApiStatus.tsx:12-
+         +13` set `retry: false` for that                                
+      75 +  reason; tests already use `retry: false` (`test/render.tsx:7`
+         +).                                                             
+      76 +- `apps/api/src/graphql/properties-args.ts:12`: each filter val
+         +ue is capped at 100 characters                                 
+      77 +  (`BAD_USER_INPUT`). Stored zip codes are exactly 5 digits (`p
+         +ackages/shared/src/address.ts:34`).                            
+      78  - `apps/web/src/lib/execute.ts`: `execute(document, variables)`
+           throws `GraphQLRequestError`
+      79    with `status` and `errors[]` (each with `extensions`). It is 
+          a mutation target with a 97.4%
+      80    baseline (F-01). S-04 does not change it, so S-04 has no `/mu
+          tation` step.
+     ...
+      111  - TanStack Query 5 (context7 `/tanstack/query`): `placeholderD
+           ata: keepPreviousData` keeps the
+      112    old rows while a new key loads (`isPlaceholderData` is true 
+           meanwhile).
+      113    `invalidateQueries({ queryKey: ['properties'] })` matches by
+            prefix.
+      114 +  `useMutation`'s own `onSuccess` runs, and is awaited, before
+          + the `mutate(vars, { onSuccess })`                            
+      115 +  callback, so a prefix invalidation in the hook refetches an 
+          +active detail query before the                                
+      116 +  page can remove it or navigate. Query filters accept `exact`
+          + and                                                          
+      117 +  `type: 'active' | 'inactive' | 'all'` (`removeQueries`, `inv
+          +alidateQueries`).                                             
+      118  - `@testing-library/user-event` latest is 14.6.7 (`pnpm view`)
+           .
+      119  
+     … 105 more lines (ctrl+o to expand)
+
+● I've updated plan.md with all five fixes. It passes prettier --check. I didn't
+  re-run /plan-review or commit anything; plan.md isn't tracked by git yet.
+
+  1. Delete flash on the details page (major): after a delete, the hook now
+     refreshes only the list (['properties','list']), not everything under
+     ['properties']. It never re-fetches the open details page of the property
+     just deleted. It does drop a cached copy of that property's details if no
+     page is showing it, which covers deletes from the list. The old "remove the
+     detail query before navigating" step is gone, because it could never run
+     in time. The phase 3 FR-12 AC4 test now checks that only one Property
+     request is sent and that "Property not found" never appears, both after a
+     normal delete and after PROPERTY_NOT_FOUND.
+  2. Retries: new decision to turn query retries off on the production query
+     client in main.tsx. The error state's Retry button does the retrying
+     instead. Phase 1 now includes that file change and a manual check that the
+     error appears right away when the API is stopped.
+  3. Long filter values: City is capped at 100 characters and Zip at 5. The cap
+     of 5 is safe because stored zip codes are always exactly 5 digits
+     (packages/shared/src/address.ts:34). The phase 1 FR-11 AC3 test checks both
+     caps.
+  4. TR-20: phase 3 now also rewrites TR-20's description to say "empty
+     description and icon lists", and notes that astro / air_quality live only
+     in raw (#11).
+  5. Delete failure on the details page: the decision and the goals now say that
+     PROPERTY_NOT_FOUND on the details page goes straight to / with no message,
+     so no test should expect one.
+
+  The plan also records why fix 1 is needed: TanStack Query runs the hook's own
+  success handler, and waits for it, before the page's handler.
+
+✻ Cooked for 1m 16s · done 10:40 AM
