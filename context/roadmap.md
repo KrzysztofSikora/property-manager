@@ -18,6 +18,7 @@ export) proportionate to a small app.
 | S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04 | M | done |
 | S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-15 | S-05 | M | done |
 | S-07 | #9 | list-filters-in-url | slice | FR-11 AC3a (Should) | S-04 | S | done |
+| S-08 | #10 | list-pagination | slice | FR-11 AC4 (Should) | S-07 | S | in-progress |
 
 Order follows risk: tooling and schema first, then the Weatherstack integration (the only
 third-party unknown, R-01 – R-05) and the concurrency-sensitive duplicate rule, then the
@@ -218,7 +219,8 @@ Should items from the PRD, picked up only after S-06 is `done`:
   so a reload keeps them. Picked up as S-07 (`list-filters-in-url`); filters and sort both go
   in the URL.
 - #10 FR-11 AC4: UI pagination (20 per page, page indicator and total) using the API's
-  `limit`/`offset`.
+  `limit`/`offset`. Picked up as S-08 (`list-pagination`); the page goes in the URL
+  next to the filters and sort.
 - #11 FR-12 AC6: details page shows observation time, pressure, precipitation, cloud cover, UV
   index, visibility, and `astro` / `airQuality` when present.
 - #12 Data model: typed non-key `CurrentWeather` fields, including the `astro` and `airQuality`

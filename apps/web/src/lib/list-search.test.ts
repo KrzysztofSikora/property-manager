@@ -11,13 +11,14 @@ function parse(search: string) {
 
 describe('parseListSearch', () => {
   it('gives no filter and newest first for empty params', () => {
-    expect(parse('')).toEqual({ filter: NO_FILTER, sort: 'CREATED_AT_DESC' });
+    expect(parse('')).toEqual({ filter: NO_FILTER, sort: 'CREATED_AT_DESC', page: 1 });
   });
 
   it('reads every valid field', () => {
-    expect(parse(VALID)).toEqual({
+    expect(parse(`${VALID}&page=2`)).toEqual({
       filter: { city: 'Fountain Hills', state: 'AZ', zipCode: '85268' },
       sort: 'CREATED_AT_ASC',
+      page: 2,
     });
   });
 
@@ -35,6 +36,7 @@ describe('parseListSearch', () => {
     expect(parseListSearch(params)).toEqual({
       filter: { city: 'Fountain Hills', state: 'AZ', zipCode: '85268', ...expected },
       sort: 'CREATED_AT_ASC',
+      page: 1,
     });
   });
 
@@ -47,11 +49,37 @@ describe('parseListSearch', () => {
     expect(parse(`city=Austin&state=TX&zip=78701&sort=${value}`)).toEqual({
       filter: { city: 'Austin', state: 'TX', zipCode: '78701' },
       sort: expected,
+      page: 1,
     });
+  });
+
+  // The other fields stay valid, so a page that falls back changes only `page`.
+  it.each([
+    ['2', 2],
+    ['999999', 999999],
+    ['1000000', 1],
+    ['0', 1],
+    ['-1', 1],
+    ['02', 1],
+    ['1.5', 1],
+    ['abc', 1],
+    ['+2', 1],
+    ['', 1],
+  ])('page=%s gives page %d and keeps the filters and sort', (value, expected) => {
+    expect(parse(`${VALID}&page=${encodeURIComponent(value)}`)).toEqual({
+      filter: { city: 'Fountain Hills', state: 'AZ', zipCode: '85268' },
+      sort: 'CREATED_AT_ASC',
+      page: expected,
+    });
+  });
+
+  it('gives page 1 for a missing page', () => {
+    expect(parse(VALID).page).toBe(1);
   });
 
   it('takes the first value of a repeated key', () => {
     expect(parse('city=Austin&city=Dallas').filter.city).toBe('Austin');
+    expect(parse('page=3&page=5').page).toBe(3);
   });
 });
 
@@ -84,14 +112,41 @@ describe('toListSearch', () => {
     ).toBe('state=TX&zip=78701');
   });
 
+  it('leaves out page 1 and a missing page', () => {
+    expect(toListSearch({ filter: NO_FILTER, sort: 'CREATED_AT_DESC', page: 1 }).toString()).toBe(
+      '',
+    );
+    expect(
+      toListSearch({
+        filter: { ...NO_FILTER, city: 'Austin' },
+        sort: 'CREATED_AT_DESC',
+      }).toString(),
+    ).toBe('city=Austin');
+  });
+
+  it('writes page after sort, last in the fixed order', () => {
+    expect(
+      toListSearch({
+        filter: { zipCode: '85268', state: 'AZ', city: 'Fountain Hills' },
+        sort: 'CREATED_AT_ASC',
+        page: 3,
+      }).toString(),
+    ).toBe(`${VALID}&page=3`);
+    expect(toListSearch({ filter: NO_FILTER, sort: 'CREATED_AT_DESC', page: 2 }).toString()).toBe(
+      'page=2',
+    );
+  });
+
   it('round-trips through parseListSearch with the values trimmed', () => {
     const state = {
       filter: { city: ' Fountain Hills ', state: 'AZ', zipCode: '85268 ' },
       sort: 'CREATED_AT_ASC',
+      page: 4,
     } as const;
     expect(parseListSearch(toListSearch(state))).toEqual({
       filter: { city: 'Fountain Hills', state: 'AZ', zipCode: '85268' },
       sort: 'CREATED_AT_ASC',
+      page: 4,
     });
   });
 });
