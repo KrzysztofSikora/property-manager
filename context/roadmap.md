@@ -10,14 +10,14 @@ export) proportionate to a small app.
 | ID | Issue | change-id | Type | Covers | Depends on | Size | Status |
 |----|-------|-----------|------|--------|------------|------|--------|
 | F-01 | #1 | repo-skeleton | foundation | FR-14 AC3, NFR-04, NFR-06 | - | M | done |
-| F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08 groundwork) | F-01 | S | in-progress |
+| F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08 groundwork) | F-01 | S | done |
 | S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1–AC3, AC6), FR-07, FR-10 | F-02 | M | done |
 | S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5), FR-06, FR-08, FR-10 | S-01 | M | done |
 | S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-02, FR-03, FR-04, FR-09, FR-10 | S-01 | M | done |
 | S-04 | #6 | list-and-details-pages | slice | FR-11 (Must ACs), FR-12 (AC1–AC5) | S-03 | M | done |
 | S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04 | M | done |
 | S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-15 | S-05 | M | done |
-| S-07 | #9 | list-filters-in-url | slice | FR-11 AC3a (Should) | S-04 | S | in-progress |
+| S-07 | #9 | list-filters-in-url | slice | FR-11 AC3a (Should) | S-04 | S | done |
 
 Order follows risk: tooling and schema first, then the Weatherstack integration (the only
 third-party unknown, R-01 – R-05) and the concurrency-sensitive duplicate rule, then the
