@@ -1,0 +1,1554 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement details-extra-weather                                              
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(sed -i 's/| S-09 | #11, #12 | details-extra-weather | slice | FR-12 AC6
+      (Should), typed non-key `CurrentWeather` fields | S-04 | S | planned |/|
+      S-09 | #11, #12…)
+  ⎿  22:| S-09 | #11, #12 | details-extra-weather | slice | FR-12 AC6 (Shou
+     ld), typed non-key `CurrentWeather` fields | S-04 | S | in-progress |
+     812d49f test(tooling): run the guardrail tsc check with --pretty false
+     … +314 lines (ctrl+o to expand)
+  ⎿  Updated context/roadmap.md (+1 -1)
+      19  | S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-1
+          5 | S-05 | M | done |
+      20  | S-07 | #9 | list-filters-in-url | slice | FR-11 AC3a (Should)
+           | S-04 | S | done |
+      21  | S-08 | #10 | list-pagination | slice | FR-11 AC4 (Should) | S
+          -07 | S | done |
+      22 -| S-09 | #11, #12 | details-extra-weather | slice | FR-12 AC6 (
+         -Should), typed non-key `CurrentWeather` fields | S-04 | S | pla
+         -nned |                                                         
+      22 +| S-09 | #11, #12 | details-extra-weather | slice | FR-12 AC6 (
+         +Should), typed non-key `CurrentWeather` fields | S-04 | S | in-
+         +progress |                                                     
+      23  
+      24  Order follows risk: tooling and schema first, then the Weathers
+          tack integration (the only
+      25  third-party unknown, R-01 – R-05) and the concurrency-sensitive
+           duplicate rule, then the
+
+  Searched for 1 pattern, listed 1 directory (ctrl+o to expand)
+
+● Starting Phase 1 of details-extra-weather: I've read the plan and review, and
+  set the roadmap to in-progress. Now I'm checking zod's .catch behaviour before
+  I write the optional-field mapper.
+
+  Called context7 (ctrl+o to expand)
+
+● Next I'm writing the failing domain tests for the mapper.
+
+● Bash(cat > /home/krzysztof/.claude/jobs/4266b063/tmp/tests.ts <<'EOF'…)
+  ⎿  - Expected:
+     {
+       "moonIllumination": 0,
+     … +22 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/domain/weather.test.ts (+185 -0)
+      1  import { describe, expect, it } from 'vitest';
+      2  import { ZodError } from 'zod';
+      3  import { weatherstackResponse } from '../../test/fixtures/weathe
+         rstack.ts';
+      4 +import type { JsonOverrides } from '../../test/fixtures/weathers
+        +tack.ts';                                                       
+      5  import { toCurrentWeather } from './weather.ts';
+      6  
+      7  const KEY_FIELDS = [
+     ...
+       75      expect(() => toCurrentWeather(value)).toThrow(ZodError);
+       76    });
+       77  });
+       78 +                                                              
+       79 +// The optional typed fields of the sample, as the domain hold
+          +s them (TR-16, #12).                                          
+       80 +const SAMPLE_OPTIONAL_FIELDS = {                              
+       81 +  observationTime: '01:13 PM',                                
+       82 +  weatherCode: 113,                                           
+       83 +  windDegree: 48,                                             
+       84 +  pressure: 1010,                                             
+       85 +  precip: 0,                                                  
+       86 +  cloudCover: 0,                                              
+       87 +  uvIndex: 0,                                                 
+       88 +  visibility: 6,                                              
+       89 +  isDay: false,                                               
+       90 +  astro: {                                                    
+       91 +    sunrise: '06:25 AM',                                      
+       92 +    sunset: '06:03 PM',                                       
+       93 +    moonrise: '03:22 AM',                                     
+       94 +    moonset: '04:27 PM',                                      
+       95 +    moonPhase: 'Waning Crescent',                             
+       96 +    moonIllumination: 15,                                     
+       97 +  },                                                          
+       98 +  airQuality: {                                               
+       99 +    co: 112,                                                  
+      100 +    no2: 6.9,                                                 
+      101 +    o3: 21,                                                   
+      102 +    so2: 0.2,                                                 
+      103 +    pm2_5: 4.6,                                               
+      104 +    pm10: 10.4,                                               
+      105 +    usEpaIndex: 1,                                            
+      106 +    gbDefraIndex: 1,                                          
+      107 +  },                                                          
+     … 154 more lines (ctrl+o to expand)
+
+● Tests fail as expected (fields not mapped yet). Now the domain types and the
+  mapper.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/domain/property.ts'…)
+  ⎿        Tests  64 passed (64)
+  ⎿  Updated apps/api/src/domain/property.ts (+41 -1)
+       1  import type { Address } from '@property-manager/shared';
+       2  
+       3 -// The key fields of Weatherstack `current`, camelCased. Everyt
+         -hing else stays in `raw`.                                      
+       3 +// Weatherstack `current.astro`. Times are "hh:mm AM/PM", local
+         + to the location.                                              
+       4 +export type Astro = {                                          
+       5 +  sunrise?: string;                                            
+       6 +  sunset?: string;                                             
+       7 +  moonrise?: string;                                           
+       8 +  moonset?: string;                                            
+       9 +  moonPhase?: string;                                          
+      10 +  // Percent.                                                  
+      11 +  moonIllumination?: number;                                   
+      12 +};                                                             
+      13 +                                                               
+      14 +// Weatherstack `current.air_quality`. Pollutants are in µg/m³.
+      15 +export type AirQuality = {                                     
+      16 +  co?: number;                                                 
+      17 +  no2?: number;                                                
+      18 +  o3?: number;                                                 
+      19 +  so2?: number;                                                
+      20 +  pm2_5?: number;                                              
+      21 +  pm10?: number;                                               
+      22 +  usEpaIndex?: number;                                         
+      23 +  gbDefraIndex?: number;                                       
+      24 +};                                                             
+      25 +                                                               
+      26 +// Weatherstack `current`, camelCased. The key fields are requi
+         +red; the others are optional and                               
+      27 +// absent when missing or mistyped. `raw` holds the object as i
+         +t was received.                                                
+      28  export type CurrentWeather = {
+      29    temperature: number;
+      30    feelsLike: number;
+     ...
+      33    windSpeed: number;
+      34    windDir: string;
+      35    humidity: number;
+      36 +  // "hh:mm AM/PM" in UTC, without a date.                     
+      37 +  observationTime?: string;                                    
+      38 +  weatherCode?: number;                                        
+      39 +  windDegree?: number;                                         
+      40 +  // mb.                                                       
+      41 +  pressure?: number;                                           
+     … 13 more lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/domain/weather.ts (+91 -1)
+      1  import { z } from 'zod';
+      2 -import type { CurrentWeather } from './property.ts';            
+      2 +import type { AirQuality, Astro, CurrentWeather } from './proper
+        +ty.ts';                                                         
+      3  
+      4  // What a valid Weatherstack `current` is: the key fields (types
+          as in the recorded sample) are
+      5  // required, and every other field is kept as it came, for `raw`
+         .
+     ...
+       20    current: Record<string, unknown>;
+       21  };
+       22  
+       23 +// A missing or mistyped optional field becomes `undefined` on
+          + its own, so it never fails a parse                           
+       24 +// and never hides the fields next to it (PRD data model, OQ-0
+          +3).                                                           
+       25 +function lenient<T extends z.ZodType>(schema: T) {            
+       26 +  return schema.optional().catch(undefined);                  
+       27 +}                                                             
+       28 +                                                              
+       29 +// Air-quality values come as numeric strings. `z.coerce.numbe
+          +r()` would accept "" as 0.                                    
+       30 +const decimalString = z                                       
+       31 +  .string()                                                   
+       32 +  .regex(/^-?\d+(\.\d+)?$/)                                   
+       33 +  .transform(Number);                                         
+       34 +                                                              
+       35 +// `undefined` when no field is left, so a group without value
+          +s is hidden like a missing one.                               
+       36 +function nonEmpty<T extends Record<string, unknown>>(group: T)
+          +: T | undefined {                                             
+       37 +  return Object.values(group).some((value) => value !== undefi
+          +ned) ? group : undefined;                                     
+       38 +}                                                             
+       39 +                                                              
+       40 +const astroSchema = z                                         
+       41 +  .object({                                                   
+       42 +    sunrise: lenient(z.string()),                             
+       43 +    sunset: lenient(z.string()),                              
+       44 +    moonrise: lenient(z.string()),                            
+       45 +    moonset: lenient(z.string()),                             
+       46 +    moon_phase: lenient(z.string()),                          
+       47 +    moon_illumination: lenient(z.int()),                      
+       48 +  })                                                          
+       49 +  .transform(                                                 
+       50 +    (astro): Astro | undefined =>                             
+       51 +      nonEmpty({                                              
+       52 +        sunrise: astro.sunrise,                               
+       53 +        sunset: astro.sunset,                                 
+     … 71 more lines (ctrl+o to expand)
+
+● Domain tests pass (64/64). Now the SDL, then codegen.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/schema.graphql'…)
+  ⎿  ✔ Load GraphQL documents
+     ❯ Generate
+     ✔ Generate
+     … +15 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/schema.graphql (+46 -1)
+       8    IMPERIAL
+       9  }
+      10  
+      11 -"Key fields of Weatherstack `current`. Every other field is in 
+         -`raw`."                                                        
+      11 +"Weatherstack `current.astro`. Times are \"hh:mm AM/PM\", local
+         + to the location."                                             
+      12 +type Astro {                                                   
+      13 +  sunrise: String                                              
+      14 +  sunset: String                                               
+      15 +  moonrise: String                                             
+      16 +  moonset: String                                              
+      17 +  moonPhase: String                                            
+      18 +  "Percent."                                                   
+      19 +  moonIllumination: Int                                        
+      20 +}                                                              
+      21 +                                                               
+      22 +"Weatherstack `current.air_quality`. Pollutants are in µg/m³." 
+      23 +type AirQuality {                                              
+      24 +  co: Float                                                    
+      25 +  no2: Float                                                   
+      26 +  o3: Float                                                    
+      27 +  so2: Float                                                   
+      28 +  pm2_5: Float                                                 
+      29 +  pm10: Float                                                  
+      30 +  "US EPA index, 1 (Good) to 6 (Hazardous)."                   
+      31 +  usEpaIndex: Int                                              
+      32 +  "UK DEFRA index, 1 to 10."                                   
+      33 +  gbDefraIndex: Int                                            
+      34 +}                                                              
+      35 +                                                               
+      36 +"""                                                            
+      37 +Weatherstack `current`, camelCased. The key fields are always s
+         +et. Every other field is null                                  
+      38 +when Weatherstack did not send it or sent it with an unexpected
+         + type. `raw` holds the object as                               
+      39 +it was received.                                               
+      40 +"""                                                            
+      41  type CurrentWeather {
+      42    temperature: Int!
+      43    feelsLike: Int!
+     ...
+      46    windSpeed: Int!
+      47    windDir: String!
+      48    humidity: Int!
+     … 19 more lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/operations.ts (+27 -0)
+      19          windSpeed
+      20          windDir
+      21          humidity
+      22 +        observationTime                                        
+      23 +        weatherCode                                            
+      24 +        windDegree                                             
+      25 +        pressure                                               
+      26 +        precip                                                 
+      27 +        cloudCover                                             
+      28 +        uvIndex                                                
+      29 +        visibility                                             
+      30 +        isDay                                                  
+      31 +        astro {                                                
+      32 +          sunrise                                              
+      33 +          sunset                                               
+      34 +          moonrise                                             
+      35 +          moonset                                              
+      36 +          moonPhase                                            
+      37 +          moonIllumination                                     
+      38 +        }                                                      
+      39 +        airQuality {                                           
+      40 +          co                                                   
+      41 +          no2                                                  
+      42 +          o3                                                   
+      43 +          so2                                                  
+      44 +          pm2_5                                                
+      45 +          pm10                                                 
+      46 +          usEpaIndex                                           
+      47 +          gbDefraIndex                                         
+      48 +        }                                                      
+      49          raw
+      50        }
+      51      }
+  ⎿  Updated apps/web/src/hooks/useProperty.ts (+25 -1)
+      2  import { graphql } from '../graphql';
+      3  import { execute } from '../lib/execute';
+      4  
+      5 -// Every field the details page shows. `raw` is left out until #
+        -11.                                                             
+      5 +// Every field the details page shows. `raw` is left out: the pa
+        +ge reads the typed fields.                                      
+      6  const PropertyQuery = graphql(`
+      7    query Property($id: ID!) {
+      8      property(id: $id) {
+     ...
+      24            windSpeed
+      25            windDir
+      26            humidity
+      27 +          observationTime                                      
+      28 +          pressure                                             
+      29 +          precip                                               
+      30 +          cloudCover                                           
+      31 +          uvIndex                                              
+      32 +          visibility                                           
+      33 +          astro {                                              
+      34 +            sunrise                                            
+      35 +            sunset                                             
+      36 +            moonrise                                           
+      37 +            moonset                                            
+      38 +            moonPhase                                          
+      39 +            moonIllumination                                   
+      40 +          }                                                    
+      41 +          airQuality {                                         
+      42 +            co                                                 
+      43 +            no2                                                
+      44 +            o3                                                 
+      45 +            so2                                                
+      46 +            pm2_5                                              
+      47 +            pm10                                               
+      48 +            usEpaIndex                                         
+      49 +            gbDefraIndex                                       
+      50 +          }                                                    
+      51          }
+      52        }
+      53      }
+  ⎿  Updated apps/api/src/graphql/generated/resolvers-types.ts (+85 -1)
+      16    JSON: { input: unknown; output: unknown; }
+      17  };
+      18  
+      19 -/** Key fields of Weatherstack `current`. Every other field is 
+         -in `raw`. */                                                   
+      19 +/** Weatherstack `current.air_quality`. Pollutants are in µg/m³
+         +. */                                                           
+      20 +export type AirQuality = {                                     
+      21 +  __typename?: 'AirQuality';                                   
+      22 +  co?: Maybe<Scalars['Float']['output']>;                      
+      23 +  /** UK DEFRA index, 1 to 10. */                              
+      24 +  gbDefraIndex?: Maybe<Scalars['Int']['output']>;              
+      25 +  no2?: Maybe<Scalars['Float']['output']>;                     
+      26 +  o3?: Maybe<Scalars['Float']['output']>;                      
+      27 +  pm2_5?: Maybe<Scalars['Float']['output']>;                   
+      28 +  pm10?: Maybe<Scalars['Float']['output']>;                    
+      29 +  so2?: Maybe<Scalars['Float']['output']>;                     
+      30 +  /** US EPA index, 1 (Good) to 6 (Hazardous). */              
+      31 +  usEpaIndex?: Maybe<Scalars['Int']['output']>;                
+      32 +};                                                             
+      33 +                                                               
+      34 +/** Weatherstack `current.astro`. Times are "hh:mm AM/PM", loca
+         +l to the location. */                                          
+      35 +export type Astro = {                                          
+      36 +  __typename?: 'Astro';                                        
+      37 +  /** Percent. */                                              
+      38 +  moonIllumination?: Maybe<Scalars['Int']['output']>;          
+      39 +  moonPhase?: Maybe<Scalars['String']['output']>;              
+      40 +  moonrise?: Maybe<Scalars['String']['output']>;               
+      41 +  moonset?: Maybe<Scalars['String']['output']>;                
+      42 +  sunrise?: Maybe<Scalars['String']['output']>;                
+      43 +  sunset?: Maybe<Scalars['String']['output']>;                 
+      44 +};                                                             
+      45 +                                                               
+      46 +/**                                                            
+      47 + * Weatherstack `current`, camelCased. The key fields are alway
+         +s set. Every other field is null                               
+      48 + * when Weatherstack did not send it or sent it with an unexpec
+         +ted type. `raw` holds the object as                            
+      49 + * it was received.                                            
+      50 + */                                                            
+      51  export type CurrentWeather = {
+      52    __typename?: 'CurrentWeather';
+      53 +  airQuality?: Maybe<AirQuality>;                              
+      54 +  astro?: Maybe<Astro>;                                        
+     … 92 more lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/graphql/gql.ts (+3 -3)
+      18      "\n  mutation CreateProperty($street: String!, $city: Strin
+          g!, $state: String!, $zipCode: String!) {\n    createProperty(s
+          treet: $street, city: $city, state: $state, zipCode: $zipCode) 
+          {\n      id\n    }\n  }\n": typeof types.CreatePropertyDocument
+          ,
+      19      "\n  mutation DeleteProperty($id: ID!) {\n    deletePropert
+          y(id: $id)\n  }\n": typeof types.DeletePropertyDocument,
+      20      "\n  query Properties($filter: PropertyFilter, $sort: Prope
+          rtySort, $limit: Int, $offset: Int) {\n    properties(filter: $
+          filter, sort: $sort, limit: $limit, offset: $offset) {\n      i
+          tems {\n        id\n        street\n        city\n        state
+          \n        zipCode\n        createdAt\n      }\n      totalCount
+          \n    }\n  }\n": typeof types.PropertiesDocument,
+      21 -    "\n  query Property($id: ID!) {\n    property(id: $id) {\n 
+         -     id\n      street\n      city\n      state\n      zipCode\n
+         -      lat\n      long\n      createdAt\n      weatherData {\n  
+         -      units\n        current {\n          temperature\n        
+         -  feelsLike\n          weatherDescriptions\n          weatherIc
+         -ons\n          windSpeed\n          windDir\n          humidity
+         -\n        }\n      }\n    }\n  }\n": typeof types.PropertyDocum
+         -ent,                                                           
+      21 +    "\n  query Property($id: ID!) {\n    property(id: $id) {\n 
+         +     id\n      street\n      city\n      state\n      zipCode\n
+         +      lat\n      long\n      createdAt\n      weatherData {\n  
+         +      units\n        current {\n          temperature\n        
+         +  feelsLike\n          weatherDescriptions\n          weatherIc
+         +ons\n          windSpeed\n          windDir\n          humidity
+         +\n          observationTime\n          pressure\n          prec
+         +ip\n          cloudCover\n          uvIndex\n          visibili
+         +ty\n          astro {\n            sunrise\n            sunset\
+         +n            moonrise\n            moonset\n            moonPha
+         +se\n            moonIllumination\n          }\n          airQua
+         +lity {\n            co\n            no2\n            o3\n      
+         +      so2\n            pm2_5\n            pm10\n            usE
+         +paIndex\n            gbDefraIndex\n          }\n        }\n    
+         +  }\n    }\n  }\n": typeof types.PropertyDocument,             
+      22  };
+      23  const documents: Documents = {
+      24      "\n  mutation CreateProperty($street: String!, $city: Strin
+          g!, $state: String!, $zipCode: String!) {\n    createProperty(s
+          treet: $street, city: $city, state: $state, zipCode: $zipCode) 
+          {\n      id\n    }\n  }\n": types.CreatePropertyDocument,
+      25      "\n  mutation DeleteProperty($id: ID!) {\n    deletePropert
+          y(id: $id)\n  }\n": types.DeletePropertyDocument,
+      26      "\n  query Properties($filter: PropertyFilter, $sort: Prope
+          rtySort, $limit: Int, $offset: Int) {\n    properties(filter: $
+          filter, sort: $sort, limit: $limit, offset: $offset) {\n      i
+          tems {\n        id\n        street\n        city\n        state
+          \n        zipCode\n        createdAt\n      }\n      totalCount
+          \n    }\n  }\n": types.PropertiesDocument,
+      27 -    "\n  query Property($id: ID!) {\n    property(id: $id) {\n 
+         -     id\n      street\n      city\n      state\n      zipCode\n
+         -      lat\n      long\n      createdAt\n      weatherData {\n  
+         -      units\n        current {\n          temperature\n        
+         -  feelsLike\n          weatherDescriptions\n          weatherIc
+         -ons\n          windSpeed\n          windDir\n          humidity
+         -\n        }\n      }\n    }\n  }\n": types.PropertyDocument,   
+      27 +    "\n  query Property($id: ID!) {\n    property(id: $id) {\n 
+         +     id\n      street\n      city\n      state\n      zipCode\n
+         +      lat\n      long\n      createdAt\n      weatherData {\n  
+         +      units\n        current {\n          temperature\n        
+         +  feelsLike\n          weatherDescriptions\n          weatherIc
+         +ons\n          windSpeed\n          windDir\n          humidity
+         +\n          observationTime\n          pressure\n          prec
+         +ip\n          cloudCover\n          uvIndex\n          visibili
+         +ty\n          astro {\n            sunrise\n            sunset\
+         +n            moonrise\n            moonset\n            moonPha
+         +se\n            moonIllumination\n          }\n          airQua
+         +lity {\n            co\n            no2\n            o3\n      
+         +      so2\n            pm2_5\n            pm10\n            usE
+         +paIndex\n            gbDefraIndex\n          }\n        }\n    
+         +  }\n    }\n  }\n": types.PropertyDocument,                    
+      28  };
+      29  
+      30  /**
+     ...
+      42  /**
+      43   * The graphql function is used to parse GraphQL queries into a
+           document that can be used by GraphQL clients.
+      44   */
+      45 -export function graphql(source: "\n  query Property($id: ID!) {
+         -\n    property(id: $id) {\n      id\n      street\n      city\n
+         -      state\n      zipCode\n      lat\n      long\n      create
+         -dAt\n      weatherData {\n        units\n        current {\n   
+         -       temperature\n          feelsLike\n          weatherDescr
+         -iptions\n          weatherIcons\n          windSpeed\n         
+         - windDir\n          humidity\n        }\n      }\n    }\n  }\n"
+         -): typeof import('./graphql.ts').PropertyDocument;             
+      45 +export function graphql(source: "\n  query Property($id: ID!) {
+         +\n    property(id: $id) {\n      id\n      street\n      city\n
+         +      state\n      zipCode\n      lat\n      long\n      create
+         +dAt\n      weatherData {\n        units\n        current {\n   
+         +       temperature\n          feelsLike\n          weatherDescr
+         +iptions\n          weatherIcons\n          windSpeed\n         
+         + windDir\n          humidity\n          observationTime\n      
+         +    pressure\n          precip\n          cloudCover\n         
+         + uvIndex\n          visibility\n          astro {\n            
+         +sunrise\n            sunset\n            moonrise\n            
+         +moonset\n            moonPhase\n            moonIllumination\n 
+         +         }\n          airQuality {\n            co\n           
+         + no2\n            o3\n            so2\n            pm2_5\n     
+         +       pm10\n            usEpaIndex\n            gbDefraIndex\n
+         +          }\n        }\n      }\n    }\n  }\n"): typeof import(
+         +'./graphql.ts').PropertyDocument;                              
+      46  
+      47  
+      48  export function graphql(source: string) {
+  ⎿  … 1 more file changed
+
+● Now the API integration tests.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      import re…)
+  ⎿   apps/api/schema.graphql                            |  47 ++++++-
+      apps/api/src/domain/property.ts                    |  42 +++++-
+      apps/api/src/domain/weather.test.ts                | 156 ++++++++++++
+     … +29 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/fixtures/weatherstack.ts (+32 -0)
+       66    return merge(loadSample(), overrides);
+       67  }
+       68  
+       69 +// The optional typed `CurrentWeather` fields the sample maps 
+          +to (TR-16, #12). Every one is set,                            
+       70 +// so the domain object and the GraphQL response hold the same
+          + values.                                                      
+       71 +export const SAMPLE_OPTIONAL_WEATHER = {                      
+       72 +  observationTime: '01:13 PM',                                
+       73 +  weatherCode: 113,                                           
+       74 +  windDegree: 48,                                             
+       75 +  pressure: 1010,                                             
+       76 +  precip: 0,                                                  
+       77 +  cloudCover: 0,                                              
+       78 +  uvIndex: 0,                                                 
+       79 +  visibility: 6,                                              
+       80 +  isDay: false,                                               
+       81 +  astro: {                                                    
+       82 +    sunrise: '06:25 AM',                                      
+       83 +    sunset: '06:03 PM',                                       
+       84 +    moonrise: '03:22 AM',                                     
+       85 +    moonset: '04:27 PM',                                      
+       86 +    moonPhase: 'Waning Crescent',                             
+       87 +    moonIllumination: 15,                                     
+       88 +  },                                                          
+       89 +  airQuality: {                                               
+       90 +    co: 112,                                                  
+       91 +    no2: 6.9,                                                 
+       92 +    o3: 21,                                                   
+       93 +    so2: 0.2,                                                 
+       94 +    pm2_5: 4.6,                                               
+       95 +    pm10: 10.4,                                               
+       96 +    usEpaIndex: 1,                                            
+       97 +    gbDefraIndex: 1,                                          
+       98 +  },                                                          
+       99 +};                                                            
+      100 +                                                              
+      101  export function weatherstackError(code: number, type: string, 
+           info?: string): JsonObject {
+      102    return {
+      103      success: false,
+  ⎿  Updated apps/api/src/domain/weather.test.ts (+5 -36)
+      1  import { describe, expect, it } from 'vitest';
+      2  import { ZodError } from 'zod';
+      3 -import { weatherstackResponse } from '../../test/fixtures/weathe
+        -rstack.ts';                                                     
+      3 +import { SAMPLE_OPTIONAL_WEATHER, weatherstackResponse } from '.
+        +./../test/fixtures/weatherstack.ts';                            
+      4  import type { JsonOverrides } from '../../test/fixtures/weathers
+         tack.ts';
+      5  import { toCurrentWeather } from './weather.ts';
+      6  
+     ...
+       76    });
+       77  });
+       78  
+       79 -// The optional typed fields of the sample, as the domain hold
+          -s them (TR-16, #12).                                          
+       80 -const SAMPLE_OPTIONAL_FIELDS = {                              
+       81 -  observationTime: '01:13 PM',                                
+       82 -  weatherCode: 113,                                           
+       83 -  windDegree: 48,                                             
+       84 -  pressure: 1010,                                             
+       85 -  precip: 0,                                                  
+       86 -  cloudCover: 0,                                              
+       87 -  uvIndex: 0,                                                 
+       88 -  visibility: 6,                                              
+       89 -  isDay: false,                                               
+       90 -  astro: {                                                    
+       91 -    sunrise: '06:25 AM',                                      
+       92 -    sunset: '06:03 PM',                                       
+       93 -    moonrise: '03:22 AM',                                     
+       94 -    moonset: '04:27 PM',                                      
+       95 -    moonPhase: 'Waning Crescent',                             
+       96 -    moonIllumination: 15,                                     
+       97 -  },                                                          
+       98 -  airQuality: {                                               
+       99 -    co: 112,                                                  
+      100 -    no2: 6.9,                                                 
+      101 -    o3: 21,                                                   
+      102 -    so2: 0.2,                                                 
+      103 -    pm2_5: 4.6,                                               
+      104 -    pm10: 10.4,                                               
+      105 -    usEpaIndex: 1,                                            
+      106 -    gbDefraIndex: 1,                                          
+      107 -  },                                                          
+      108 -};                                                            
+     … 36 more lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/property-details-delete.int.test.ts
+     (+29 -0)
+      3  import type { TestApp } from '../helpers/app.ts';
+      4  import { countProperties, resetDb, seedProperty } from '../helpe
+         rs/db.ts';
+      5  import { expectGraphQLError } from '../helpers/graphql.ts';
+      6 +import { SAMPLE_OPTIONAL_WEATHER, weatherstackResponse } from '.
+        +./fixtures/weatherstack.ts';                                    
+      7  import { DELETE_PROPERTY, PROPERTIES, PROPERTY } from '../operat
+         ions.ts';
+      8  import type { FakeWeatherClient } from '../fakes/weather.ts';
+      9  
+     ...
+      57              windSpeed: 6,
+      58              windDir: 'NE',
+      59              humidity: 34,
+      60 +            ...SAMPLE_OPTIONAL_WEATHER,                        
+      61              raw: stored.weatherData.current,
+      62            },
+      63          },
+     ...
+      65      });
+      66    });
+      67  
+      68 +  it('TR-16: returns null for optional weather fields the store
+         +d snapshot lacks', async () => {                               
+      69 +    const app = testApp();                                     
+      70 +    const { current } = weatherstackResponse({                 
+      71 +      current: { astro: undefined, air_quality: undefined, pres
+         +sure: undefined },                                             
+      72 +    });                                                        
+      73 +    const stored = await seedProperty(app.db, {                
+      74 +      weatherData: { units: 'IMPERIAL', current: current as Rec
+         +ord<string, unknown> },                                        
+      75 +    });                                                        
+      76 +                                                               
+      77 +    const result = await app.execute(PROPERTY, { id: stored.id 
+         +});                                                            
+      78 +                                                               
+      79 +    expect(result.errors).toBeUndefined();                     
+      80 +    expect(result.data).toMatchObject({                        
+      81 +      property: {                                              
+      82 +        weatherData: {                                         
+      83 +          current: {                                           
+      84 +            ...SAMPLE_OPTIONAL_WEATHER,                        
+      85 +            pressure: null,                                    
+      86 +            astro: null,                                       
+      87 +            airQuality: null,                                  
+      88 +            raw: current,                                      
+      89 +          },                                                   
+      90 +        },                                                     
+     … 7 more lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+1 -0)
+      91            windSpeed: 6,
+      92            windDir: 'NE',
+      93            humidity: 34,
+      94 +          ...SAMPLE_OPTIONAL_WEATHER,                          
+      95            raw: weatherstackResponse().current,
+      96          },
+      97        },
+  ⎿  Updated apps/api/test/integration/property-repository.int.test.ts (+2 
+     -1)
+       6  import { PropertyAlreadyExistsError } from '../../src/domain/er
+          rors.ts';
+       7  import { createPropertyRepository } from '../../src/repositorie
+          s/property.repository.ts';
+       8  import { validInput } from '../fixtures/property.ts';
+       9 -import { weatherstackResponse } from '../fixtures/weatherstack.
+         -ts';                                                           
+       9 +import { SAMPLE_OPTIONAL_WEATHER, weatherstackResponse } from '
+         +../fixtures/weatherstack.ts';                                  
+      10  import { countProperties, resetDb, seedProperty } from '../help
+          ers/db.ts';
+      11  
+      12  const { db, close } = createDb(inject('databaseUrl'));
+     ...
+      71          windSpeed: 6,
+      72          windDir: 'NE',
+      73          humidity: 34,
+      74 +        ...SAMPLE_OPTIONAL_WEATHER,                            
+      75          raw: weatherstackResponse().current,
+      76        },
+      77      });
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/test/integration/create-property.int.test.ts'…)
+  ⎿  $ prettier --write .
+     $ tsc -p . && pnpm -r typecheck
+     packages/shared typecheck$ tsc -p .
+     … +6 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/create-property.int.test.ts (+6 -2)
+       3  import { InMemoryPropertyRepository } from '../fakes/property-r
+          epository.ts';
+       4  import { FakeWeatherClient } from '../fakes/weather.ts';
+       5  import { validInput } from '../fixtures/property.ts';
+       6 -import { weatherstackError, weatherstackResponse } from '../fix
+         -tures/weatherstack.ts';                                        
+       6 +import {                                                       
+       7 +  SAMPLE_OPTIONAL_WEATHER,                                     
+       8 +  weatherstackError,                                           
+       9 +  weatherstackResponse,                                        
+      10 +} from '../fixtures/weatherstack.ts';                          
+      11  import { createTestApp } from '../helpers/app.ts';
+      12  import type { ExecuteResult, TestApp, TestAppOptions } from '..
+          /helpers/app.ts';
+      13  import { countProperties, resetDb, seedProperty } from '../help
+          ers/db.ts';
+     ...
+      75      const { id, createdAt, ...rest } = created;
+      76      expect(id).toMatch(UUID);
+      77      expect(Date.now() - Date.parse(String(createdAt))).toBeLess
+          Than(60_000);
+      74 -    // Key fields as in the recorded sample's `current`; `raw` 
+         -is that object whole.                                          
+      78 +    // Typed fields as in the recorded sample's `current`; `raw
+         +` is that object whole.                                        
+      79      expect(rest).toEqual({
+      80        street: '15528 E Golden Eagle Blvd',
+      81        city: 'Fountain Hills',
+  ⎿  Updated apps/api/test/integration/property-details-delete.int.test.ts
+     (+4 -3)
+      70      const { current } = weatherstackResponse({
+      71        current: { astro: undefined, air_quality: undefined, pres
+          sure: undefined },
+      72      });
+      73 -    const stored = await seedProperty(app.db, {                
+      74 -      weatherData: { units: 'IMPERIAL', current: current as Rec
+         -ord<string, unknown> },                                        
+      75 -    });                                                        
+      73 +    if (typeof current !== 'object' || current === null || Arra
+         +y.isArray(current)) {                                          
+      74 +      throw new Error('the sample has no "current" object');   
+      75 +    }                                                          
+      76 +    const stored = await seedProperty(app.db, { weatherData: { 
+         +units: 'IMPERIAL', current } });                               
+      77  
+      78      const result = await app.execute(PROPERTY, { id: stored.id 
+          });
+      79  
+  ⎿  Updated apps/api/src/domain/weather.test.ts (+1 -3)
+      186      const current = weatherstackResponse({ current: overrides 
+           }).current;
+      187      const { raw: _raw, ...typed } = toCurrentWeather(current);
+      188  
+      189 -    expect(typed).toEqual(                                    
+      190 -      withoutPath({ ...SAMPLE_KEY_FIELDS, ...SAMPLE_OPTIONAL_W
+          -EATHER }, path),                                              
+      191 -    );                                                        
+      189 +    expect(typed).toEqual(withoutPath({ ...SAMPLE_KEY_FIELDS, 
+          +...SAMPLE_OPTIONAL_WEATHER }, path));                         
+      190    });
+      191  
+      192    it.each([
+  ⎿  Updated apps/api/src/domain/weather.ts (+20 -22)
+      46      moon_phase: lenient(z.string()),
+      47      moon_illumination: lenient(z.int()),
+      48    })
+      49 -  .transform(                                                  
+      50 -    (astro): Astro | undefined =>                              
+      51 -      nonEmpty({                                               
+      52 -        sunrise: astro.sunrise,                                
+      53 -        sunset: astro.sunset,                                  
+      54 -        moonrise: astro.moonrise,                              
+      55 -        moonset: astro.moonset,                                
+      56 -        moonPhase: astro.moon_phase,                           
+      57 -        moonIllumination: astro.moon_illumination,             
+      58 -      }),                                                      
+      49 +  .transform((astro): Astro | undefined =>                     
+      50 +    nonEmpty({                                                 
+      51 +      sunrise: astro.sunrise,                                  
+      52 +      sunset: astro.sunset,                                    
+      53 +      moonrise: astro.moonrise,                                
+      54 +      moonset: astro.moonset,                                  
+      55 +      moonPhase: astro.moon_phase,                             
+      56 +      moonIllumination: astro.moon_illumination,               
+      57 +    }),                                                        
+      58    );
+      59  
+      60  const airQualitySchema = z
+     ...
+      68      'us-epa-index': lenient(decimalString.pipe(z.int())),
+      69      'gb-defra-index': lenient(decimalString.pipe(z.int())),
+      70    })
+      72 -  .transform(                                                  
+      73 -    (airQuality): AirQuality | undefined =>                    
+      74 -      nonEmpty({                                               
+      75 -        co: airQuality.co,                                     
+      76 -        no2: airQuality.no2,                                   
+      77 -        o3: airQuality.o3,                                     
+      78 -        so2: airQuality.so2,                                   
+      79 -        pm2_5: airQuality.pm2_5,                               
+      80 -        pm10: airQuality.pm10,                                 
+      81 -        usEpaIndex: airQuality['us-epa-index'],                
+      82 -        gbDefraIndex: airQuality['gb-defra-index'],            
+      83 -      }),                                                      
+     … 14 more lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● API side is green (121 integration tests). Moving to the web: label helper,
+  fixture, details page.
+
+  Searched for 1 pattern, ran 3 shell commands (ctrl+o to expand)
+
+● Writing the label helper test first, then the helper, fixture and page.
+
+● Bash(python3 - <<'EOF'
+      p='apps/web/src/lib/format.test.ts'…)
+  ⎿  ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+     TypeError: epaIndexLabel is not a function
+     TypeError: epaIndexLabel is not a function
+           Tests  8 failed | 1 passed (9)
+  ⎿  Updated apps/web/src/lib/format.test.ts (+21 -1)
+      1  import { describe, expect, it } from 'vitest';
+      2 -import { formatDateTime } from './format';                      
+      2 +import { epaIndexLabel, formatDateTime } from './format';       
+      3  
+      4  describe('formatDateTime', () => {
+      5    it('formats an ISO date-time as en-US medium date and short ti
+         me in the viewer time zone', () => {
+     ...
+       9      expect(formatDateTime('2026-09-14T23:42:00.000Z')).toBe('Se
+          p 14, 2026, 11:42 PM');
+      10    });
+      11  });
+      12 +                                                               
+      13 +describe('epaIndexLabel', () => {                              
+      14 +  it.each([                                                    
+      15 +    [1, '1 (Good)'],                                           
+      16 +    [2, '2 (Moderate)'],                                       
+      17 +    [3, '3 (Unhealthy for Sensitive Groups)'],                 
+      18 +    [4, '4 (Unhealthy)'],                                      
+      19 +    [5, '5 (Very Unhealthy)'],                                 
+      20 +    [6, '6 (Hazardous)'],                                      
+      21 +  ])('TR-28: labels US EPA index %i as %s', (index, label) => {
+      22 +    expect(epaIndexLabel(index)).toBe(label);                  
+      23 +  });                                                          
+      24 +                                                               
+      25 +  it.each([                                                    
+      26 +    [0, '0'],                                                  
+      27 +    [7, '7'],                                                  
+      28 +  ])('TR-28: shows index %i outside 1-6 as the bare number', (i
+         +ndex, label) => {                                              
+      29 +    expect(epaIndexLabel(index)).toBe(label);                  
+      30 +  });                                                          
+      31 +});                                                            
+
+● Bash(cat >> apps/web/src/lib/format.ts <<'EOF'…)
+  ⎿        Tests  9 passed (9)
+  ⎿  Updated apps/web/src/lib/format.ts (+16 -0)
+       7  export function formatDateTime(iso: string): string {
+       8    return dateTimeFormat.format(new Date(iso));
+       9  }
+      10 +                                                               
+      11 +// US EPA air-quality index bands. Index 1 is at position 0.   
+      12 +const EPA_INDEX_LABELS = [                                     
+      13 +  'Good',                                                      
+      14 +  'Moderate',                                                  
+      15 +  'Unhealthy for Sensitive Groups',                            
+      16 +  'Unhealthy',                                                 
+      17 +  'Very Unhealthy',                                            
+      18 +  'Hazardous',                                                 
+      19 +];                                                             
+      20 +                                                               
+      21 +// "1 (Good)" for 1-6; any other value is shown as the bare num
+         +ber.                                                           
+      22 +export function epaIndexLabel(index: number): string {         
+      23 +  const label = EPA_INDEX_LABELS[index - 1];                   
+      24 +  return label === undefined ? String(index) : `${String(index)
+         +} (${label})`;                                                 
+      25 +}                                                              
+
+● Now the fixture and the failing details-page tests.
+
+● Bash(python3 - <<'EOF'
+      p='apps/web/src/test/fixtures.ts'…)
+  ⎿       × FR-12 AC6: shows the extra weather, astronomy and air quality w
+     ith units 27ms
+          × FR-12 AC6: zero values are shown, not left out 28ms
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/test/fixtures.ts (+49 -1)
+      1  import type { PropertiesQuery } from '../graphql/graphql';
+      2  
+      3 -// A stored property as the API returns it: the PRD's canonical 
+        -address, with the key weather                                   
+      3 +// A stored property as the API returns it: the PRD's canonical 
+        +address, with the typed weather                                 
+      4  // fields of the recorded Weatherstack sample. `raw` is left out
+          because no page asks for it.
+      5  export function propertyFixture(overrides: Partial<PropertyFixtu
+         re> = {}): PropertyFixture {
+      6    return {
+     ...
+      24          windSpeed: 6,
+      25          windDir: 'NE',
+      26          humidity: 34,
+      27 +        observationTime: '01:13 PM',                           
+      28 +        pressure: 1010,                                        
+      29 +        precip: 0,                                             
+      30 +        cloudCover: 0,                                         
+      31 +        uvIndex: 0,                                            
+      32 +        visibility: 6,                                         
+      33 +        astro: {                                               
+      34 +          sunrise: '06:25 AM',                                 
+      35 +          sunset: '06:03 PM',                                  
+      36 +          moonrise: '03:22 AM',                                
+      37 +          moonset: '04:27 PM',                                 
+      38 +          moonPhase: 'Waning Crescent',                        
+      39 +          moonIllumination: 15,                                
+      40 +        },                                                     
+      41 +        airQuality: {                                          
+      42 +          co: 112,                                             
+      43 +          no2: 6.9,                                            
+      44 +          o3: 21,                                              
+      45 +          so2: 0.2,                                            
+      46 +          pm2_5: 4.6,                                          
+      47 +          pm10: 10.4,                                          
+      48 +          usEpaIndex: 1,                                       
+      49 +          gbDefraIndex: 1,                                     
+      50 +        },                                                     
+      51        },
+      52      },
+      53      ...overrides,
+     ...
+       73        windSpeed: number;
+       74        windDir: string;
+       75        humidity: number;
+     … 27 more lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/DetailsPage.test.tsx (+125 -5)
+       56    );
+       57  }
+       58  
+       59 -// The `<dd>` text of each `<dt>` label, in page order.       
+       60 -function details() {                                          
+       59 +// The `<dd>` text of each `<dt>` label in `scope`, in page or
+          +der.                                                          
+       60 +function details(scope: HTMLElement) {                        
+       61    return Object.fromEntries(
+       62 -    screen                                                    
+       62 +    within(scope)                                             
+       63        .getAllByRole('term')
+       64        .map((term) => [term.textContent, term.nextElementSiblin
+           g?.textContent]),
+       65    );
+       66  }
+       67  
+       68 +// The first `<dl>`: address, coordinates, creation date and k
+          +ey weather (FR-12 AC1).                                       
+       69 +function keyDetails() {                                       
+       70 +  const list = screen.getAllByRole('term')[0]?.closest('dl'); 
+       71 +  if (!list) throw new Error('no <dl> on the page');          
+       72 +  return details(list);                                       
+       73 +}                                                             
+       74 +                                                              
+       75 +// The extra weather group under the `h2` called `name` (FR-12
+          + AC6).                                                        
+       76 +function group(name: string) {                                
+       77 +  return details(screen.getByRole('region', { name }));       
+       78 +}                                                             
+       79 +                                                              
+       80 +function withCurrent(current: Partial<PropertyFixture['weather
+          +Data']['current']>) {                                         
+       81 +  return propertyFixture({                                    
+       82 +    id: 'id-9',                                               
+       83 +    weatherData: { units: 'IMPERIAL', current: { ...property.w
+          +eatherData.current, ...current } },                           
+       84 +  });                                                         
+       85 +}                                                             
+       86 +                                                              
+       87 +const WEATHER_DETAILS = {                                     
+       88 +  Observed: '01:13 PM UTC',                                   
+       89 +  Pressure: '1010 mb',                                        
+       90 +  Precipitation: '0 in',                                      
+       91 +  'Cloud cover': '0 %',                                       
+       92 +  'UV index': '0',                                            
+     … 120 more lines (ctrl+o to expand)
+
+● Six new tests fail as expected; now the page.
+
+● Bash(python3 - <<'EOF'
+      p='apps/web/src/pages/DetailsPage.test.tsx'…)
+  ⎿  $ prettier --write .
+           Tests  15 passed (15)
+  ⎿  Updated apps/web/src/pages/DetailsPage.test.tsx (+22 -11)
+      292    });
+      293  
+      294    it('FR-12 AC6: zero values are shown, not left out', async (
+           ) => {
+      295 -    serveProperty(found(withCurrent({ uvIndex: 0, precip: 0, a
+          -stro: { ...property.weatherData.current.astro!, moonIlluminati
+          -on: 0 } })));                                                 
+      295 +    const astro = {                                           
+      296 +      sunrise: null,                                          
+      297 +      sunset: null,                                           
+      298 +      moonrise: null,                                         
+      299 +      moonset: null,                                          
+      300 +      moonPhase: null,                                        
+      301 +      moonIllumination: 0,                                    
+      302 +    };                                                        
+      303 +    serveProperty(found(withCurrent({ uvIndex: 0, precip: 0, a
+          +stro })));                                                    
+      304  
+      305      renderDetails();
+      306  
+      307      await screen.findByRole('heading', { level: 1, name: '1552
+           8 E Golden Eagle Blvd' });
+      308      expect(group('Weather details')).toMatchObject({ Precipita
+           tion: '0 in', 'UV index': '0' });
+      301 -    expect(group('Astronomy')).toMatchObject({ 'Moon illuminat
+          -ion': '0 %' });                                               
+      309 +    expect(group('Astronomy')).toEqual({ 'Moon illumination': 
+          +'0 %' });                                                     
+      310    });
+      311  
+      312    it.each([
+      313      ['astro', { astro: null }, 'Astronomy'],
+      314      ['airQuality', { airQuality: null }, 'Air quality'],
+      307 -  ] as const)('FR-12 AC5: a missing %s leaves out its group, t
+          -he rest still shows', async (_name, current, missing) => {    
+      308 -    serveProperty(found(withCurrent(current)));               
+      315 +  ] as const)(                                                
+      316 +    'FR-12 AC5: a missing %s leaves out its group, the rest st
+          +ill shows',                                                   
+      317 +    async (_name, current, missing) => {                      
+      318 +      serveProperty(found(withCurrent(current)));             
+      319  
+      310 -    renderDetails();                                          
+      320 +      renderDetails();                                        
+      321  
+      312 -    await screen.findByRole('heading', { level: 1, name: '1552
+          -8 E Golden Eagle Blvd' });                                    
+      313 -    expect(screen.queryByRole('region', { name: missing })).no
+          -t.toBeInTheDocument();                                        
+      314 -    expect(screen.getAllByRole('region')).toHaveLength(2);    
+      315 -    expect(group('Weather details')).toEqual(WEATHER_DETAILS);
+      316 -    expect(keyDetails()).toHaveProperty('Temperature', '82 °F'
+          -);                                                            
+     … 11 more lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/DetailsPage.tsx (+79 -2)
+       1  import { useQueryClient } from '@tanstack/react-query';
+       2 -import { useEffect, useRef, useState } from 'react';           
+       2 +import { Fragment, useEffect, useId, useRef, useState } from 'r
+         +eact';                                                         
+       3  import { Link, useNavigate, useParams } from 'react-router';
+       4  import { DeletePropertyDialog } from '../components/DeletePrope
+          rtyDialog';
+       5  import { useProperty } from '../hooks/useProperty';
+       6 -import { formatDateTime } from '../lib/format';                
+       6 +import { epaIndexLabel, formatDateTime } from '../lib/format'; 
+       7  
+       8 +// A label and its display text, or `null` when the API sent no
+         + value.                                                        
+       9 +type Row = [label: string, value: string | null];              
+      10 +                                                               
+      11 +// `0` is a value, so only `null` leaves the row out.          
+      12 +function withUnit(value: number | null, unit: string): string |
+         + null {                                                        
+      13 +  return value === null ? null : `${String(value)} ${unit}`;   
+      14 +}                                                              
+      15 +                                                               
+      16 +function plain(value: number | null): string | null {          
+      17 +  return value === null ? null : String(value);                
+      18 +}                                                              
+      19 +                                                               
+      20 +// One extra weather group: an `h2` and its own `<dl>`, left ou
+         +t when no row has a value                                      
+      21 +// (FR-12 AC5, AC6).                                           
+      22 +function DetailsGroup({ title, rows }: { title: string; rows: R
+         +ow[] }) {                                                      
+      23 +  const headingId = useId();                                   
+      24 +  const shown = rows.filter((row): row is [string, string] => r
+         +ow[1] !== null);                                               
+      25 +  if (shown.length === 0) return null;                         
+      26 +  return (                                                     
+      27 +    <section aria-labelledby={headingId} className="mt-6">     
+      28 +      <h2 id={headingId} className="mb-2 text-lg font-semibold"
+         +>                                                              
+      29 +        {title}                                                
+      30 +      </h2>                                                    
+      31 +      <dl className="grid grid-cols-[max-content_1fr] gap-x-6 g
+         +ap-y-2">                                                       
+      32 +        {shown.map(([label, value]) => (                       
+      33 +          <Fragment key={label}>                               
+      34 +            <dt className="font-semibold">{label}</dt>         
+      35 +            <dd>{value}</dd>                                   
+      36 +          </Fragment>                                          
+      37 +        ))}                                                    
+      38 +      </dl>                                                    
+     … 61 more lines (ctrl+o to expand)
+● Bash(python3 - <<'EOF'
+      p='apps/web/src/pages/DetailsPage.tsx'…)
+  ⎿  $ prettier --write .
+     packages/shared typecheck: Done
+     apps/web typecheck: Done
+     … +19 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/DetailsPage.tsx (+2 -4)
+      92    const weather = property.weatherData.current;
+      93    const { astro, airQuality } = weather;
+      94    const pollutant = (value: number | null | undefined) => withU
+          nit(value ?? null, 'µg/m³');
+      95 +  const epaIndex = airQuality?.usEpaIndex ?? null;             
+      96    const description = weather.weatherDescriptions[0];
+      97    const icon = weather.weatherIcons[0];
+      98    // The property is gone either way, so a delete and a "not fo
+          und" both return to the list.
+     ...
+      182            ['SO₂', pollutant(airQuality?.so2)],
+      183            ['PM2.5', pollutant(airQuality?.pm2_5)],
+      184            ['PM10', pollutant(airQuality?.pm10)],
+      184 -          [                                                   
+      185 -            'US EPA index',                                   
+      186 -            airQuality?.usEpaIndex == null ? null : epaIndexLa
+          -bel(airQuality.usEpaIndex),                                   
+      187 -          ],                                                  
+      185 +          ['US EPA index', epaIndex === null ? null : epaIndex
+          +Label(epaIndex)],                                             
+      186            ['GB DEFRA index', plain(airQuality?.gbDefraIndex ??
+            null)],
+      187          ]}
+      188        />
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/domain/weather.test.ts'…)
+  ⎿      const { raw: _raw, ...typed } = toCurrentWeather(current);
+
+         expect(typed).toEqual(withoutPath({ ...SAMPLE_KEY_FIELDS, ...SAMPL
+     … +9 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/domain/weather.test.ts (+4 -2)
+      184  
+      185    it.each(OPTIONAL_FIELD_CASES)('TR-16: %s drops only that fie
+           ld', (_name, overrides, path) => {
+      186      const current = weatherstackResponse({ current: overrides 
+           }).current;
+      187 -    const { raw: _raw, ...typed } = toCurrentWeather(current);
+      187  
+      189 -    expect(typed).toEqual(withoutPath({ ...SAMPLE_KEY_FIELDS, 
+          -...SAMPLE_OPTIONAL_WEATHER }, path));                         
+      188 +    expect(toCurrentWeather(current)).toEqual({               
+      189 +      ...withoutPath({ ...SAMPLE_KEY_FIELDS, ...SAMPLE_OPTIONA
+          +L_WEATHER }, path),                                           
+      190 +      raw: current,                                           
+      191 +    });                                                       
+      192    });
+      193  
+      194    it.each([
+  ⎿  Updated apps/web/src/pages/DetailsPage.test.tsx (+2 -2)
+      333      renderDetails();
+      334  
+      335      await screen.findByRole('heading', { level: 1, name: '1552
+           8 E Golden Eagle Blvd' });
+      336 -    const { Pressure: _pressure, ...rest } = WEATHER_DETAILS; 
+      337 -    expect(group('Weather details')).toEqual(rest);           
+      336 +    expect(group('Weather details')).toEqual({ ...WEATHER_DETA
+          +ILS, Pressure: undefined });                                  
+      337 +    expect(group('Weather details')).not.toHaveProperty('Press
+          +ure');                                                        
+      338      expect(group('Astronomy')).toEqual(ASTRONOMY);
+      339      expect(group('Air quality')).toEqual(AIR_QUALITY);
+      340    });
+
+● Unit tests (567), lint and typecheck pass. Now the test-plan rows, then the
+  full suite.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/test-plan.md'…)
+  ⎿  55:| TR-28 | The details page shows the extra weather data wrongly: a
+     wrong unit or label, a `0` value left out as falsy, a wrong US EPA ban
+     d, or one missing field hiding others (FR-12 AC6). | L | M | U (web) |
+     … +8 lines (ctrl+o to expand)
+  ⎿  Updated context/test-plan.md (+4 -3)
+      40  | TR-13 | Filtering is wrong: the city `ILIKE` does not escape 
+          `%` / `_`, state is not upper-cased, zip uses prefix matching, 
+          blank filters filter for `""`, or `totalCount` ignores the filt
+          er (FR-03 AC1 – AC6). | M | M | I | Testcontainers: seeded prop
+          erties, one test per FR-03 AC. Extra: `city: "%"` and `city: "_
+          "` match nothing unless the name contains them; `\` is escaped 
+          too, so a literal backslash matches only itself. Arg parsing (b
+          lank → absent, upper-casing) also has a unit table. | covered (
+          S-03) |
+      41  | TR-14 | Sorting or paging is unstable: ties on `created_at` p
+          roduce duplicates or gaps across pages; `limit`/`offset` bounds
+           not enforced; no `limit` returns a default page instead of all
+           (FR-01 AC3 – AC5, FR-02 AC1 – AC3). | M | M | U + I | U: args 
+          schema (`limit` 0/1/100/101, `offset` -1/0, absent `limit`). I:
+           25 rows inserted with the same `created_at`; pages at offset 0
+           and 20 together hold all 25 ids once in both directions. No `l
+          imit` returns 25. | covered (S-03) |
+      42  | TR-15 | Lookups with an unknown or malformed id cause a serve
+          r error instead of `null` / `PROPERTY_NOT_FOUND` (FR-04 AC2, AC
+          4, FR-09 AC2). Postgres rejects a non-UUID cast with an error. 
+          | M | M | I | `property(id: "not-a-uuid")` → `null` with no `er
+          rors`. `deleteProperty` with a malformed id and with an unknown
+           UUID → `PROPERTY_NOT_FOUND`. | covered (S-03) |
+      43 -| TR-16 | Weather mapping is wrong: snake_case → camelCase key 
+         -fields mismatch `raw`, `lat`/`long` swapped or left as strings,
+         - `units` missing (FR-05 AC1, B-7f – B-7h). | M | L | U + I | U:
+         - mapper from the parsed sample to the domain `WeatherData`; eac
+         -h key field equals its source value, `raw` deep-equals the resp
+         -onse's `current`. I: FR-05 AC1, create then `property(id)` retu
+         -rns the same data. | covered (S-01) |                          
+      43 +| TR-16 | Weather mapping is wrong: snake_case → camelCase key 
+         +fields mismatch `raw`, `lat`/`long` swapped or left as strings,
+         + `units` missing (FR-05 AC1, B-7f – B-7h). | M | L | U + I | U:
+         + mapper from the parsed sample to the domain `WeatherData`; eac
+         +h key field equals its source value, `raw` deep-equals the resp
+         +onse's `current`. The optional typed fields (#12: `observationT
+         +ime`, `weatherCode`, `windDegree`, `pressure`, `precip`, `cloud
+         +Cover`, `uvIndex`, `visibility`, `isDay`, `astro`, `airQuality`
+         +) equal the sample with `toEqual`, air-quality numeric strings 
+         +as numbers and `is_day` as a boolean; an `it.each` table drops 
+         +or mistypes one optional field at a time with all others valid 
+         +and only that field is `undefined`; an absent, non-object, empt
+         +y or all-mistyped `astro` / `air_quality` is `undefined`; index
+         + strings `"1.5"`, `""`, `"x"`, `"1x"`, `"x1"` are `undefined`. 
+         +I: FR-05 AC1, create then `property(id)` returns the same data,
+         + typed fields included; a stored snapshot without `astro` / `ai
+         +r_quality` / `pressure` returns those as `null` without errors.
+         + | covered (S-01, S-09): `apps/api/src/domain/weather.test.ts`,
+         + `property-details-delete.int.test.ts`, `property-repository.in
+         +t.test.ts`, `create-property.int.test.ts` |                    
+      44  | TR-17 | The adapter sends the wrong request: the query is not
+           the full normalized address, `units` is not `f`, or the base U
+          RL is not read from config (FR-05 AC2, D-03, A-11). | M | L | U
+           (MSW) | MSW handler records the request. Assert path `/current
+          `, `query` = `"15528 E Golden Eagle Blvd, Fountain Hills, AZ 85
+          268, United States"`, `units=f`, the host from `WEATHERSTACK_BA
+          SE_URL`, and `access_key` present (compared to the sentinel, ne
+          ver printed). | covered (S-01) |
+      45  | TR-18 | Env config: the API starts without a key and fails at
+           the first create, or the error message prints the value (FR-14
+           AC3). | M | L | U | Config schema test: missing `WEATHERSTACK_
+          KEY` → error names the variable. With an invalid value elsewher
+          e, the message does not contain the sentinel key. `main.ts` sta
+          rted without the key (unset or `''`) exits 1 naming the variabl
+          e (`apps/api/src/config/env.test.ts`, `apps/api/src/main.test.t
+          s`). | covered (F-01) |
+      46  | TR-19 | UI shows the wrong thing for an API error: a generic 
+          message instead of the per-code one, entered values lost, or `B
+          AD_USER_INPUT` not attached to fields (FR-13 AC3, AC4, NFR-09).
+           | M | M | U (web) | Testing Library + MSW GraphQL: `it.each` o
+          ver the four FR-10 create codes → the specific message, inputs 
+          keep their values. `BAD_USER_INPUT` with `fields: ['zipCode','s
+          tate']` → messages next to those inputs. Mapper unit table: eve
+          ry code in the shared error-code list has a message (fails when
+           a code is added without one). | covered (S-05) |
+      47 -| TR-20 | UI states are missing or wrong: no loading / empty / 
+         -error-with-retry, the delete dialog deletes on cancel, the list
+         - is not refreshed after delete, unknown id crashes the details 
+         -page, missing optional weather fields crash it (FR-11 AC5, AC6,
+         - FR-12 AC3 – AC5). | M | M | U (web) | Testing Library + MSW pe
+         -r AC: delayed handler → loading; empty list → empty state with 
+         -create link; network error → error state, retry re-requests. De
+         -lete: cancel sends no mutation, confirm sends it and the row di
+         -sappears. Details: `null` → not-found; a snapshot with empty de
+         -scription and icon lists renders without them (`astro` / `air_q
+         -uality` live only in `raw`, which the details page shows from #
+         -11). jsdom has no `<dialog>` API, so `test/setup.ts` polyfills 
+         -`showModal` / `close`. | covered (S-04): `ListPage.test.tsx`, `
+         -DeletePropertyDialog.test.tsx`, `DetailsPage.test.tsx` |       
+      47 +| TR-20 | UI states are missing or wrong: no loading / empty / 
+         +error-with-retry, the delete dialog deletes on cancel, the list
+         + is not refreshed after delete, unknown id crashes the details 
+         +page, missing optional weather fields crash it (FR-11 AC5, AC6,
+         + FR-12 AC3 – AC5). | M | M | U (web) | Testing Library + MSW pe
+         +r AC: delayed handler → loading; empty list → empty state with 
+         +create link; network error → error state, retry re-requests. De
+         +lete: cancel sends no mutation, confirm sends it and the row di
+         +sappears. Details: `null` → not-found; a snapshot with empty de
+         +scription and icon lists renders without them; a `null` `astro`
+         + / `airQuality` group, a `null` `pressure` row, or a group whos
+         +e fields are all `null` is left out while the rest renders (S-0
+         +9). jsdom has no `<dialog>` API, so `test/setup.ts` polyfills `
+         +showModal` / `close`. | covered (S-04, S-09): `ListPage.test.ts
+         +x`, `DeletePropertyDialog.test.tsx`, `DetailsPage.test.tsx` |  
+      48  | TR-21 | Client-side validation differs from the server's (FR-
+          13 AC1). The shared schema prevents drift, but the form may not
+           use it. | L | M | U (web) | Form test: an empty field, a 4-dig
+          it zip and `"XX"` show field messages and MSW records no reques
+          t. Rule logic is tested once, in `packages/shared`. | covered (
+          S-05) |
+      49  | TR-22 | Layering or type rules erode (resolver imports a repo
+          sitory, `any`, enum, `.js` import), which hurts the assessment 
+          (NFR-04, NFR-06). | M | M | static | ESLint + `tsc` in pre-comm
+          it and CI. Deliberate violations must fail: `tooling/guardrails
+          .test.ts` (`tooling` project) lints virtual files with the real
+           ESLint config and runs `tsc` on `tooling/fixtures/`. | covered
+           (F-01) |
+      50  | TR-23 | Generated GraphQL types drift from `schema.graphql`, 
+          so resolvers or the web compile against a stale contract. | M |
+           L | static | CI runs `pnpm codegen`, then `git diff --exit-cod
+          e` and an empty `git status --porcelain` on the generated direc
+          tories (so new untracked output also fails). Then `tsc`. | cove
+          red (F-01) |
+     ...
+      52  | TR-25 | A test calls the real Weatherstack (NFR-02), spending
+           quota and making the suite flaky. | M | L | config | API Vites
+          t setup starts MSW with `onUnhandledFrame: 'error'` (MSW 3's na
+          me), so any unmocked outbound request fails the test. CI holds 
+          no real key, only the sentinel. E2E points `WEATHERSTACK_BASE_U
+          RL` at the stub. Proven by `apps/api/src/net-guard.test.ts` and
+           a case in `apps/api/test/integration/smoke.int.test.ts`. | cov
+          ered (F-01) |
+      53  | TR-26 | The list filters and sort are not written to the URL,
+           are not read back on load or Back, or a bad URL value breaks t
+          he page or reaches the request (FR-11 AC3a). | M | L | U (web) 
+          + E | Unit table for `apps/web/src/lib/list-search.ts`: each fi
+          eld read, each invalid field dropped on its own with the others
+           valid (city 100/101, zip 5/6, `state=az`/`XX`, `sort=asc`/`foo
+          `), blanks left out and values trimmed on write, round trip. `L
+          istPage.test.tsx` with a router probe: Apply and sort write the
+           URL, a deep link fills the inputs and the first request, Back 
+          restores the previous filter, an unchanged Apply pushes no entr
+          y, `state=XX` is ignored. Playwright reload after the city filt
+          er. | covered (S-07): `apps/web/src/lib/list-search.test.ts`, `
+          apps/web/src/pages/ListPage.test.tsx`, `e2e/property-journey.sp
+          ec.ts` |
+      54  | TR-27 | The list pages wrongly: a wrong `limit` / `offset`, t
+          he page is not kept in the URL, it is not reset after a filter 
+          or sort change, a page past the end shows an empty list, or the
+           controls show the wrong page or total (FR-11 AC4). | M | M | U
+           (web) | Unit table for `list-search.ts`: `page` read (`2`, `99
+          9999`), each invalid `page` dropped with the other fields valid
+           (`1000000`, `0`, `-1`, `02`, `1.5`, `abc`, `+2`, blank), page 
+          1 left out on write, `page` written last, round trip. `ListPage
+          .test.tsx` with MSW serving 45 fixtures by `limit` / `offset` a
+          nd a router probe: first request `limit: 20, offset: 0`, Next /
+           Previous and the URL, deep link with `page`, page 1 after a fi
+          lter or sort change, unchanged Apply keeps the page, Back. `Lis
+          tPage.tsx` stays outside Stryker (no helper is extracted for it
+          ), so these component tests pin its bounds: 20 vs 21 matches (`
+          totalCount > PAGE_SIZE`), Previous disabled on page 1, Next dis
+          abled on the last page (`page >= pageCount`), and `/?page=9` → 
+          `?page=3` plus deleting the only row on page 3 (past-the-end ch
+          eck and `lastPage`). Bound tests: "20 matches show no paginatio
+          n bar, 21 matches show \"Page 1 of 2\"", "with 45 matches shows
+           the first 20 rows…" (Previous on page 1), "Next and Previous m
+          ove by 20 rows…" (Next on page 3), "a page past the end is repl
+          aced by the last page…", "deleting the only row on the last pag
+          e…", "while the next page loads…" and "Back to page 3 from a fi
+          lter with fewer matches…" (placeholder data skipped). | covered
+           (S-08): `apps/web/src/lib/list-search.test.ts`, `apps/web/src/
+          pages/ListPage.test.tsx` |
+      55 +| TR-28 | The details page shows the extra weather data wrongly
+         +: a wrong unit or label, a `0` value left out as falsy, a wrong
+         + US EPA band, or one missing field hiding others (FR-12 AC6). |
+         + L | M | U (web) | `format.test.ts`: `epaIndexLabel` for 1–6 ("
+         +1 (Good)" … "6 (Hazardous)") and 0 / 7 as the bare number. `Det
+         +ailsPage.test.tsx` with MSW: the "Weather details", "Astronomy"
+         + and "Air quality" regions each map `<dt>` → `<dd>` to the expe
+         +cted strings with units ("1010 mb", "0 in", "0 %", "6 mi", "15 
+         +%", "112 µg/m³", "01:13 PM UTC", "1 (Good)"); `uvIndex` / `prec
+         +ip` / `moonIllumination` `0` are shown. The AC1 `<dl>` is asser
+         +ted on its own, so it stays unchanged. | covered (S-09): `apps/
+         +web/src/lib/format.test.ts`, `apps/web/src/pages/DetailsPage.te
+         +st.tsx` |                                                      
+      56  
+      57  ## Not tested (and why)
+      58  
+     ...
+      113  | Module | Why | Target score | CI (report / break at N%) |
+      114  |--------|-----|--------------|---------------------------|
+      115  | `packages/shared/src/address.ts` (address zod schema, `norma
+           lizeAddress`) and `packages/shared/src/states.ts` lookup | Val
+           idation and normalization decide what gets stored, what counts
+            as a duplicate, and what the form accepts. A flipped length b
+           ound or regex anchor passes a "runs the code" test (TR-07, TR-
+           08). | 90% | Not in CI. Local `break` at 85% after the baselin
+           e. |
+      115 -| `apps/api/src/adapters/weatherstack/` response schema and er
+          -ror classification, and `apps/api/src/domain/weather.ts` (key-
+          -field schema, `toCurrentWeather` mapper) | Third-party payload
+          - mapping: a 200 error body, a missing key field and snake_case
+          - mapping are exactly where a silent bug stores bad data or bur
+          -ns quota (TR-02, TR-03, TR-11, TR-16). | 85% | Not in CI. Loca
+          -l `break` at 80% after the baseline. |                        
+      116 +| `apps/api/src/adapters/weatherstack/` response schema and er
+          +ror classification, and `apps/api/src/domain/weather.ts` (key-
+          +field schema, `toCurrentWeather` mapper, lenient optional-fiel
+          +d mapper) | Third-party payload mapping: a 200 error body, a m
+          +issing key field and snake_case mapping are exactly where a si
+          +lent bug stores bad data or burns quota (TR-02, TR-03, TR-11, 
+          +TR-16). | 85% | Not in CI. Local `break` at 80% after the base
+          +line. |                                                       
+      117  | `apps/api/src/adapters/weatherstack/redact.ts` (URL / error 
+           redaction) | One wrong regex leaks the key (TR-01). Small modu
+           le, so every mutant should die. | 100% (equivalents excepted) 
+           | Not in CI. Local `break` at 100% of non-equivalent mutants. 
+           |
+      118  | `apps/api/src/services/property.service.ts` create flow and 
+           `regionMatchesState` | The order validate → duplicate → weathe
+           r → region → save, and the region comparison, are business rul
+           es where a swapped step costs quota or stores bad records (TR-
+           04, TR-05, TR-09). Tested with `FakeWeatherClient` and an in-m
+           emory repository fake. | 80% | Not in CI. Local `break` at 75%
+            after the baseline. |
+      119  | `apps/api/src/graphql/errors.ts` (domain error → `extensions
+           .code`, masking) and the `properties` args schema (`apps/api/s
+           rc/graphql/properties-args.ts`) | Error mapping and query argu
+           ment rules (bounds, blank filters, upper-casing) are tables; a
+            mutant in a table entry is a wrong code or a wrong bound (TR-
+           12, TR-14). | 90% | Not in CI. `properties-args.ts`: baseline 
+           100% (S-03), local `break` 85% via `pnpm --filter @property-ma
+           nager/api test:mutation:properties-args` (`stryker.properties-
+           args.config.mjs`; `break` in `stryker.config.json` would apply
+            to every API module). `errors.ts`: `break` after the baseline
+           . |
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Columns match. Now codegen drift check and the full suite (with Docker).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All 688 tests pass, no codegen drift. Quick look at the final page code before
+  the human checks:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now I'll log the deviations in the plan.
+
+● Bash(cat >> context/changes/details-extra-weather/plan.md <<'EOF'
+      - Phase 1, small and local: the sample's optional typed values are one
+      shared…)
+  ⎿  ## Deviations
+     - Phase 1, small and local: the sample's optional typed values are one
+      shared
+     … +28 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/details-extra-weather/plan.md (+7 -0)
+      216  - [ ] Phase 1: Typed extra weather fields on the API and the d
+           etails page
+      217  
+      218  ## Deviations
+      219 +- Phase 1, small and local: the sample's optional typed values
+          + are one shared                                               
+      220 +  `SAMPLE_OPTIONAL_WEATHER` in `apps/api/test/fixtures/weather
+          +stack.ts` (not in the file list),                             
+      221 +  used by `weather.test.ts` and the three API integration test
+          +s instead of four copies.                                     
+      222 +- Phase 1, small and local: `DetailsPage.test.tsx` also covers
+          + a group whose fields are all `null`                          
+      223 +  (left out) and `moonIllumination: 0` (shown), next to the pl
+          +anned `uvIndex` / `precip` zero case.                         
+      224 +- Follow-up (not done, outside the phase): `weather.ts` has it
+          +s own `decimalString`, the same as                            
+      225 +  the one in `adapters/weatherstack/response.ts`. Sharing it w
+          +ould touch the adapter.                                       
+
+● Phase 1 is built and all automated checks pass. It isn't committed yet: it's
+  waiting on your three manual checks, and one of them has to happen before the
+  commit.
+
+  Phase 1 goal: the API now returns the extra weather fields (#12) with proper
+  types, and /properties/:id shows them in three new sections, Weather details,
+  Astronomy and Air quality (FR-12 AC6). A missing or wrongly typed field
+  becomes null and never breaks a read or a create.
+
+  Changes
+
+  - apps/api/schema.graphql: new optional fields on CurrentWeather, plus new
+    Astro and AirQuality types. Type description updated.
+  - apps/api/src/domain/property.ts: optional fields on CurrentWeather, plus the
+    Astro and AirQuality types.
+  - apps/api/src/domain/weather.ts: a forgiving parser for the optional fields,
+    used inside toCurrentWeather. A bad value drops only that field, and a
+    section with no values left is dropped as a whole. The schema the create
+    relies on (currentKeyFieldsSchema) is unchanged.
+  - apps/api/src/domain/weather.test.ts: the sample is checked with toEqual. A
+    table breaks one field at a time. Also covers missing, non-object, empty or
+    fully mistyped astro/air_quality, and bad index strings.
+  - apps/api/test/fixtures/weatherstack.ts: a shared SAMPLE_OPTIONAL_WEATHER (a
+    deviation, see below).
+  - apps/api/test/operations.ts: the shared fragment now asks for the new
+    fields.
+  - apps/api/test/integration/{create-property,property-details-delete,property-
+    repository}.int.test.ts: expected objects now include the new fields. One
+    new case: a stored snapshot without astro, air_quality or pressure returns
+    those as null with no errors.
+  - Generated code (resolvers-types.ts, apps/web/src/graphql/{gql,graphql}.ts):
+    regenerated with pnpm codegen.
+  - apps/web/src/hooks/useProperty.ts: the query asks for the new fields.
+  - apps/web/src/lib/format.ts and its test: epaIndexLabel turns 1–6 into labels
+    such as "1 (Good)"; any other number is shown as is.
+  - apps/web/src/test/fixtures.ts: the test property now carries the sample's
+    extra fields.
+  - apps/web/src/pages/DetailsPage.tsx: a DetailsGroup component renders each
+    section with an h2 and its own list. Rows with no value are left out, and 0
+    still shows.
+  - apps/web/src/pages/DetailsPage.test.tsx: the existing AC1 test now looks
+    only at the first list, so its expected values are unchanged. New tests: AC6
+    checks all three sections, zero values show, and AC5 removes one section or
+    one row at a time.
+  - context/test-plan.md: TR-16 and TR-20 updated, TR-28 added, and the
+    weather.ts mutation-target row updated.
+  - context/roadmap.md: S-09 set to in-progress.
+
+  Checks
+
+  ┌───────────────────────────────────┬───────────────────────────┐
+  │               Check               │          Result           │
+  ├───────────────────────────────────┼───────────────────────────┤
+  │ pnpm codegen                      │ ✅ no changes when re-run │
+  ├───────────────────────────────────┼───────────────────────────┤
+  │ pnpm typecheck                    │ ✅                        │
+  ├───────────────────────────────────┼───────────────────────────┤
+  │ pnpm lint                         │ ✅                        │
+  ├───────────────────────────────────┼───────────────────────────┤
+  │ pnpm format:check                 │ ✅                        │
+  ├───────────────────────────────────┼───────────────────────────┤
+  │ pnpm test:unit                    │ ✅ 567 passed             │
+  ├───────────────────────────────────┼───────────────────────────┤
+  │ pnpm vitest run --project api-int │ ✅ 121 passed             │
+  ├───────────────────────────────────┼───────────────────────────┤
+  │ pnpm test (everything)            │ ✅ 688 passed             │
+  └───────────────────────────────────┴───────────────────────────┘
+
+  Deviations (logged in plan.md)
+
+  - The sample's expected values live in one shared SAMPLE_OPTIONAL_WEATHER
+    instead of four copies. That fixture file wasn't in the plan's file list.
+  - Two extra web tests: a section whose fields are all null is hidden, and a
+    moon illumination of 0 still shows.
+  - Follow-up, not done: weather.ts has its own copy of the number-string check
+    that also exists in adapters/weatherstack/response.ts. Sharing it would mean
+    touching the adapter.
+
+  Your checks before the commit
+
+  - [ ] Confirm the units first. In a browser, check the Weatherstack docs for
+    units=f: is pressure in mb and visibility in mi? If either is wrong, tell me
+    and I'll fix the labels and tests before committing.
+  - [ ] Run docker compose up --build, then open http://localhost:5173 and go to
+    a property's details page. Check that the three sections read well, the
+    units ("mb", "mi", "in", "µg/m³") look right, and "01:13 PM UTC" is clear.
+  - [ ] In GraphiQL at http://localhost:4000/graphql, run:
+  { property(id: "<id>") { weatherData { current { observationTime pressure
+  precip cloudCover uvIndex visibility isDay weatherCode windDegree astro {
+  sunrise moonPhase moonIllumination } airQuality { pm2_5 usEpaIndex
+  gbDefraIndex } } } } }
+    The fields should come back with types (numbers, a boolean), not strings.
+
+  Proposed commit (after you confirm)
+
+  feat(details-extra-weather): show the extra weather fields on the details page
+
+  Closes #11
+  Closes #12
+  I'll stage by explicit path: the 20 modified files above, plus
+  context/changes/details-extra-weather/plan.md and plan-review.md.
+
+  Before committing I'll also set S-09 to done in the roadmap, because the plan
+  assigns that to this step. The context/roadmap.md diff also contains the S-09
+  row and note that were already there before I started; they belong to this
+  item, so they'll go in too.
+
+  plan-S-09.txt and plan-review-S-09.txt stay untracked and won't be staged.
+
+  After the commit, the next step is /mutation details-extra-weather on
+  apps/api/src/domain/weather.ts, then /review details-extra-weather.
+
+✻ Churned for 6m 6s · done 4:47 PM
