@@ -326,7 +326,7 @@ path end to end.
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: Compose stack (api + web images) (f86cc80)
 - [x] Phase 2: E2E smoke against the Compose stack (6774617)
-- [ ] Phase 3: README and AI deliverables
+- [x] Phase 3: README and AI deliverables (ce03f58)
 
 ## Deviations
 
