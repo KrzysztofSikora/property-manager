@@ -1,0 +1,481 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement run-and-document                                                   
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now moving to Phase 3: I'll write README.md with the FR-14 AC2 checklist, AI
+  setup links, and AI sessions index, then update CLAUDE.md, test-plan, roadmap,
+  and ai-workflow, followed by format/lint/test checks. I'll leave the
+  already-dirty plan.md and the untracked *-S-06*.txt files untouched.
+
+  Searched for 1 pattern, listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● TR-08, TR-16 and TR-17 still say planned (S-01). Before I touch criterion 7,
+  I'll check whether S-01 actually covered them.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● These tests were already covered by S-01 but never marked as such, so I'll
+  update their status and note this as a logged deviation.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now the README. I'll generate the sessions table from the file list so no link
+  is mistyped.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(README.md)
+  ⎿  Wrote 208 lines to README.md
+       1 # Property Manager
+       3 A full-stack app for managing property records through a GraphQL
+          API. When a property is
+          and stores the current weather
+         cs/brief.txt`](docs/brief.txt).
+       6 
+         t 19 + Vite, Tailwind. The
+       8 choices and trade-offs are in [`context/tech-stack.md`](context/
+       9 
+         #ai-setup) and
+     … +331 lines (ctrl+o to expand)
+
+● I need to check a few claims in the README against the code.
+
+  Searched for 1 pattern, listed 1 directory (ctrl+o to expand)
+
+● The claims check out. Next, the other doc updates.
+
+● Bash(python3 - <<'EOF'
+      import re…)
+  ⎿  24:Status: `planned` until the owning roadmap item lands, then `covere
+     d` or `gap`.
+     78:- **Should and Could items (#9 – #13).** Tested when they are plann
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated CLAUDE.md (+2 -1)
+      75  | Task | Command |
+      76  |------|---------|
+      77  | Install (also sets `core.hooksPath` to `.githooks`) | `pnpm i
+          nstall` |
+      78 +| Full stack (Postgres, API with migrations, web on `:5173`) | 
+         +`docker compose up` (`--build` after code changes) |           
+      79  | Database for dev | `docker compose up -d postgres` |
+      80  | Dev servers (API `:4000/graphql`, web `:5173`) | `pnpm dev` (
+          needs `WEATHERSTACK_KEY` in `.env`) |
+      81  | Hermetic tests (no Docker; pre-commit runs these) | `pnpm tes
+          t:unit` |
+     ...
+      88  | Apply migrations to the dev DB (needs only `DATABASE_URL`) | 
+          `pnpm db:migrate` |
+      89  | Generate a migration after changing `apps/api/src/db/schema.t
+          s` (commit the output) | `pnpm db:generate` |
+      90  | Mutation (one module, targets in `context/test-plan.md`) | `p
+          npm --filter @property-manager/<api\|web\|shared> test:mutation
+           --mutate src/<module>.ts`; tooling: `pnpm test:mutation:toolin
+          g --mutate tooling/<file>.ts` |
+      90 -| E2E | not yet (S-06) |                                       
+      91 +| E2E (Playwright on its own Compose project, stub Weatherstack
+         +; Docker running) | `pnpm e2e` (once: `pnpm exec playwright ins
+         +tall chromium`) |                                              
+  ⎿  Updated context/test-plan.md (+10 -9)
+      32  | TR-05 | A failed create leaves a partial or orphan row: the s
+          ave runs before the region check, or a DB error happens mid-way
+           (FR-05 AC5, AC6, NFR-08). | H | L | I | For every failure code
+          : property count before = after. The DB rejecting the save (rep
+          ository fake that throws) → `INTERNAL_SERVER_ERROR` with no row
+          . Schema: `NOT NULL` on every required column, an insert with a
+           null is rejected, and the CHECKs reject out-of-range or malfor
+          med values (F-02, `schema.int.test.ts`). | covered (F-02, S-01,
+           S-02) |
+      33  | TR-06 | Two concurrent creates of the same address both pass 
+          the pre-check and both get stored (FR-08 AC2). This is a race, 
+          so it shows up rarely and stays hidden. | M | M | I | Testconta
+          iners: `FakeWeatherClient` holds both calls behind a barrier un
+          til both have passed the pre-check, then releases them. `Promis
+          e.all` of two `createProperty` calls → exactly one success, one
+           `PROPERTY_ALREADY_EXISTS`, count 1. Repository test: the pg `2
+          3505` error on insert maps to the domain duplicate error (Drizz
+          le 0.45 puts the pg error on `DrizzleQueryError.cause`); a herm
+          etic table pins the constraint name and the bare (unwrapped) er
+          ror. Storage half: two rows differing only in `street`/`city` c
+          ase violate `properties_address_unique` (F-02, `schema.int.test
+          .ts`). | covered (F-02, S-02) |
+      34  | TR-07 | Address normalization differs between the duplicate c
+          heck, the unique index and the stored value, so `"15528 e golde
+          n eagle  blvd"` is not caught as a duplicate, or a valid addres
+          s is wrongly blocked (FR-05 AC3, FR-08 AC1, FR-08 AC3). | M | M
+           | U + I | U: `normalizeAddress` table (trim, collapse inner wh
+          itespace, state upper-case, case kept for display). I: FR-08 AC
+          1 variant through the API; FR-08 AC3 delete-then-recreate succe
+          eds. | covered (S-01, S-02, S-03) |
+      35 -| TR-08 | Input validation lets bad data through or rejects val
+         -id data: ZIP+4, 4-digit zip, leading-zero zip turned into a num
+         -ber, territories, full state names, blank or overlong street/ci
+         -ty (FR-07 AC1 – AC5, A-01 – A-03). | M | M | U + I | U: shared 
+         -address schema in `packages/shared`, `it.each` with the PRD's e
+         -xact examples plus boundary lengths (200/201 street, 100/101 ci
+         -ty after trimming). I: one resolver test with several invalid f
+         -ields → one `BAD_USER_INPUT` listing all fields in `extensions.
+         -fields`, 0 weather calls. FR-07 AC2 `"02108"` stored and return
+         -ed as the string `"02108"`. | planned (S-01) |                 
+      35 +| TR-08 | Input validation lets bad data through or rejects val
+         +id data: ZIP+4, 4-digit zip, leading-zero zip turned into a num
+         +ber, territories, full state names, blank or overlong street/ci
+         +ty (FR-07 AC1 – AC5, A-01 – A-03). | M | M | U + I | U: shared 
+         +address schema in `packages/shared`, `it.each` with the PRD's e
+         +xact examples plus boundary lengths (200/201 street, 100/101 ci
+         +ty after trimming). I: one resolver test with several invalid f
+         +ields → one `BAD_USER_INPUT` listing all fields in `extensions.
+         +fields`, 0 weather calls. FR-07 AC2 `"02108"` stored and return
+         +ed as the string `"02108"`. | covered (S-01) |                 
+      36  | TR-09 | The region check gives a false result: case or whites
+          pace in `region`, DC as "District of Columbia" (R-03), or a mis
+          sing state in the code → name table, so a valid address is reje
+          cted or a mismatch is stored (FR-05 AC4). | M | M | U + I | U: 
+          `regionMatchesState` table (exact, different case, padded, DC, 
+          mismatch). U: the states table has exactly 51 entries and every
+           code maps to a name. I: FR-05 AC4 → `WEATHER_LOCATION_MISMATCH
+          ` whose message names "AZ"/"Arizona" and "California", count un
+          changed. | covered (S-02) |
+      37  | TR-10 | The timeout does not fire or a hang blocks the mutati
+          on for longer than 6 s (FR-06 AC3, NFR-03). | M | M | U (MSW) |
+           Adapter test with an MSW handler that never resolves (`delay('
+          infinite')`) and an injected short timeout (e.g. 50 ms) → `WEAT
+          HER_UNAVAILABLE`, one request. A separate check spies on `Abort
+          Signal.timeout` and asserts the client default of 5000 ms. The 
+          real 5 s wait is not run in the suite. | covered (S-02) |
+      38  | TR-11 | Network error, non-2xx status or 429 throws an unmapp
+          ed error, which becomes `INTERNAL_SERVER_ERROR` or leaks the UR
+          L (FR-06 AC4). | M | M | U (MSW) | Adapter `it.each`: `HttpResp
+          onse.error()`, 500, 503, HTTP status 429 (seen 2026-10-07; a bo
+          dy code 429 is quota, TR-02), 200 with a non-JSON body → `WEATH
+          ER_UNAVAILABLE`, key absent from the error. | covered (S-02) |
+     ...
+      40  | TR-13 | Filtering is wrong: the city `ILIKE` does not escape 
+          `%` / `_`, state is not upper-cased, zip uses prefix matching, 
+          blank filters filter for `""`, or `totalCount` ignores the filt
+          er (FR-03 AC1 – AC6). | M | M | I | Testcontainers: seeded prop
+          erties, one test per FR-03 AC. Extra: `city: "%"` and `city: "_
+          "` match nothing unless the name contains them; `\` is escaped 
+          too, so a literal backslash matches only itself. Arg parsing (b
+          lank → absent, upper-casing) also has a unit table. | covered (
+          S-03) |
+      41  | TR-14 | Sorting or paging is unstable: ties on `created_at` p
+          roduce duplicates or gaps across pages; `limit`/`offset` bounds
+           not enforced; no `limit` returns a default page instead of all
+           (FR-01 AC3 – AC5, FR-02 AC1 – AC3). | M | M | U + I | U: args 
+          schema (`limit` 0/1/100/101, `offset` -1/0, absent `limit`). I:
+           25 rows inserted with the same `created_at`; pages at offset 0
+           and 20 together hold all 25 ids once in both directions. No `l
+          imit` returns 25. | covered (S-03) |
+      42  | TR-15 | Lookups with an unknown or malformed id cause a serve
+          r error instead of `null` / `PROPERTY_NOT_FOUND` (FR-04 AC2, AC
+          4, FR-09 AC2). Postgres rejects a non-UUID cast with an error. 
+          | M | M | I | `property(id: "not-a-uuid")` → `null` with no `er
+          rors`. `deleteProperty` with a malformed id and with an unknown
+           UUID → `PROPERTY_NOT_FOUND`. | covered (S-03) |
+      43 -| TR-16 | Weather mapping is wrong: snake_case → camelCase key 
+         -fields mismatch `raw`, `lat`/`long` swapped or left as strings,
+         - `units` missing (FR-05 AC1, B-7f – B-7h). | M | L | U + I | U:
+         - mapper from the parsed sample to the domain `WeatherData`; eac
+         -h key field equals its source value, `raw` deep-equals the resp
+         -onse's `current`. I: FR-05 AC1, create then `property(id)` retu
+         -rns the same data. | planned (S-01) |                          
+      44 -| TR-17 | The adapter sends the wrong request: the query is not
+         - the full normalized address, `units` is not `f`, or the base U
+         -RL is not read from config (FR-05 AC2, D-03, A-11). | M | L | U
+         - (MSW) | MSW handler records the request. Assert path `/current
+         -`, `query` = `"15528 E Golden Eagle Blvd, Fountain Hills, AZ 85
+         -268, United States"`, `units=f`, the host from `WEATHERSTACK_BA
+         -SE_URL`, and `access_key` present (compared to the sentinel, ne
+         -ver printed). | planned (S-01) |                               
+      43 +| TR-16 | Weather mapping is wrong: snake_case → camelCase key 
+         +fields mismatch `raw`, `lat`/`long` swapped or left as strings,
+         + `units` missing (FR-05 AC1, B-7f – B-7h). | M | L | U + I | U:
+         + mapper from the parsed sample to the domain `WeatherData`; eac
+         +h key field equals its source value, `raw` deep-equals the resp
+         +onse's `current`. I: FR-05 AC1, create then `property(id)` retu
+         +rns the same data. | covered (S-01) |                          
+      44 +| TR-17 | The adapter sends the wrong request: the query is not
+         + the full normalized address, `units` is not `f`, or the base U
+         +RL is not read from config (FR-05 AC2, D-03, A-11). | M | L | U
+         + (MSW) | MSW handler records the request. Assert path `/current
+         +`, `query` = `"15528 E Golden Eagle Blvd, Fountain Hills, AZ 85
+         +268, United States"`, `units=f`, the host from `WEATHERSTACK_BA
+         +SE_URL`, and `access_key` present (compared to the sentinel, ne
+         +ver printed). | covered (S-01) |                               
+      45  | TR-18 | Env config: the API starts without a key and fails at
+           the first create, or the error message prints the value (FR-14
+           AC3). | M | L | U | Config schema test: missing `WEATHERSTACK_
+          KEY` → error names the variable. With an invalid value elsewher
+          e, the message does not contain the sentinel key. `main.ts` sta
+          rted without the key (unset or `''`) exits 1 naming the variabl
+          e (`apps/api/src/config/env.test.ts`, `apps/api/src/main.test.t
+          s`). | covered (F-01) |
+      46  | TR-19 | UI shows the wrong thing for an API error: a generic 
+          message instead of the per-code one, entered values lost, or `B
+          AD_USER_INPUT` not attached to fields (FR-13 AC3, AC4, NFR-09).
+           | M | M | U (web) | Testing Library + MSW GraphQL: `it.each` o
+          ver the four FR-10 create codes → the specific message, inputs 
+          keep their values. `BAD_USER_INPUT` with `fields: ['zipCode','s
+          tate']` → messages next to those inputs. Mapper unit table: eve
+          ry code in the shared error-code list has a message (fails when
+           a code is added without one). | covered (S-05) |
+      47  | TR-20 | UI states are missing or wrong: no loading / empty / 
+          error-with-retry, the delete dialog deletes on cancel, the list
+           is not refreshed after delete, unknown id crashes the details 
+          page, missing optional weather fields crash it (FR-11 AC5, AC6,
+           FR-12 AC3 – AC5). | M | M | U (web) | Testing Library + MSW pe
+          r AC: delayed handler → loading; empty list → empty state with 
+          create link; network error → error state, retry re-requests. De
+          lete: cancel sends no mutation, confirm sends it and the row di
+          sappears. Details: `null` → not-found; a snapshot with empty de
+          scription and icon lists renders without them (`astro` / `air_q
+          uality` live only in `raw`, which the details page shows from #
+          11). jsdom has no `<dialog>` API, so `test/setup.ts` polyfills 
+          `showModal` / `close`. | covered (S-04): `ListPage.test.tsx`, `
+          DeletePropertyDialog.test.tsx`, `DetailsPage.test.tsx` |
+      48  | TR-21 | Client-side validation differs from the server's (FR-
+          13 AC1). The shared schema prevents drift, but the form may not
+           use it. | L | M | U (web) | Form test: an empty field, a 4-dig
+          it zip and `"XX"` show field messages and MSW records no reques
+          t. Rule logic is tested once, in `packages/shared`. | covered (
+          S-05) |
+      49  | TR-22 | Layering or type rules erode (resolver imports a repo
+          sitory, `any`, enum, `.js` import), which hurts the assessment 
+          (NFR-04, NFR-06). | M | M | static | ESLint + `tsc` in pre-comm
+          it and CI. Deliberate violations must fail: `tooling/guardrails
+          .test.ts` (`tooling` project) lints virtual files with the real
+           ESLint config and runs `tsc` on `tooling/fixtures/`. | covered
+           (F-01) |
+      50  | TR-23 | Generated GraphQL types drift from `schema.graphql`, 
+          so resolvers or the web compile against a stale contract. | M |
+           L | static | CI runs `pnpm codegen`, then `git diff --exit-cod
+          e` and an empty `git status --porcelain` on the generated direc
+          tories (so new untracked output also fails). Then `tsc`. | cove
+          red (F-01) |
+      51 -| TR-24 | The core journey fails in a real browser on the real 
+         -stack: routing, the SPA fallback, API URL config, CORS, migrati
+         -ons at start-up (FR-14 AC1, success criteria 1 – 3). Unit tests
+         - can't see wiring faults. | H | L | E | One Playwright smoke: c
+         -reate (stub Weatherstack) → lands on details with weather + coo
+         -rdinates → list shows it newest first → filter by city → delete
+         - with confirm → gone. Plus one error journey: the stub returns 
+         -104 → the form shows the quota message. | planned (S-06) |     
+      51 +| TR-24 | The core journey fails in a real browser on the real 
+         +stack: routing, the SPA fallback, API URL config, CORS, migrati
+         +ons at start-up (FR-14 AC1, success criteria 1 – 3). Unit tests
+         + can't see wiring faults. | H | L | E | One Playwright smoke: c
+         +reate (stub Weatherstack) → lands on details with weather + coo
+         +rdinates → list shows it newest first → filter by city → delete
+         + with confirm → gone. Plus one error journey: the stub returns 
+         +104 → the form shows the quota message. | covered (S-06): `e2e/
+         +property-journey.spec.ts`, `e2e/create-errors.spec.ts` |       
+      52  | TR-25 | A test calls the real Weatherstack (NFR-02), spending
+           quota and making the suite flaky. | M | L | config | API Vites
+          t setup starts MSW with `onUnhandledFrame: 'error'` (MSW 3's na
+          me), so any unmocked outbound request fails the test. CI holds 
+          no real key, only the sentinel. E2E points `WEATHERSTACK_BASE_U
+          RL` at the stub. Proven by `apps/api/src/net-guard.test.ts` and
+           a case in `apps/api/test/integration/smoke.int.test.ts`. | cov
+          ered (F-01) |
+      53  
+      54  ## Not tested (and why)
+     ...
+      250  Only for a journey that crosses the browser, the SPA routing, 
+           the API and the database. Keep
+      251  the suite to a handful of specs. Everything else belongs in a 
+           unit or integration test.
+      252  
+      253 -1. Create `e2e/<journey>.spec.ts`. Playwright config is in `e2
+          -e/playwright.config.ts`, and the                              
+      254 -   `webServer` / global setup brings up the Compose stack with
+      255 -   `WEATHERSTACK_BASE_URL` pointed at the stub service (locati
+          -on decided in S-06).                                          
+      253 +1. Create `e2e/<journey>.spec.ts`. Playwright config is in `e2
+          +e/playwright.config.ts`. Its                                  
+      254 +   global setup brings up the Compose project `property-manage
+          +r-e2e` from `docker-compose.yml`                              
+      255 +   plus `docker-compose.e2e.yml`, which adds the `weather-stub
+          +` service (`e2e/stub/server.ts`)                              
+      256 +   and points `WEATHERSTACK_BASE_URL` at it. The UI is on `:51
+          +80`.                                                          
+      257  2. The stub serves `docs/samples/weatherstack-current.json` by
+            default. To force an error, use
+      257 -   a street that contains a stub trigger (e.g. `"... QUOTA"` →
+          - error 104). The trigger list is                              
+      258 -   documented in the stub's README.                           
+      258 +   a street that contains a stub trigger (`"... QUOTA"` → erro
+          +r 104). The trigger list is in                                
+     … 4 more lines (ctrl+o to expand)
+
+● Now the roadmap and ai-workflow.md.
+
+● Bash(python3 - <<'EOF'
+      p='context/roadmap.md'; s=open(p).read()…)
+  ⎿  $ prettier --check .
+     Checking formatting...
+     All matched files use Prettier code style!
+     $ eslint .
+  ⎿  Updated context/roadmap.md (+4 -3)
+      35  job. Stryker is not in CI; it runs per change on test-plan targ
+          ets.
+      36  
+      37  **AI sessions (FR-15).** Delivered incrementally: every skill r
+          un is exported to `ai-sessions/`
+      38 -as `NN-<change-id>-<step>.txt` (running number `NN`, as already
+         - used for `00`–`06`). S-06 checks                              
+      39 -that every item has its exports and links them from the README.
+      38 +as `NN-<step>-<ROADMAP-ID>[-n].txt` (running number `NN`; pre-r
+         +oadmap steps `00`–`09` have no                                 
+      39 +roadmap ID). S-06 checks that every item has its exports and li
+         +nks them from the README.                                      
+      40  Commits reference their issue with `Refs #<n>`; the last commit
+           of an item uses `Closes #<n>`.
+      41  
+      42  ## Items
+     ...
+      234  - RQ-02 — Resolved 2026-10-07 (F-02 plan): UUID v7 via `uuidv7
+           ()`. Original: UUID v7 (`uuidv7()`, built into PostgreSQL 18, 
+           time-ordered) is the
+      235    default proposal; confirm in the F-02 plan, since S-03's tie
+           break depends on it.
+      236  - RQ-03 — Resolved 2026-10-07: session exports go to `ai-sessi
+           ons/` as
+      237 -  `NN-<change-id>-<step>.txt`.                                
+      237 +  `NN-<step>-<ROADMAP-ID>[-n].txt`. Corrected by the S-06 plan
+          +: the original text said                                      
+      238 +  `NN-<change-id>-<step>.txt`, but every export since `10` use
+          +s the step-then-ID form.                                      
+      239  - RQ-04 Real Weatherstack calls during S-02 planning (OQ-04): 
+           how many manual calls the quota
+      240    allows for verifying error codes (104 can't be triggered saf
+           ely; rely on docs).
+      241  - RQ-05 — Resolved 2026-10-07: `context/shape-notes.md` D-09 a
+           nd D-10 keep their original text
+  ⎿  Updated docs/ai-workflow.md (+3 -0)
+      37    read them.
+      38  - **Traceable history.** Each implemented phase is one Conventi
+          onal Commit, and its hash is
+      39    written next to the phase in the plan.
+      40 +- **Shared sessions.** Every skill run is exported to `ai-sessi
+         +ons/` as                                                       
+      41 +  `NN-<step>-<ROADMAP-ID>[-n].txt`. The README's *AI sessions* 
+         +section indexes them per                                       
+      42 +  roadmap item.                                                
+      43  - **Tests that defend, not just cover.** Coverage shows code ra
+          n. Mutation testing shows the
+      44    assertions would catch a fault. Its score is a pointer. The d
+          ecision on each surviving mutant
+      45    is the actual output.
+
+● Format and lint pass. Next, the README link check and the AC2 headings grep.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All 96 relative links resolve, and every FR-14 AC2 item is present. Last step:
+  log the deviations in the plan.
+
+● Bash(cat >> context/changes/run-and-document/plan.md <<'EOF'
+      - Phase 3, test-plan: TR-08, TR-16 and TR-17 still said `planned (S-01)`,
+      although S-01 covers…)
+  ⎿   M CLAUDE.md
+      M context/changes/run-and-document/plan.md
+      M context/roadmap.md
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/run-and-document/plan.md (+6 -0)
+      356    directory.
+      357  - Phase 2, quota spec: the expected message is copied from `gr
+           aphql-errors.ts`, not imported
+      358    (web sources resolve with the bundler, the root project with
+            nodenext).
+      359 +- Phase 3, test-plan: TR-08, TR-16 and TR-17 still said `plann
+          +ed (S-01)`, although S-01 covers                              
+      360 +  them (`packages/shared/src/address.test.ts`, `domain/weather
+          +.test.ts`,                                                    
+      361 +  `adapters/weatherstack/client.test.ts`). Flipped to `covered
+          + (S-01)` so criterion 7 holds.                                
+      362 +- Phase 3, README sessions index: the S-06 exports are not in 
+          +`ai-sessions/` yet, so the S-06                               
+      363 +  row points to the closing commit (as planned). The README al
+          +so links `.claude/settings.json`                              
+      364 +  (editor hook) in *AI setup*.                                
+
+● I've written Phase 3 (README and AI deliverables), but nothing is committed
+  yet: it needs your human checks first. The roadmap still marks S-06 as
+  in-progress.
+
+  Files changed
+  - README.md (new): prerequisites, setup, the docker compose up start command
+    with both URLs, the dev workflow, a tests table, the env variable table, the
+    no-auth, coordinate-precision, quota and HTTPS notes, and "Decisions beyond
+    the brief" covering FR-08, FR-05 AC4, NG-05, D-08 and FR-01. It also has an
+    AI setup table and an AI sessions index: files 00–09, then one row per
+    roadmap item from F-01 to S-06.
+  - CLAUDE.md: new Commands row for the full stack; the E2E row is now pnpm e2e.
+  - context/test-plan.md: TR-24 is covered (S-06), and the "Add an e2e test"
+    steps now name docker-compose.e2e.yml, e2e/stub/ and the QUOTA trigger.
+  - context/roadmap.md: the session-naming text and RQ-03 now say
+    NN-<step>-<ROADMAP-ID>[-n].txt, with a note that the S-06 plan corrected
+    them.
+  - docs/ai-workflow.md: one line on where session exports go and where the
+    README indexes them.
+  - context/changes/run-and-document/plan.md: the Phase 2 hash (from earlier)
+    and the Phase 3 deviations.
+
+  Checks
+  - pnpm format:check: passed.
+  - pnpm lint: passed.
+  - No TR row in the test plan is still planned or gap.
+  - README link check: all 96 relative links resolve, including anchors.
+  - README section grep: every FR-14 AC2 item is present.
+
+  Deviations
+  - TR-08, TR-16 and TR-17 still said planned (S-01), though S-01's tests cover
+    them (I checked the test files). I changed them to covered (S-01), otherwise
+    criterion 7 would fail.
+  - The S-06 row in the sessions index says its exports come with the closing
+    commit. Your four untracked S-06 exports (plan-S-06.txt,
+    plan-review-S-06.txt, implement-S-06-1.txt, implement-S-06-2.txt) are still
+    in the repo root, not in ai-sessions/. I've left them alone.
+  - The AI setup table also links .claude/settings.json, where the editor hook
+    lives.
+
+  Human checks (please confirm)
+  - [ ] Read README.md from top to bottom.
+  - [ ] Confirm the wording of "Decisions beyond the brief". The Springfield, IL
+    example and the reasons given are my wording.
+  - [ ] Walk through PRD success criteria 1–7:
+    a. Clean clone: git clone <repo> /tmp/pm && cd /tmp/pm && cp .env.example 
+       .env, set the key, run docker compose up, then open
+       http://localhost:5173. This clone won't include the uncommitted Phase 3
+       changes, but the stack itself is unchanged since Phase 2.
+    b. In that stack, create a property from a Zillow address (this uses one
+       quota call). The details page should show the weather and the lat/long.
+    c. The e2e journey spec, plus in the UI: sort both ways and filter by state
+       and zip. In GraphiQL (http://localhost:4000/graphql): properties(limit: 
+       2, offset: 1), property(id:) and deleteProperty(id:).
+    d. In the UI, submit an invalid zip and a duplicate address, and read the
+       messages.
+    e. pnpm lint && pnpm typecheck && pnpm test should all be green.
+    f. The README's "AI setup" and "AI sessions" sections should lead to every
+       artifact and export.
+    g. Every TR row in context/test-plan.md is now covered.
+
+  Once you confirm, I'll stage these files by path (the S-06 exports stay out)
+  and propose this message:
+
+  docs(run-and-document): add the README and complete the AI deliverables
+
+  Refs #8
+
+  After that, run /review run-and-document. The item's final Closes #8 commit
+  adds the S-06 exports to ai-sessions/ and fills in the S-06 row of the README
+  index.
+
+✻ Brewed for 2m 55s · done 12:28 PM
