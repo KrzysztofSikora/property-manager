@@ -10,7 +10,7 @@ export) proportionate to a small app.
 | ID | Issue | change-id | Type | Covers | Depends on | Size | Status |
 |----|-------|-----------|------|--------|------------|------|--------|
 | F-01 | #1 | repo-skeleton | foundation | FR-14 AC3, NFR-04, NFR-06 | - | M | done |
-| F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08 groundwork) | F-01 | S | done |
+| F-02 | #2 | property-schema | foundation | (FR-08 AC2, NFR-08 groundwork) | F-01 | S | in-progress |
 | S-01 | #3 | create-property-with-weather | slice | FR-05 (AC1–AC3, AC6), FR-07, FR-10 | F-02 | M | done |
 | S-02 | #4 | create-property-guards | slice | FR-05 (AC4, AC5), FR-06, FR-08, FR-10 | S-01 | M | done |
 | S-03 | #5 | query-and-delete-properties | slice | FR-01, FR-02, FR-03, FR-04, FR-09, FR-10 | S-01 | M | done |
