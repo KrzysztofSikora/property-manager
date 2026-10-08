@@ -1,0 +1,170 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /mutation demo-seed-data                                                      
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● I'll focus on the listed targets—seed.ts and env.ts—since response
+  classification, skip-vs-stop logic, and the SEED_API_URL/loadSeedConfig
+  changes carry the most risk of silent bugs; I'll skip seed-cli.ts and
+  addresses.ts as out of scope.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Context gathered; now running Stryker on seed.ts and env.ts (concurrency 4,
+  per lessons).
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Run done, no timeouts at concurrency 4. All 11 survivors are equivalent or
+  repeats of earlier decisions, so no test changes are needed. Writing the
+  record.
+
+● Write(context/changes/demo-seed-data/mutation.md)
+  ⎿  Wrote 43 lines to context/changes/demo-seed-data/mutation.md
+      1 # Mutation check: demo-seed-data
+      3 Targets: `apps/api/src/seed/seed.ts` (whole), `apps/api/src/confi
+        g/env.ts` (whole; adds
+        it.config.ts` (command runner,
+      5 `--concurrency 4`, 0 timeouts)
+        ivalent mutants.
+      7 `env.ts` 86.0% (49 / 8 / 0 / 0), up from 84.6% at F-02 because ev
+      8 (the `SEED_API_URL` reason, the `z.url()` check, the default URL,
+         the `apiUrl` mapping) is killed.
+        after triage is unchanged.
+     … +67 lines (ctrl+o to expand)
+
+● Now updating the two Mutation targets rows in the test plan.
+
+● Bash(python3 - <<'EOF'
+      p='context/test-plan.md'…)
+  ⎿   context/test-plan.md | 7 +++++--
+      1 file changed, 5 insertions(+), 2 deletions(-)
+  ⎿  Updated context/test-plan.md (+2 -2)
+      119  | `apps/api/src/adapters/weatherstack/redact.ts` (URL / error 
+           redaction) | One wrong regex leaks the key (TR-01). Small modu
+           le, so every mutant should die. | 100% (equivalents excepted) 
+           | Not in CI. Local `break` at 100% of non-equivalent mutants. 
+           |
+      120  | `apps/api/src/services/property.service.ts` create flow and 
+           `regionMatchesState` | The order validate → duplicate → weathe
+           r → region → save, and the region comparison, are business rul
+           es where a swapped step costs quota or stores bad records (TR-
+           04, TR-05, TR-09). Tested with `FakeWeatherClient` and an in-m
+           emory repository fake. | 80% | Not in CI. Local `break` at 75%
+            after the baseline. |
+      121  | `apps/api/src/graphql/errors.ts` (domain error → `extensions
+           .code`, masking) and the `properties` args schema (`apps/api/s
+           rc/graphql/properties-args.ts`) | Error mapping and query argu
+           ment rules (bounds, blank filters, upper-casing) are tables; a
+            mutant in a table entry is a wrong code or a wrong bound (TR-
+           12, TR-14). | 90% | Not in CI. `properties-args.ts`: baseline 
+           100% (S-03), local `break` 85% via `pnpm --filter @property-ma
+           nager/api test:mutation:properties-args` (`stryker.properties-
+           args.config.mjs`; `break` in `stryker.config.json` would apply
+            to every API module). `errors.ts`: `break` after the baseline
+           . |
+      122 -| `apps/api/src/config/env.ts` (env schema, missing vs invalid
+          - messages) | A bad bound or anchor starts the API on a wrong p
+          -ort or URL; a wrong message hides which variable is wrong or e
+          -choes a secret (TR-18). | 85% | Not in CI. Baseline 83.0% (F-0
+          -1), 84.6% after F-02's `loadDatabaseConfig`; all 8 survivors e
+          -quivalent or accepted. |                                      
+      122 +| `apps/api/src/config/env.ts` (env schema, missing vs invalid
+          + messages) | A bad bound or anchor starts the API on a wrong p
+          +ort or URL; a wrong message hides which variable is wrong or e
+          +choes a secret (TR-18). | 85% | Not in CI. Baseline 83.0% (F-0
+          +1), 84.6% after F-02's `loadDatabaseConfig`, 86.0% after S-10'
+          +s `loadSeedConfig`; all 8 survivors equivalent or accepted. | 
+      123  | `apps/api/src/db/migrate-cli.ts` (DB URL / password redactio
+           n in `pnpm db:migrate` output) | One wrong check prints the da
+           tabase password or garbles the failure reason (F-02). | 100% o
+           f non-equivalent, accepted survivors excepted | Not in CI. Bas
+           eline 76.3% (F-02); of the 9 survivors 3 are equivalent and 6 
+           accepted (entry-point block, `decodedOrSelf` catch), see `chan
+           ges/property-schema/mutation.md`. |
+      124  | `tooling/secret-scan.ts` (pre-commit key-leak scan) | One wr
+           ong hunk regex or line count lets the key into a commit or blo
+           cks clean commits (TR-01). | 100% (equivalents excepted) | Not
+            in CI. Baseline 93.6% (F-01) = 100% of non-equivalent. |
+      125  | `apps/web/src/lib/execute.ts` (GraphQL/HTTP response → `Grap
+           hQLRequestError`) | A weakened check shows an error or empty p
+           ayload as success in every page (FR-12, FR-13). | 90% | Not in
+            CI. Baseline 97.4% (F-01). |
+     ...
+      128  | `apps/web/src/lib/list-search.ts` (URL ↔ list filters, sort 
+           and page: per-field zod fallbacks, state upper-casing, trimmed
+            write, default sort left out, page parse and write) | A flipp
+           ed bound or a dropped fallback lets a bad link blank the page 
+           or send a wrong filter, and a wrong write breaks reload and Ba
+           ck (FR-11 AC3a, TR-26). | 90% | Not in CI. Baseline 100% (S-07
+           ); `break` after the user agrees on a value. |
+      129  | `apps/web/src/hooks/useDeleteProperty.ts` (cache rule after 
+           a delete) | A wrong key removes other properties' details or l
+           eaves the deleted one cached, so it is shown again (FR-11 AC5,
+            FR-12 AC4). | 90% | Not in CI. Baseline 95.5% (S-04); the 1 s
+           urvivor is equivalent. |
+      130  | `apps/web/src/lib/format.ts` `epaIndexLabel` (US EPA index →
+            "N (band)" label table, bare-number fallback outside 1–6) | A
+            shifted index or a wrong table entry shows the wrong health b
+           and on the details page (FR-12 AC6, TR-28). | 90% | Not in CI.
+            Baseline 100% (S-09, 13/13 on `format.ts:11-25`), see `change
+           s/details-extra-weather/mutation.md`. |
+      131 -| `apps/api/src/seed/seed.ts` (`pnpm seed`: GraphQL response c
+          -lassification, skip vs stop, spacing) | A wrong classification
+          - stops on a duplicate (so a re-run never finishes) or goes on 
+          -after a key or quota error (failing the same way for every add
+          -ress); a wrong spacing check triggers HTTP 429 (FR-16 AC1, TR-
+          -29). | 90% | Not in CI. First run records the baseline. |     
+      131 +| `apps/api/src/seed/seed.ts` (`pnpm seed`: GraphQL response c
+          +lassification, skip vs stop, spacing) | A wrong classification
+          + stops on a duplicate (so a re-run never finishes) or goes on 
+          +after a key or quota error (failing the same way for every add
+          +ress); a wrong spacing check triggers HTTP 429 (FR-16 AC1, TR-
+          +29). | 90% | Not in CI. Baseline 96.1% (S-10, 74/77); the 3 su
+          +rvivors are equivalent, see `changes/demo-seed-data/mutation.m
+          +d`. |                                                         
+      132  
+      133  Target scores are starting points. The first `/mutation` run o
+           n each module records the
+      134  baseline in its `mutation.md`. Until then `break` is `null`. R
+           aising `break` above the
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I ran the mutation check on seed.ts and env.ts, and no tests needed adding.
+
+  - Score: seed.ts sets its first baseline at 96.1% (74 killed, 3 survived).
+    That is 100% of the mutants that could change behaviour; the target was 90%.
+    env.ts moves from 84.6% to 86.0%: the mutants in the new SEED_API_URL /
+    loadSeedConfig code all fail the tests, and the same 8 survivors from F-01
+    and F-02 remain. I ran at concurrency 4 and nothing timed out, so timeouts
+    aren't propping up the score.
+  - Tests: none added or merged. The 3 seed.ts survivors can't change anything a
+    user would see. Two only rename the "created" result, which the seed loop
+    treats the same way. The third empties a catch block that returns undefined
+    either way. The 8 env.ts survivors carry over their earlier decisions
+    unchanged.
+  - Bugs: none found. The two earlier tests that were strengthened for env.ts
+    (the PORT format checks and listing each bad variable on its own line) still
+    catch their mutants.
+
+  I didn't mutate seed-cli.ts (CLI wiring, not in the targets list; the plan
+  accepts it as untested) or addresses.ts (a list of constants). The table that
+  runs one test per error code covers the same code path for every case. I kept
+  it because it is the contract table the plan asks for. No new rule for
+  lessons.md.
+
+  Files:
+  - New: context/changes/demo-seed-data/mutation.md
+  - Updated: context/test-plan.md, where the Mutation targets rows now record
+    the seed.ts baseline and the env.ts score.
+
+  Nothing is committed. Next step: /review demo-seed-data.
+
+✻ Cogitated for 3m 24s · done 5:26 PM

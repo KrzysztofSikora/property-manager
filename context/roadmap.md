@@ -20,7 +20,7 @@ export) proportionate to a small app.
 | S-07 | #9 | list-filters-in-url | slice | FR-11 AC3a (Should) | S-04 | S | done |
 | S-08 | #10 | list-pagination | slice | FR-11 AC4 (Should) | S-07 | S | done |
 | S-09 | #11, #12 | details-extra-weather | slice | FR-12 AC6 (Should), typed non-key `CurrentWeather` fields | S-04 | S | done |
-| S-10 | #13 | demo-seed-data | slice | FR-16 AC1 (Could) | S-06 | S | review |
+| S-10 | #13 | demo-seed-data | slice | FR-16 AC1 (Could) | S-06 | S | done |
 
 Order follows risk: tooling and schema first, then the Weatherstack integration (the only
 third-party unknown, R-01 – R-05) and the concurrency-sensitive duplicate rule, then the
