@@ -9,6 +9,7 @@ const REASONS = {
   DATABASE_URL: 'expected a URL',
   PORT: 'expected an integer from 1 to 65535',
   LOG_LEVEL: `expected one of ${LOG_LEVELS.join(', ')}`,
+  SEED_API_URL: 'expected a URL',
 } as const;
 
 type EnvName = keyof typeof REASONS;
@@ -41,9 +42,16 @@ const databaseEnvSchema = z
   .object({ DATABASE_URL: databaseUrl })
   .transform((env) => ({ databaseUrl: env.DATABASE_URL }));
 
+// For `pnpm seed`, a client of a running API: it needs neither the key nor the database.
+const seedEnvSchema = z
+  .object({ SEED_API_URL: z.url().default('http://localhost:4000/graphql') })
+  .transform((env) => ({ apiUrl: env.SEED_API_URL }));
+
 export type Config = Readonly<z.output<typeof envSchema>>;
 
 export type DatabaseConfig = Readonly<z.output<typeof databaseEnvSchema>>;
+
+export type SeedConfig = Readonly<z.output<typeof seedEnvSchema>>;
 
 export type LogLevel = Config['logLevel'];
 
@@ -85,4 +93,8 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
 
 export function loadDatabaseConfig(env: Record<string, string | undefined>): DatabaseConfig {
   return parseEnv(databaseEnvSchema, env);
+}
+
+export function loadSeedConfig(env: Record<string, string | undefined>): SeedConfig {
+  return parseEnv(seedEnvSchema, env);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, loadConfig, loadDatabaseConfig } from './env.ts';
+import { ConfigError, loadConfig, loadDatabaseConfig, loadSeedConfig } from './env.ts';
 
 const KEY = 'TEST_WEATHERSTACK_KEY';
 
@@ -84,6 +84,12 @@ describe('loadConfig', () => {
     expect(message).not.toContain(KEY);
   });
 
+  it('ignores SEED_API_URL, even an invalid one', () => {
+    expect(loadConfig({ WEATHERSTACK_KEY: KEY, SEED_API_URL: 'not a url' })).not.toHaveProperty(
+      'apiUrl',
+    );
+  });
+
   it('lists every bad variable, one per line', () => {
     expect(errorOf({ PORT: 'abc' }).message.split('\n')).toEqual([
       'Missing required environment variable: WEATHERSTACK_KEY',
@@ -111,5 +117,27 @@ describe('loadDatabaseConfig', () => {
   it('names DATABASE_URL without echoing an invalid value', () => {
     const error = errorOf({ DATABASE_URL: 'not-a-url' }, loadDatabaseConfig);
     expect(error.message).toBe('Invalid environment variable: DATABASE_URL (expected a URL)');
+  });
+});
+
+describe('loadSeedConfig', () => {
+  it.each([
+    ['unset', undefined],
+    ['empty', ''],
+  ])('FR-16: uses the local API when SEED_API_URL is %s', (_label, value) => {
+    expect(loadSeedConfig({ SEED_API_URL: value })).toEqual({
+      apiUrl: 'http://localhost:4000/graphql',
+    });
+  });
+
+  it('FR-16: reads an explicit SEED_API_URL without needing WEATHERSTACK_KEY', () => {
+    expect(loadSeedConfig({ SEED_API_URL: 'http://api.example:8080/graphql' })).toEqual({
+      apiUrl: 'http://api.example:8080/graphql',
+    });
+  });
+
+  it('FR-16: names SEED_API_URL without echoing an invalid value', () => {
+    const error = errorOf({ SEED_API_URL: 'not-a-url', DATABASE_URL: 'nope' }, loadSeedConfig);
+    expect(error.message).toBe('Invalid environment variable: SEED_API_URL (expected a URL)');
   });
 });

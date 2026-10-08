@@ -18,6 +18,8 @@ export type TestApp<W extends WeatherClient = WeatherClient> = {
   db: Database;
   weather: W;
   execute: (document: string, variables?: Record<string, unknown>) => Promise<ExecuteResult>;
+  // The app's own `fetch`, for code that sends raw HTTP requests (e.g. the seed).
+  fetch: (url: string, init: RequestInit) => Promise<Response>;
   logs: () => LogLine[];
   close: () => Promise<void>;
 };
@@ -82,5 +84,7 @@ export function createTestApp({
     return body;
   }
 
-  return { db, weather: fake ?? weatherFor(logger), execute, logs: lines, close };
+  const fetch = async (url: string, init: RequestInit): Promise<Response> => yoga.fetch(url, init);
+
+  return { db, weather: fake ?? weatherFor(logger), execute, fetch, logs: lines, close };
 }
