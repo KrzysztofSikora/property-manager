@@ -4,7 +4,7 @@ Verdict: APPROVE
 Gates: typecheck ok, lint ok, tests 480 passed / 0 failed (`pnpm test`, 32 files, incl.
 Testcontainers). Also: `pnpm format:check` ok, `pnpm codegen` produces no drift.
 
-Base: `e3c046c` (parent of `2dcedf1`), head `da00d42`, no uncommitted changes.
+Base: `e3c046c` (parent of `2dcedf1`), head `c3f0db5`, no uncommitted changes.
 
 ## Plan vs diff
 | File | Status | Note |
@@ -47,16 +47,16 @@ Base: `e3c046c` (parent of `2dcedf1`), head `da00d42`, no uncommitted changes.
 ## Findings
 ### R1: `Closes #5` is not on the last commit of the item
 - Severity: minor
-- Where: commit `4673407` (`Closes #5`); later commits `14f4776`, `6be2955`, `da00d42` use `Refs #5`
+- Where: commit `922d056` (`Closes #5`); later commits `abe592f`, `00f055d`, `c3f0db5` use `Refs #5`
 - Problem: CLAUDE.md says "the last commit of a roadmap item uses `Closes #<n>`". Here the
   phase 2 commit closes the issue, and three later commits of the same item (the mutation check,
   the docs and the Stryker config) only reference it. Once pushed, issue #5 closes on a commit
   that predates the mutation check and the review.
 - Fix: put `Closes #5` on the last commit of the item, which is the review-fix commit if there is
-  one. Otherwise amend the footer of `da00d42` before pushing. If you want the phase commit to
+  one. Otherwise amend the footer of `c3f0db5` before pushing. If you want the phase commit to
   close the issue, change the rule in CLAUDE.md to say so.
 - Effort: small
-- Decision: fix. The review commit carries `Closes #5`; `4673407` gets its footer changed to `Refs #5` before pushing.
+- Decision: fix. Done: `922d056` was reworded to `Refs #5` before pushing; the last S-03 commit carries `Closes #5`.
 
 ### R2: No test checks that rows and `totalCount` come from one snapshot
 - Severity: minor

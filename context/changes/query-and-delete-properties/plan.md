@@ -310,7 +310,7 @@ Each field gets a description in the existing style (rules, defaults, error code
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: `properties` with sort, paging and filters (2dcedf1)
-- [x] Phase 2: property details ACs and `deleteProperty` (4673407)
+- [x] Phase 2: property details ACs and `deleteProperty` (922d056)
 
 ## Deviations
 
