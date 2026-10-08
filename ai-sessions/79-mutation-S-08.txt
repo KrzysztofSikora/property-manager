@@ -1,0 +1,88 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /mutation list-pagination                                                     
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● I'll focus mutation testing on list-search.ts and useProperties.ts, since
+  errors there (bad URL parsing or wrong page→offset conversion) would break
+  navigation or return incorrect data; I'm skipping ListPage.tsx, generated
+  GraphQL files, and test render helpers as planned.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Stryker is set up. Per the lesson on timeouts, running at --concurrency 4.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Only one file got mutated (the second --mutate replaced the first). Let me
+  look at the timeouts and earlier decisions on these two survivors, then run
+  list-search.ts.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The two survivors are the city/zip value trims. Checking whether the API
+  normalizes city the same way it trims zip:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● City normalization matches the S-04 zip decision as expected. I'll re-run both
+  files together with concurrency 2 and a longer timeout to confirm the 6
+  timeouts are genuine failures rather than load-related.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All 6 earlier timeouts become kills at concurrency 2, and list-search.ts
+  scores 100%. Quick check for duplicated tests in the new parse/write cases:
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Write(context/changes/list-pagination/mutation.md)
+  ⎿  Wrote 51 lines to context/changes/list-pagination/mutation.md
+       1 # Mutation check: list-pagination
+       3 Targets: `apps/web/src/lib/list-search.ts` (whole file), `apps/w
+         eb/src/hooks/useProperties.ts`
+         hermetic), `--concurrency 2
+       6 Score: 97.37% -> 97.37% (74 / 2 / 0 / 0; killed / survived / no 
+         coverage / timeout)
+       8 - `list-search.ts`: 100% (54 / 0 / 0 / 0), up from 43 mutants in
+          S-07. The new ones are the
+         ite.
+          95.0% with 1 survivor; the
+     … +80 lines (ctrl+o to expand)
+
+● I ran Stryker on list-search.ts and useProperties.ts. No tests needed adding
+  and I found no bugs. Decisions are in
+  context/changes/list-pagination/mutation.md.
+
+  - Score: 97.37% overall, the same before and after triage (74 killed, 2
+    survived). list-search.ts scores 100% (54 of 54). That includes all the new
+    parse and write mutants for page. useProperties.ts scores 90.91%, which
+    meets the 90% target. Its S-04 baseline was 95.0% with 1 survivor.
+  - Survivors: two, both equivalent and both about trimming the city or zip
+    value in useProperties.ts. The zip one was already marked equivalent in
+    S-04. The city one used to be killed, but since S-07 the URL write trims the
+    value first, so a padded city only arrives from a hand-edited link. The API
+    trims and normalises both values anyway, so users see the same rows.
+  - Timeouts: my first run at concurrency 4 had 6 timeouts out of 22 mutants.
+    Following the timeouts lesson, I re-ran at concurrency 2 with a longer
+    timeout, and all 6 then failed the tests outright. The recorded score has no
+    timeouts.
+  - Earlier tests still working: the S-04 checks that a blank city or zip is
+    left out of the request are still killed, now by the link test added in
+    S-07.
+
+  ListPage.tsx stayed outside Stryker, as the plan says. I didn't add a lesson,
+  since these survivors don't point to a recurring weakness.
+
+  One follow-up: the useProperties.ts row in context/test-plan.md still says
+  "Baseline 95.0% (S-04); the 1 survivor is equivalent". I didn't change it,
+  because this skill only writes mutation.md. I can update it to "90.91%, 2
+  equivalent survivors" if you want.
+
+✻ Cogitated for 9m 20s · done 4:00 PM
