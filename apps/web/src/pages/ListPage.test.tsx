@@ -420,6 +420,18 @@ describe('ListPage', () => {
     },
   );
 
+  it.each(['city', 'zip'])(
+    'FR-11 AC6: a whitespace-only %s in the URL is a blank filter: left out of the request, and the empty state is "No properties yet"',
+    async (key) => {
+      const requests = serveProperties(() => []);
+      renderListWithProbe(`/?${key}=+++`);
+
+      expect(await screen.findByText('No properties yet')).toBeInTheDocument();
+      expect(requests).toEqual([{ filter: {}, sort: 'CREATED_AT_DESC' }]);
+      expect(screen.queryByText('No properties match the filters')).not.toBeInTheDocument();
+    },
+  );
+
   it('FR-11 AC6: a failed request shows an error, and Retry requests again and shows the rows', async () => {
     let calls = 0;
     server.use(
