@@ -583,14 +583,16 @@ describe('ListPage', () => {
       .toEqual({ filter: {}, sort: 'CREATED_AT_DESC', limit: 20, offset: 0 });
   });
 
-  it('FR-11 AC4: while the next page loads, Previous and Next are disabled and "Updating…" shows', async () => {
+  it('FR-11 AC4: while the next page loads, Previous and Next stay focusable but do nothing, and "Updating…" shows', async () => {
     let release = () => {};
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
     const items = pagedItems(45);
+    const offsets: (number | null | undefined)[] = [];
     server.use(
       api.query<object, PropertiesQueryVariables>('Properties', async ({ variables }) => {
+        offsets.push(variables.offset);
         if (variables.offset === 20) await held;
         return HttpResponse.json(propertiesPayload(pageOf(items, variables), items.length));
       }),
@@ -603,12 +605,22 @@ describe('ListPage', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent('Updating…');
     expect(rowStreets()).toEqual(pagedStreets(1, 20));
-    expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    // `aria-disabled`, not `disabled`: a disabled button drops keyboard focus to <body> (R1).
+    for (const name of ['Previous', 'Next']) {
+      const button = screen.getByRole('button', { name });
+      expect(button).toBeEnabled();
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+    }
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('button', { name: 'Previous' }));
     release();
     await expect.poll(rowStreets).toEqual(pagedStreets(21, 40));
-    expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
+    expect(offsets).toEqual([0, 20]);
+    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
+    for (const name of ['Previous', 'Next']) {
+      expect(screen.getByRole('button', { name })).toHaveAttribute('aria-disabled', 'false');
+    }
   });
 
   it('FR-11 AC4: an invalid page in the URL is ignored and the valid city is still applied', async () => {
