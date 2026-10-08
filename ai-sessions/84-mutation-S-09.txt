@@ -1,0 +1,76 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /mutation details-extra-weather                                               
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● I'll focus this change on weather.ts's payload mapping and format.ts's
+  epaIndexLabel lookup table, skipping presentation components, query text,
+  codegen output, and fixtures as out of scope.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● 100%, no timeouts. Let me check which mutants Stryker generated, to see
+  whether the lenient mapper was actually exercised.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All 35 killed. Now the web target:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Both targets are at 100%. With the command runner Stryker can't tell which
+  test killed which mutant, so I'll read the new tests myself to look for dead
+  weight.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Both targets are at 100% with 0 timeouts, so the low-concurrency rerun from
+  lessons.md isn't needed. Writing the record:
+
+● Write(context/changes/details-extra-weather/mutation.md)
+  ⎿  Wrote 42 lines to context/changes/details-extra-weather/mutation.md
+       1 # Mutation check: details-extra-weather
+       3 Targets: `apps/api/src/domain/weather.ts` (whole file: key-field
+          schema, lenient optional-field
+          (`epaIndexLabel` and its label
+       5 table)
+         .ts` (command runner,
+       7 `--concurrency 4`)
+       9 - `weather.ts`: 100% -> 100% (35 killed / 0 survived / 0 no cove
+         rage / 0 timeout)
+          coverage / 0 timeout)
+     … +52 lines (ctrl+o to expand)
+
+● Both mutation targets for details-extra-weather scored 100%, nothing survived,
+  and I didn't add or change any tests.
+
+  - Score: apps/api/src/domain/weather.ts stayed at 100% (all 35 mutants
+    killed). epaIndexLabel in apps/web/src/lib/format.ts:11-25 also stayed at
+    100% (all 13 killed). No mutant timed out at --concurrency 4, so no kill
+    came from a timeout (that's the lessons.md check).
+  - Tests: 0 added or merged. One test is now dead weight: "TR-03: parses
+    without astro, air_quality and other non-key fields" in weather.test.ts
+    checks less than the new tables. I suggested folding it into them, but left
+    it as it is.
+  - Bugs: none.
+
+  The 100% doesn't cover everything in weather.ts. Stryker makes no mutants for
+  zod chain calls, such as .optional().catch(undefined), .pipe(z.int()) or
+  z.int() versus z.number(). The table that mistypes one optional field at a
+  time does test that behaviour.
+
+  epaIndexLabel isn't in the Mutation targets table of context/test-plan.md. The
+  record suggests adding a row with a 100% baseline, but I didn't edit the test
+  plan because it belongs to /test-plan.
+
+  No new lessons.md rule is needed, since nothing survived. The record is in
+  context/changes/details-extra-weather/mutation.md and isn't committed yet.
+  Your uncommitted one-line edit to plan.md is untouched.
+
+✻ Cooked for 2m 23s · done 4:50 PM

@@ -1,0 +1,157 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan FR-12 AC6: extra weather fields on the details page                     
+
+  Searched for 1 pattern, listed 2 directories, ran 3 shell commands (ctrl+o to expand)
+
+● Still researching for the FR-12 AC6 plan. Next I'm checking the Weatherstack
+  docs for units and observation-time semantics.
+
+● Fetch(https://weatherstack.com/documentation)
+  ⎿  Received 1KB (301 Moved Permanently)
+
+● Fetch(https://docs.apilayer.com/weatherstack/docs/api-documentation)
+  ⎿  Received 79.8KB (200 OK)
+
+  Searched for 1 pattern, called context7 (ctrl+o to expand)
+
+● Fetch(https://docs.apilayer.com/weatherstack/docs/weatherstack-api-v-1-0-0)
+  ⎿  Received 97.8KB (200 OK)
+
+● The Weatherstack docs page is a JS app and comes back empty, so I'm trying a
+  web search for the unit facts instead.
+
+● Web Search("weatherstack units parameter "f" Fahrenheit pressure MB precip IN
+            visibility miles observation_time UTC")
+  ⎿  Did 1 search in 8s
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Research is done. Three choices change what gets built:
+
+● User answered Claude's questions:
+  ⎿  · Where should the details page get the extra weather fields? → Typed SDL 
+     fields (suggested)
+     · How much air-quality detail should the page show? → All 8 values + EPA 
+     label (suggested)
+     · How should the observation time be shown? The sample proves it is UTC: 
+     "01:13 PM" against a local time of 06:13 at UTC−7. It has no date. → As 
+     given + "UTC" (suggested)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● User answered Claude's questions:
+  ⎿  · Proposed phases for change `details-extra-weather` (new roadmap row S-09,
+     closes #11 and #12):
+     1. API typed optional weather fields: SDL `CurrentWeather` gets nullable 
+     `observationTime`, `weatherCode`, `windDegree`, `pressure`, `precip`, 
+     `cloudCover`, `uvIndex`, `visibility`, `isDay`, `astro { … }` and 
+     `airQuality { … }`. A tolerant mapper in `domain/weather.ts` turns a 
+     missing or mistyped field into null and never fails a create or read. 
+     Codegen runs. Proven by a unit table in `weather.test.ts` and an api-int 
+     test that `property(id)` returns them for the sample. (Refs #12)
+     2. Details page sections: the query asks for the new fields. The page adds 
+     "Weather details", "Astronomy" and "Air quality" groups with units and 
+     hides any missing field or whole group. `epaIndexLabel` gets a unit table. 
+     Proven by `DetailsPage.test.tsx` (AC6 full sample, AC5 with fields 
+     missing). Test-plan rows are updated. (Closes #11, #12)
+     How should we proceed? → Merge into 1 phase
+
+  Searched for 1 pattern, listed 1 directory (ctrl+o to expand)
+
+● Writing the plan and the roadmap row now.
+
+● Write(context/changes/details-extra-weather/plan.md)
+  ⎿  Wrote 198 lines to context/changes/details-extra-weather/plan.md
+       1 # Plan: details-extra-weather (S-09)
+       3 ## Goal and end state
+       4 The details page shows the extra weather data from the stored sn
+       5 read from new typed `CurrentWeather` fields (roadmap "Later" #12
+       6 
+       7 - The `property` query exposes nullable `observationTime`, `weat
+       8   `pressure`, `precip`, `cloudCover`, `uvIndex`, `visibility`, `
+         isDay`, `astro { … }` and
+          `current`. A missing or
+         RD data model: non-key fields
+     … +322 lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/roadmap.md'…)
+  ⎿   context/roadmap.md | 3 +++
+      1 file changed, 3 insertions(+)
+  ⎿  Updated context/roadmap.md (+3 -0)
+      19  | S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-1
+          5 | S-05 | M | done |
+      20  | S-07 | #9 | list-filters-in-url | slice | FR-11 AC3a (Should)
+           | S-04 | S | done |
+      21  | S-08 | #10 | list-pagination | slice | FR-11 AC4 (Should) | S
+          -07 | S | done |
+      22 +| S-09 | #11, #12 | details-extra-weather | slice | FR-12 AC6 (
+         +Should), typed non-key `CurrentWeather` fields | S-04 | S | pla
+         +nned |                                                         
+      23  
+      24  Order follows risk: tooling and schema first, then the Weathers
+          tack integration (the only
+      25  third-party unknown, R-01 – R-05) and the concurrency-sensitive
+           duplicate rule, then the
+     ...
+      226    index, visibility, and `astro` / `airQuality` when present.
+      227  - #12 Data model: typed non-key `CurrentWeather` fields, inclu
+           ding the `astro` and `airQuality`
+      228    objects (until then they are available only in `current.raw`
+           ).
+      229 +  #11 and #12 are picked up together as S-09 (`details-extra-w
+          +eather`): the page reads the                                  
+      230 +  typed fields, so #12 lands first in the same phase.         
+      231  
+      232  Could:
+      233  
+
+● I wrote the plan for FR-12 AC6 to
+  context/changes/details-extra-weather/plan.md. It needs a roadmap ID, so I
+  added a new row, S-09, to context/roadmap.md with status planned. The row
+  covers issues #11 and #12. Nothing is committed yet.
+
+  Your decisions:
+  - Where the fields come from: typed fields in the GraphQL schema rather than
+    the web reading raw. That means this change also delivers #12 (typed non-key
+    weather fields), and its one commit closes both issues.
+  - Air quality: all 8 values, with the US EPA index labelled, e.g. "1 (Good)".
+  - Observation time: shown as stored plus "UTC", e.g. "01:13 PM UTC". The
+    recorded sample proves it's UTC: 01:13 PM against a local time of 06:13 at
+    UTC−7. It has no date, so converting it to local time isn't safe.
+  - Phases: one phase, one commit.
+
+  Design points from the research:
+  - Create is unaffected. The Weatherstack adapter reuses the key-field schema,
+    so the new optional fields get their own parsing that never throws. A wrong
+    or missing value becomes null for that field only and never fails a create
+    or a read.
+  - Separate groups on the page. The existing details test compares every
+    label/value pair in one list, so the new data goes in three separate groups:
+    "Weather details", "Astronomy" and "Air quality". A group with no values is
+    left out.
+  - Zero still shows. Values like UV index 0 and precipitation 0 are displayed,
+    not hidden, and a test checks this.
+  - Air-quality numbers arrive as numeric strings. They're parsed with the same
+    decimal check already used for lat/long, because a plain number conversion
+    would turn "" into 0.
+
+  One open risk: I couldn't confirm the pressure and visibility units ("mb" and
+  "mi"). The Weatherstack docs site loads its content with JavaScript, so it
+  came back empty. They come from Weatherstack's unit table as I remember it;
+  the PRD confirms only inches for precipitation. It doesn't block anything
+  since only two labels change if wrong, and checking them in a browser is
+  listed as a manual check in the plan.
+
+  Next step: /plan-review details-extra-weather
+
+  Sources: Weatherstack documentation (redirects to a docs page that rendered
+  empty)
+
+✻ Sautéed for 3m 6s · done 4:37 PM
