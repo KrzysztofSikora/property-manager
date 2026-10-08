@@ -37,6 +37,9 @@ brief ─▶ /shape ─▶ /prd ─▶ /tech-stack ─▶ /roadmap ─▶ /test-
   read them.
 - **Traceable history.** Each implemented phase is one Conventional Commit, and its hash is
   written next to the phase in the plan.
+- **Shared sessions.** Every skill run is exported to `ai-sessions/` as
+  `NN-<step>-<ROADMAP-ID>[-n].txt`. The README's *AI sessions* section indexes them per
+  roadmap item.
 - **Tests that defend, not just cover.** Coverage shows code ran. Mutation testing shows the
   assertions would catch a fault. Its score is a pointer. The decision on each surviving mutant
   is the actual output.

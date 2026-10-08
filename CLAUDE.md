@@ -75,6 +75,7 @@ The pre-commit hook fails with "Node 24 required" otherwise.
 | Task | Command |
 |------|---------|
 | Install (also sets `core.hooksPath` to `.githooks`) | `pnpm install` |
+| Full stack (Postgres, API with migrations, web on `:5173`) | `docker compose up` (`--build` after code changes) |
 | Database for dev | `docker compose up -d postgres` |
 | Dev servers (API `:4000/graphql`, web `:5173`) | `pnpm dev` (needs `WEATHERSTACK_KEY` in `.env`) |
 | Hermetic tests (no Docker; pre-commit runs these) | `pnpm test:unit` |
@@ -87,4 +88,4 @@ The pre-commit hook fails with "Node 24 required" otherwise.
 | Apply migrations to the dev DB (needs only `DATABASE_URL`) | `pnpm db:migrate` |
 | Generate a migration after changing `apps/api/src/db/schema.ts` (commit the output) | `pnpm db:generate` |
 | Mutation (one module, targets in `context/test-plan.md`) | `pnpm --filter @property-manager/<api\|web\|shared> test:mutation --mutate src/<module>.ts`; tooling: `pnpm test:mutation:tooling --mutate tooling/<file>.ts` |
-| E2E | not yet (S-06) |
+| E2E (Playwright on its own Compose project, stub Weatherstack; Docker running) | `pnpm e2e` (once: `pnpm exec playwright install chromium`) |
