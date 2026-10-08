@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay } from 'msw';
 import { HttpResponse } from 'msw/http';
+import { useNavigate } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { AppRoutes } from '../app/routes';
 import type { DeletePropertyMutationVariables, PropertyQueryVariables } from '../graphql/graphql';
@@ -43,6 +44,16 @@ function serveDelete(respond: (id: string) => Response) {
 
 function renderDetails(id = property.id) {
   renderWithProviders(<AppRoutes />, { route: `/properties/${id}` });
+}
+
+// The browser's Back button, which the app itself does not render.
+function GoBack() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => void navigate(-1)}>
+      Go back
+    </button>
+  );
 }
 
 // The `<dd>` text of each `<dt>` label, in page order.
@@ -125,6 +136,40 @@ describe('DetailsPage', () => {
     expect(propertyIds).toEqual(['id-9']);
     expect(screen.queryByRole('heading', { name: 'Property not found' })).not.toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('FR-12 AC4: going Back after the delete does not show the deleted property from cache', async () => {
+    let deleted = false;
+    // The re-request after Back is held, so a cached frame would still be on screen.
+    const propertyIds = serveProperty(async () => {
+      if (!deleted) return HttpResponse.json({ data: { property } });
+      await delay(50);
+      return HttpResponse.json({ data: { property: null } });
+    });
+    serveDelete((id) => {
+      deleted = true;
+      return HttpResponse.json({ data: { deleteProperty: id } });
+    });
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <AppRoutes />
+        <GoBack />
+      </>,
+      { route: `/properties/${property.id}` },
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
+    await screen.findByRole('heading', { level: 1, name: 'Properties' });
+    await user.click(screen.getByRole('button', { name: 'Go back' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading property…');
+    expect(screen.queryByRole('heading', { name: property.street })).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Property not found' }),
+    ).toBeInTheDocument();
+    expect(propertyIds).toEqual(['id-9', 'id-9']);
   });
 
   it('FR-12 AC4: PROPERTY_NOT_FOUND on delete also returns to the list, with no message', async () => {

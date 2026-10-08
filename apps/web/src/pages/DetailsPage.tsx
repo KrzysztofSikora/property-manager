@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { DeletePropertyDialog } from '../components/DeletePropertyDialog';
 import { useProperty } from '../hooks/useProperty';
@@ -9,6 +10,20 @@ export function DetailsPage() {
   const navigate = useNavigate();
   const query = useProperty(id);
   const [deleting, setDeleting] = useState(false);
+  const queryClient = useQueryClient();
+  const gone = useRef(false);
+
+  // The delete leaves this page's own entry cached so it does not re-fetch into "not found"
+  // before leaving. Once the page has left, the entry goes too, so Back does not show the
+  // deleted property from cache.
+  useEffect(
+    () => () => {
+      if (gone.current) {
+        queryClient.removeQueries({ queryKey: ['properties', 'detail', id], exact: true });
+      }
+    },
+    [queryClient, id],
+  );
 
   if (query.isPending) return <p role="status">Loading property…</p>;
 
@@ -43,7 +58,10 @@ export function DetailsPage() {
   const description = weather.weatherDescriptions[0];
   const icon = weather.weatherIcons[0];
   // The property is gone either way, so a delete and a "not found" both return to the list.
-  const backToList = () => void navigate('/');
+  const backToList = () => {
+    gone.current = true;
+    void navigate('/');
+  };
 
   return (
     <>

@@ -149,6 +149,34 @@ describe('ListPage', () => {
     ]);
   });
 
+  it('FR-11 AC2: while a new sort loads, the old rows stay and an "Updating…" status shows', async () => {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      api.query<object, PropertiesQueryVariables>('Properties', async ({ variables }) => {
+        if (variables.sort === 'CREATED_AT_ASC') {
+          await held;
+          return HttpResponse.json(propertiesPayload([oldest, middle, newest]));
+        }
+        return HttpResponse.json(propertiesPayload([newest, middle, oldest]));
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<ListPage />);
+    await screen.findByRole('link', { name: '3 Newest St' });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort' }), 'Oldest first');
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Updating…');
+    expect(rowStreets()).toEqual(['3 Newest St', '2 Middle Ave', '1 Oldest Rd']);
+    release();
+    await expect.poll(rowStreets).toEqual(['1 Oldest Rd', '2 Middle Ave', '3 Newest St']);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('FR-11 AC3: Apply sends the filled filters, leaves blank ones out and shows the matches', async () => {
     const requests = serveProperties(({ filter }) =>
       filter?.city ? [newest] : [newest, middle, oldest],

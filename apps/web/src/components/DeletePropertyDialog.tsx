@@ -56,6 +56,11 @@ export function DeletePropertyDialog({ property, onClose, onDeleted, onNotFound 
     <dialog
       ref={dialogRef}
       aria-labelledby={headingId}
+      // Closing unmounts the dialog, and a pending delete would then finish without its
+      // callbacks, so the caller would never hear of it. Esc is held off until it settles.
+      onCancel={(event) => {
+        if (deleteProperty.isPending) event.preventDefault();
+      }}
       onClose={onClose}
       className="m-auto rounded p-6 shadow-lg backdrop:bg-black/40"
     >
@@ -74,7 +79,8 @@ export function DeletePropertyDialog({ property, onClose, onDeleted, onNotFound 
         <button
           type="button"
           onClick={() => dialogRef.current?.close()}
-          className="rounded border px-3 py-1"
+          disabled={deleteProperty.isPending}
+          className="rounded border px-3 py-1 disabled:opacity-50"
         >
           Cancel
         </button>

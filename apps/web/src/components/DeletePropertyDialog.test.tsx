@@ -72,6 +72,33 @@ describe('DeletePropertyDialog', () => {
     expect(ids).toEqual(['id-7']);
   });
 
+  it('while the delete is pending, Cancel is disabled and Esc does not close the dialog', async () => {
+    serveDelete(async (id) => {
+      await delay(50);
+      return HttpResponse.json({ data: { deleteProperty: id } });
+    });
+    const user = userEvent.setup();
+    const { onClose, onDeleted } = renderDialog();
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    const esc = new Event('cancel', { cancelable: true });
+    screen.getByRole('dialog').dispatchEvent(esc);
+    expect(esc.defaultPrevented).toBe(true);
+    expect(onClose).not.toHaveBeenCalled();
+    await expect.poll(() => onDeleted.mock.calls.length).toBe(1);
+  });
+
+  it('Esc is not held off when no delete is pending', () => {
+    renderDialog();
+
+    const esc = new Event('cancel', { cancelable: true });
+    screen.getByRole('dialog').dispatchEvent(esc);
+
+    expect(esc.defaultPrevented).toBe(false);
+  });
+
   it('a failed delete keeps the dialog open, re-enables Delete and does not report a delete', async () => {
     serveDelete(() => HttpResponse.error());
     const user = userEvent.setup();
@@ -84,6 +111,7 @@ describe('DeletePropertyDialog', () => {
     );
     expect(screen.getByRole('dialog')).toHaveAttribute('open');
     expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
     expect(onClose).not.toHaveBeenCalled();
     expect(onDeleted).not.toHaveBeenCalled();
   });
