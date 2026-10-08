@@ -4,7 +4,7 @@ Verdict: APPROVE
 Gates: typecheck ok, lint ok, tests 573 passed / 0 failed (`pnpm test`, 39 files, Testcontainers
 included); also `pnpm format:check` ok and `pnpm codegen` leaves no drift.
 
-Base: `9834218` (parent of `73e6b80`, the first `(create-property-page)` commit). No uncommitted
+Base: `9834218` (parent of `afe3150`, the first `(create-property-page)` commit). No uncommitted
 changes at review time.
 
 ## Plan vs diff

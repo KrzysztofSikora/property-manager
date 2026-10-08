@@ -231,8 +231,8 @@ error   → errorCode / fieldErrors / createErrorMessage → messages, inputs un
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [x] Phase 1: Create error messages and hook (73e6b80)
-- [x] Phase 2: Create property page (732fa3a)
+- [x] Phase 1: Create error messages and hook (afe3150)
+- [x] Phase 2: Create property page (a2eb681)
 
 ## Deviations
 
