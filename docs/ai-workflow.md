@@ -33,7 +33,8 @@ brief ─▶ /shape ─▶ /prd ─▶ /tech-stack ─▶ /roadmap ─▶ /test-
 - **Independent reviews.** `/plan-review` and `/review` run in a forked context, so the
   reviewer does not share the author's assumptions.
 - **A feedback loop.** Review findings that point at a recurring problem become rules in
-  `context/lessons.md`. `/plan`, `/plan-review`, `/implement` and `/review` all read them.
+  `context/lessons.md`. `/plan`, `/plan-review`, `/implement`, `/mutation` and `/review` all
+  read them.
 - **Traceable history.** Each implemented phase is one Conventional Commit, and its hash is
   written next to the phase in the plan.
 - **Tests that defend, not just cover.** Coverage shows code ran. Mutation testing shows the

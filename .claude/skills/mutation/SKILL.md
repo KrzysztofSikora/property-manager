@@ -29,6 +29,9 @@ decision on each.
   optional line range, e.g. `apps/api/src/weather/weatherstack.adapter.ts:10-80`.
 - `context/test-plan.md`, section *Mutation targets*, if present.
 - `context/changes/<change-id>/plan.md` for the behaviours the change must guarantee.
+- `context/lessons.md` (if present). Lessons are binding rules: apply those whose *Scope*
+  covers a mutation run or the targeted modules, both when running Stryker and when
+  strengthening tests.
 
 ## 1. Choose targets
 
