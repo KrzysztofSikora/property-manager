@@ -322,3 +322,9 @@ Each field gets a description in the existing style (rules, defaults, error code
   and `_`, since `escapeLike` escapes it too.
 - Phase 1, web codegen. `apps/web/src/graphql/*` did not change: the client preset emits only
   types that web documents use, and none uses the new ones yet (S-04).
+- Review R2, deferred. No test proves that `list` reads the rows and `totalCount` from one
+  snapshot: removing the read-only repeatable-read options, or counting through `db` instead
+  of `tx`, leaves every test green. The guarantee holds by construction
+  (`apps/api/src/repositories/property.repository.ts:93-110`) and is checked only in review.
+  Follow-up: an integration test that inserts a row from a second connection between the two
+  reads and asserts `items.length === totalCount`.
