@@ -18,7 +18,7 @@ export) proportionate to a small app.
 | S-05 | #7 | create-property-page | slice | FR-13 | S-02, S-04 | M | done |
 | S-06 | #8 | run-and-document | slice | FR-14 (AC1, AC2), FR-15 | S-05 | M | done |
 | S-07 | #9 | list-filters-in-url | slice | FR-11 AC3a (Should) | S-04 | S | done |
-| S-08 | #10 | list-pagination | slice | FR-11 AC4 (Should) | S-07 | S | in-progress |
+| S-08 | #10 | list-pagination | slice | FR-11 AC4 (Should) | S-07 | S | done |
 
 Order follows risk: tooling and schema first, then the Weatherstack integration (the only
 third-party unknown, R-01 – R-05) and the concurrency-sensitive duplicate rule, then the
