@@ -3,7 +3,11 @@ import { properties } from '../../src/db/schema.ts';
 import { InMemoryPropertyRepository } from '../fakes/property-repository.ts';
 import { FakeWeatherClient } from '../fakes/weather.ts';
 import { validInput } from '../fixtures/property.ts';
-import { weatherstackError, weatherstackResponse } from '../fixtures/weatherstack.ts';
+import {
+  SAMPLE_OPTIONAL_WEATHER,
+  weatherstackError,
+  weatherstackResponse,
+} from '../fixtures/weatherstack.ts';
 import { createTestApp } from '../helpers/app.ts';
 import type { ExecuteResult, TestApp, TestAppOptions } from '../helpers/app.ts';
 import { countProperties, resetDb, seedProperty } from '../helpers/db.ts';
@@ -71,7 +75,7 @@ describe('createProperty', () => {
     const { id, createdAt, ...rest } = created;
     expect(id).toMatch(UUID);
     expect(Date.now() - Date.parse(String(createdAt))).toBeLessThan(60_000);
-    // Key fields as in the recorded sample's `current`; `raw` is that object whole.
+    // Typed fields as in the recorded sample's `current`; `raw` is that object whole.
     expect(rest).toEqual({
       street: '15528 E Golden Eagle Blvd',
       city: 'Fountain Hills',
@@ -91,6 +95,7 @@ describe('createProperty', () => {
           windSpeed: 6,
           windDir: 'NE',
           humidity: 34,
+          ...SAMPLE_OPTIONAL_WEATHER,
           raw: weatherstackResponse().current,
         },
       },

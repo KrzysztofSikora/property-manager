@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { graphql } from '../graphql';
 import { execute } from '../lib/execute';
 
-// Every field the details page shows. `raw` is left out until #11.
+// Every field the details page shows. `raw` is left out: the page reads the typed fields.
 const PropertyQuery = graphql(`
   query Property($id: ID!) {
     property(id: $id) {
@@ -24,6 +24,30 @@ const PropertyQuery = graphql(`
           windSpeed
           windDir
           humidity
+          observationTime
+          pressure
+          precip
+          cloudCover
+          uvIndex
+          visibility
+          astro {
+            sunrise
+            sunset
+            moonrise
+            moonset
+            moonPhase
+            moonIllumination
+          }
+          airQuality {
+            co
+            no2
+            o3
+            so2
+            pm2_5
+            pm10
+            usEpaIndex
+            gbDefraIndex
+          }
         }
       }
     }

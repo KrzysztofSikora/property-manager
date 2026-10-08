@@ -3,6 +3,7 @@ import { createTestApp } from '../helpers/app.ts';
 import type { TestApp } from '../helpers/app.ts';
 import { countProperties, resetDb, seedProperty } from '../helpers/db.ts';
 import { expectGraphQLError } from '../helpers/graphql.ts';
+import { SAMPLE_OPTIONAL_WEATHER, weatherstackResponse } from '../fixtures/weatherstack.ts';
 import { DELETE_PROPERTY, PROPERTIES, PROPERTY } from '../operations.ts';
 import type { FakeWeatherClient } from '../fakes/weather.ts';
 
@@ -56,7 +57,36 @@ describe('property (FR-04)', () => {
             windSpeed: 6,
             windDir: 'NE',
             humidity: 34,
+            ...SAMPLE_OPTIONAL_WEATHER,
             raw: stored.weatherData.current,
+          },
+        },
+      },
+    });
+  });
+
+  it('TR-16: returns null for optional weather fields the stored snapshot lacks', async () => {
+    const app = testApp();
+    const { current } = weatherstackResponse({
+      current: { astro: undefined, air_quality: undefined, pressure: undefined },
+    });
+    if (typeof current !== 'object' || current === null || Array.isArray(current)) {
+      throw new Error('the sample has no "current" object');
+    }
+    const stored = await seedProperty(app.db, { weatherData: { units: 'IMPERIAL', current } });
+
+    const result = await app.execute(PROPERTY, { id: stored.id });
+
+    expect(result.errors).toBeUndefined();
+    expect(result.data).toMatchObject({
+      property: {
+        weatherData: {
+          current: {
+            ...SAMPLE_OPTIONAL_WEATHER,
+            pressure: null,
+            astro: null,
+            airQuality: null,
+            raw: current,
           },
         },
       },

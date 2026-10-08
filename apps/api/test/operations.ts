@@ -19,6 +19,33 @@ const PROPERTY_FIELDS = /* GraphQL */ `
         windSpeed
         windDir
         humidity
+        observationTime
+        weatherCode
+        windDegree
+        pressure
+        precip
+        cloudCover
+        uvIndex
+        visibility
+        isDay
+        astro {
+          sunrise
+          sunset
+          moonrise
+          moonset
+          moonPhase
+          moonIllumination
+        }
+        airQuality {
+          co
+          no2
+          o3
+          so2
+          pm2_5
+          pm10
+          usEpaIndex
+          gbDefraIndex
+        }
         raw
       }
     }

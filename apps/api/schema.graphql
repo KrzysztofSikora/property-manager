@@ -8,7 +8,36 @@ enum WeatherUnits {
   IMPERIAL
 }
 
-"Key fields of Weatherstack `current`. Every other field is in `raw`."
+"Weatherstack `current.astro`. Times are \"hh:mm AM/PM\", local to the location."
+type Astro {
+  sunrise: String
+  sunset: String
+  moonrise: String
+  moonset: String
+  moonPhase: String
+  "Percent."
+  moonIllumination: Int
+}
+
+"Weatherstack `current.air_quality`. Pollutants are in µg/m³."
+type AirQuality {
+  co: Float
+  no2: Float
+  o3: Float
+  so2: Float
+  pm2_5: Float
+  pm10: Float
+  "US EPA index, 1 (Good) to 6 (Hazardous)."
+  usEpaIndex: Int
+  "UK DEFRA index, 1 to 10."
+  gbDefraIndex: Int
+}
+
+"""
+Weatherstack `current`, camelCased. The key fields are always set. Every other field is null
+when Weatherstack did not send it or sent it with an unexpected type. `raw` holds the object as
+it was received.
+"""
 type CurrentWeather {
   temperature: Int!
   feelsLike: Int!
@@ -17,6 +46,22 @@ type CurrentWeather {
   windSpeed: Int!
   windDir: String!
   humidity: Int!
+  "\"hh:mm AM/PM\" in UTC, without a date."
+  observationTime: String
+  weatherCode: Int
+  windDegree: Int
+  "mb."
+  pressure: Int
+  "Inches."
+  precip: Float
+  "Percent."
+  cloudCover: Int
+  uvIndex: Int
+  "Miles."
+  visibility: Int
+  isDay: Boolean
+  astro: Astro
+  airQuality: AirQuality
   "The Weatherstack `current` object as it was received."
   raw: JSON!
 }
