@@ -230,8 +230,11 @@ error   → errorCode / fieldErrors / createErrorMessage → messages, inputs un
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [ ] Phase 1: Create error messages and hook
+- [x] Phase 1: Create error messages and hook (73e6b80)
 - [ ] Phase 2: Create property page
 
 ## Deviations
-<filled during implementation>
+
+- Phase 2, `context/test-plan.md`: the plan says set TR-19 / TR-21 to `covered (S-05)` "with
+  the test files"; every other row's status holds only the slice, and the approach column
+  already names the tests. Kept the existing format: `covered (S-05)`.
