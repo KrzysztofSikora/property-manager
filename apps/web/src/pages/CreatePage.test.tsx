@@ -101,6 +101,7 @@ describe('CreatePage', () => {
     expect(inputs.street()).toHaveAttribute('aria-invalid', 'true');
     expect(inputs.city()).not.toHaveAccessibleDescription();
     expect(inputs.city()).not.toHaveAttribute('aria-invalid');
+    expect(inputs.street()).toHaveFocus();
     expect(requests).toEqual([]);
   });
 
@@ -227,6 +228,7 @@ describe('CreatePage', () => {
     expect(inputs.zipCode()).toHaveAccessibleDescription('zip rejected by the server');
     expect(inputs.state()).toHaveAccessibleDescription('state rejected by the server');
     expect(inputs.street()).not.toHaveAccessibleDescription();
+    expect(inputs.state()).toHaveFocus();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expectValuesKept(valid);
   });
@@ -236,7 +238,9 @@ describe('CreatePage', () => {
 
     await fillAndSubmit(valid);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/check the highlighted fields/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Some fields are invalid. Check the values and try again.',
+    );
   });
 
   it('a network error shows the generic message and keeps the entered values', async () => {

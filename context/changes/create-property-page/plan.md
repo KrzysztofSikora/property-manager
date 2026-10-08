@@ -102,7 +102,8 @@ error   → errorCode / fieldErrors / createErrorMessage → messages, inputs un
 - `CREATE_ERROR_MESSAGES: Record<ErrorCode, string>`: one create-form message per code.
   `Record<ErrorCode, …>` makes a missing code a type error; the TR-19 test also iterates
   `ERROR_CODES`, so a code without a non-empty message fails a test.
-  - `BAD_USER_INPUT`: "Some fields are invalid. Check the highlighted fields."
+  - `BAD_USER_INPUT`: "Some fields are invalid. Check the values and try again."
+    (reworded after review R1: it is shown only when no field is highlighted)
   - `PROPERTY_ALREADY_EXISTS`: "A property with this address already exists."
   - `PROPERTY_NOT_FOUND`: "This property no longer exists." (completeness only; the create
     mutation does not return it)

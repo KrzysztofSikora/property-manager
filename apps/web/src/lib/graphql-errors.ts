@@ -17,7 +17,7 @@ export function errorCode(error: unknown): ErrorCode | undefined {
 // One create-form message per code (NFR-09, TR-19). The wording is for the create form only.
 // `PROPERTY_NOT_FOUND` is never returned by the create mutation; it keeps the record complete.
 export const CREATE_ERROR_MESSAGES: Record<ErrorCode, string> = {
-  BAD_USER_INPUT: 'Some fields are invalid. Check the highlighted fields.',
+  BAD_USER_INPUT: 'Some fields are invalid. Check the values and try again.',
   PROPERTY_ALREADY_EXISTS: 'A property with this address already exists.',
   PROPERTY_NOT_FOUND: 'This property no longer exists.',
   WEATHER_QUOTA_EXCEEDED:
