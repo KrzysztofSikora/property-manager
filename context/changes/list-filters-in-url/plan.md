@@ -213,7 +213,7 @@ input is dropped by the parse and never reaches the request.
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [ ] Phase 1: URL ↔ list state module
+- [x] Phase 1: URL ↔ list state module (f24607e)
 - [ ] Phase 2: ListPage reads and writes the URL
 
 ## Deviations

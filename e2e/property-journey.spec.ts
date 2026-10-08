@@ -36,6 +36,13 @@ test('create, see weather, find it in the list, filter, delete', async ({ page }
   await expect(page.getByRole('link', { name: street })).toBeVisible();
   await expect(page.getByRole('link', { name: otherStreet })).toHaveCount(0);
 
+  // TR-26: the filter is in the URL, so a reload keeps the input and the matching rows.
+  await expect(page).toHaveURL(/\?city=Fountain\+Hills$/);
+  await page.reload();
+  await expect(page.getByLabel('City')).toHaveValue('Fountain Hills');
+  await expect(page.getByRole('link', { name: street })).toBeVisible();
+  await expect(page.getByRole('link', { name: otherStreet })).toHaveCount(0);
+
   // Delete with confirm → gone from the list and from its details URL.
   await page.getByRole('button', { name: `Delete ${street}` }).click();
   const dialog = page.getByRole('dialog', { name: 'Delete property?' });
