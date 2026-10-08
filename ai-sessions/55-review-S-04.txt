@@ -1,0 +1,617 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /review list-and-details-pages                                                
+  ⎿  Running in the background as @review
+
+● Agent "/review list-and-details-pages" finished · 3m 1s
+
+● The /review of list-and-details-pages is done. The verdict is approve with 
+  follow-ups: nothing blocks it, but there is one major finding and three minor
+  ones.
+
+  Checks: typecheck, lint, format and codegen (no drift) pass, and the full pnpm
+  test passed all 519 tests. Every planned file changed as the plan says. The
+  only files outside the plan are explained: the plan's Deviations list one, the
+  mutation check added one, and the rest are process docs.
+
+  Findings and my suggested decision for each:
+
+  #: R1
+  Severity: major
+  Issue: On the details page, pressing Cancel or Esc while a delete is still
+  running deletes the property but leaves it showing on the page. A temporary
+  test confirmed this. Fix: disable Cancel and block Esc while the delete is in
+   progress (DeletePropertyDialog.tsx:74-84).
+  Suggestion: fix. It's a real bug and the fix is small.
+  ────────────────────────────────────────
+  #: R2
+  Severity: minor
+  Issue: After deleting a property from its details page, pressing Back briefly
+  shows the deleted property from the cache, then switches to "Property not
+  found". Fix: drop that cached entry when the details page closes.
+  Suggestion: fix. It's cheap to do at the same time as R1.
+  ────────────────────────────────────────
+  #: R3
+  Severity: minor
+  Issue: No test checks the "Updating…" message, or that the old rows stay on
+  screen while a new sort or filter loads (ListPage.tsx:124).
+  Suggestion: fix. It only needs one test.
+  ────────────────────────────────────────
+  #: R4
+  Severity: minor
+  Issue: The Stryker run covered 4 modules that aren't on the target list in
+  test-plan.md, which CLAUDE.md forbids.
+  Suggestion: fix by adding them as targets with /test-plan, since running them
+  was useful. Or make it a rule: check the target list before mutating.
+
+  The review also moved S-04 on the roadmap from in-progress to review. It
+  didn't change any code, and it deleted both temporary tests.
+
+  Tell me your decision for each of R1–R4 and I'll fill in the Decision: lines
+  in context/changes/list-and-details-pages/review.md. If you choose fix, I'll
+  make the changes too.
+
+✻ Cooked for 11s · done 11:17 AM
+
+❯ fix all of them                                                               
+
+  Listed 1 directory, ran 4 shell commands (ctrl+o to expand)
+
+● Now the R1 fix in the dialog.
+
+● Bash(python3 - <<'EOF'
+      p='components/DeletePropertyDialog.tsx'…)
+  ⎿   apps/web/src/components/DeletePropertyDialog.tsx | 8 +++++++-
+      context/roadmap.md                               | 2 +-
+      2 files changed, 8 insertions(+), 2 deletions(-)
+  ⎿  Updated apps/web/src/components/DeletePropertyDialog.tsx (+7 -1)
+      56      <dialog
+      57        ref={dialogRef}
+      58        aria-labelledby={headingId}
+      59 +      // Closing unmounts the dialog, and a pending delete woul
+         +d then finish without its                                      
+      60 +      // callbacks, so the caller would never hear of it. Esc i
+         +s held off until it settles.                                   
+      61 +      onCancel={(event) => {                                   
+      62 +        if (deleteProperty.isPending) event.preventDefault();  
+      63 +      }}                                                       
+      64        onClose={onClose}
+      65        className="m-auto rounded p-6 shadow-lg backdrop:bg-black
+          /40"
+      66      >
+     ...
+      79          <button
+      80            type="button"
+      81            onClick={() => dialogRef.current?.close()}
+      77 -          className="rounded border px-3 py-1"                 
+      82 +          disabled={deleteProperty.isPending}                  
+      83 +          className="rounded border px-3 py-1 disabled:opacity-
+         +50"                                                            
+      84          >
+      85            Cancel
+      86          </button>
+
+● Dialog test for R1:
+
+● Update(apps/web/src/components/DeletePropertyDialog.test.tsx)
+  ⎿  Added 27 lines
+       72      expect(ids).toEqual(['id-7']);
+       73    });
+       74  
+       75 +  it('while the delete is pending, Cancel is disabled and Esc 
+          +does not close the dialog', async () => {                     
+       76 +    serveDelete(async (id) => {                               
+       77 +      await delay(50);                                        
+       78 +      return HttpResponse.json({ data: { deleteProperty: id } 
+          +});                                                           
+       79 +    });                                                       
+       80 +    const user = userEvent.setup();                           
+       81 +    const { onClose, onDeleted } = renderDialog();            
+       82 +                                                              
+       83 +    await user.click(screen.getByRole('button', { name: 'Delet
+          +e' }));                                                       
+       84 +                                                              
+       85 +    expect(screen.getByRole('button', { name: 'Cancel' })).toB
+          +eDisabled();                                                  
+       86 +    const esc = new Event('cancel', { cancelable: true });    
+       87 +    screen.getByRole('dialog').dispatchEvent(esc);            
+       88 +    expect(esc.defaultPrevented).toBe(true);                  
+       89 +    expect(onClose).not.toHaveBeenCalled();                   
+       90 +    await expect.poll(() => onDeleted.mock.calls.length).toBe(
+          +1);                                                           
+       91 +  });                                                         
+       92 +                                                              
+       93 +  it('Esc is not held off when no delete is pending', () => { 
+       94 +    renderDialog();                                           
+       95 +                                                              
+       96 +    const esc = new Event('cancel', { cancelable: true });    
+       97 +    screen.getByRole('dialog').dispatchEvent(esc);            
+       98 +                                                              
+       99 +    expect(esc.defaultPrevented).toBe(false);                 
+      100 +  });                                                         
+      101 +                                                              
+      102    it('a failed delete keeps the dialog open, re-enables Delete
+            and does not report a delete', async () => {
+      103      serveDelete(() => HttpResponse.error());
+      104      const user = userEvent.setup();
+
+● Update(apps/web/src/components/DeletePropertyDialog.test.tsx)
+  ⎿  Added 1 line
+      111      );
+      112      expect(screen.getByRole('dialog')).toHaveAttribute('open')
+           ;
+      113      expect(screen.getByRole('button', { name: 'Delete' })).toB
+           eEnabled();
+      114 +    expect(screen.getByRole('button', { name: 'Cancel' })).toB
+          +eEnabled();                                                   
+      115      expect(onClose).not.toHaveBeenCalled();
+      116      expect(onDeleted).not.toHaveBeenCalled();
+      117    });
+
+● Now R2 in DetailsPage: drop the cached entry when the page unmounts after its
+  property was found to be gone.
+
+● Bash(python3 - <<'EOF'
+      p='pages/DetailsPage.tsx'…)
+  ⎿  36:    queryKey: ['properties', 'detail', id],
+  ⎿  Updated apps/web/src/pages/DetailsPage.tsx (+20 -2)
+      1 -import { useState } from 'react';                               
+      1 +import { useQueryClient } from '@tanstack/react-query';         
+      2 +import { useEffect, useRef, useState } from 'react';            
+      3  import { Link, useNavigate, useParams } from 'react-router';
+      4  import { DeletePropertyDialog } from '../components/DeleteProper
+         tyDialog';
+      5  import { useProperty } from '../hooks/useProperty';
+     ...
+      10    const navigate = useNavigate();
+      11    const query = useProperty(id);
+      12    const [deleting, setDeleting] = useState(false);
+      13 +  const queryClient = useQueryClient();                        
+      14 +  const gone = useRef(false);                                  
+      15  
+      16 +  // The delete leaves this page's own entry cached so it does 
+         +not re-fetch into "not found"                                  
+      17 +  // before leaving. Once the page has left, the entry goes too
+         +, so Back does not show the                                    
+      18 +  // deleted property from cache.                              
+      19 +  useEffect(                                                   
+      20 +    () => () => {                                              
+      21 +      if (gone.current) {                                      
+      22 +        queryClient.removeQueries({ queryKey: ['properties', 'd
+         +etail', id], exact: true });                                   
+      23 +      }                                                        
+      24 +    },                                                         
+      25 +    [queryClient, id],                                         
+      26 +  );                                                           
+      27 +                                                               
+      28    if (query.isPending) return <p role="status">Loading property
+          …</p>;
+      29  
+      30    if (query.isError) {
+     ...
+      58    const description = weather.weatherDescriptions[0];
+      59    const icon = weather.weatherIcons[0];
+      60    // The property is gone either way, so a delete and a "not fo
+          und" both return to the list.
+      46 -  const backToList = () => void navigate('/');                 
+      61 +  const backToList = () => {                                   
+      62 +    gone.current = true;                                       
+      63 +    void navigate('/');                                        
+      64 +  };                                                           
+      65  
+      66    return (
+      67      <>
+
+● Extend the render helper with a history, then add the Back test.
+
+● Bash(python3 - <<'EOF'
+      p='test/render.tsx'…)
+  ⎿  import { QueryClient, QueryClientProvider } from '@tanstack/react-quer
+     y';
+     import { render } from '@testing-library/react';
+     … +20 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/test/render.tsx (+7 -2)
+       3  import type { ReactElement } from 'react';
+       4  import { MemoryRouter } from 'react-router';
+       5  
+       6 -export function renderWithProviders(ui: ReactElement, { route =
+         - '/' }: { route?: string } = {}) {                             
+       6 +// `history` replaces `route` when a test needs earlier entries
+         + to go Back to; the last one is                                
+       7 +// the current location.                                       
+       8 +export function renderWithProviders(                           
+       9 +  ui: ReactElement,                                            
+      10 +  { route = '/', history = [route] }: { route?: string; history
+         +?: string[] } = {},                                            
+      11 +) {                                                            
+      12    const queryClient = new QueryClient({ defaultOptions: { queri
+          es: { retry: false } } });
+      13    return render(
+      14      <QueryClientProvider client={queryClient}>
+      10 -      <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter
+         ->                                                              
+      15 +      <MemoryRouter initialEntries={history} initialIndex={hist
+         +ory.length - 1}>{ui}</MemoryRouter>                            
+      16      </QueryClientProvider>,
+      17    );
+      18  }
+
+● Going Back only needs the entry that the delete's navigate('/') pushes, so the
+  helper change isn't needed. I'll revert it.
+
+● Bash(cd /home/krzysztof/projects/taskTreeCover/property-manager && git
+      checkout apps/web/src/test/render.tsx && git status --short)
+  ⎿  Updated 1 path from the index
+      M apps/web/src/components/DeletePropertyDialog.test.tsx
+      M apps/web/src/components/DeletePropertyDialog.tsx
+     … +3 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/test/render.tsx (+2 -7)
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+● Update(apps/web/src/pages/DetailsPage.test.tsx)
+  ⎿  Added 30 lines
+      127      expect(screen.queryByRole('dialog')).not.toBeInTheDocument
+           ();
+      128    });
+      129  
+      130 +  it('FR-12 AC4: going Back after the delete does not show the
+          + deleted property from cache', async () => {                  
+      131 +    let deleted = false;                                      
+      132 +    const propertyIds = serveProperty(() =>                   
+      133 +      HttpResponse.json({ data: { property: deleted ? null : p
+          +roperty } }),                                                 
+      134 +    );                                                        
+      135 +    serveDelete((id) => {                                     
+      136 +      deleted = true;                                         
+      137 +      return HttpResponse.json({ data: { deleteProperty: id } 
+          +});                                                           
+      138 +    });                                                       
+      139 +    const user = userEvent.setup();                           
+      140 +    renderWithProviders(                                      
+      141 +      <>                                                      
+      142 +        <AppRoutes />                                         
+      143 +        <GoBack />                                            
+      144 +      </>,                                                    
+      145 +      { route: `/properties/${property.id}` },                
+      146 +    );                                                        
+      147 +                                                              
+      148 +    await user.click(await screen.findByRole('button', { name:
+          + 'Delete' }));                                                
+      149 +    await user.click(within(screen.getByRole('dialog')).getByR
+          +ole('button', { name: 'Delete' }));                           
+      150 +    await screen.findByRole('heading', { level: 1, name: 'Prop
+          +erties' });                                                   
+      151 +    await user.click(screen.getByRole('button', { name: 'Go ba
+          +ck' }));                                                      
+      152 +                                                              
+      153 +    expect(screen.queryByRole('heading', { name: property.stre
+          +et })).not.toBeInTheDocument();                               
+      154 +    expect(                                                   
+      155 +      await screen.findByRole('heading', { level: 1, name: 'Pr
+          +operty not found' }),                                         
+      156 +    ).toBeInTheDocument();                                    
+      157 +    expect(propertyIds).toEqual(['id-9', 'id-9']);            
+      158 +  });                                                         
+      159 +                                                              
+      160    it('FR-12 AC4: PROPERTY_NOT_FOUND on delete also returns to 
+           the list, with no message', async () => {
+      161      const propertyIds = serveProperty(found(property));
+      162      const deletedIds = serveDelete(() =>
+
+● Update(apps/web/src/pages/DetailsPage.test.tsx)
+  ⎿  Added 10 lines
+      45    renderWithProviders(<AppRoutes />, { route: `/properties/${id
+          }` });
+      46  }
+      47  
+      48 +// The browser's Back button, which the app itself does not ren
+         +der.                                                           
+      49 +function GoBack() {                                            
+      50 +  const navigate = useNavigate();                              
+      51 +  return (                                                     
+      52 +    <button type="button" onClick={() => void navigate(-1)}>   
+      53 +      Go back                                                  
+      54 +    </button>                                                  
+      55 +  );                                                           
+      56 +}                                                              
+      57 +                                                               
+      58  // The `<dd>` text of each `<dt>` label, in page order.
+      59  function details() {
+      60    return Object.fromEntries(
+  ⎿  PostToolUse:Edit hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/web/src/pages/DetailsPage.test.tsx):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/web/src/pages/
+     DetailsPage.test.tsx
+       50:9   error  Unsafe assignment of an error typed value         
+     @typescript-eslint/no-unsafe-assignment
+       50:20  error  Unsafe call of a type that could not be resolved  
+     @typescript-eslint/no-unsafe-call
+       52:47  error  Unsafe call of a type that could not be resolved  
+     @typescript-eslint/no-unsafe-call
+
+     ✖ 3 problems (3 errors, 0 warnings)
+
+● Bash(sed -i "s/^import { describe, expect, it } from 'vitest';/import {
+      useNavigate } from 'react-router';\n&/"
+      apps/web/src/pages/DetailsPage.test.tsx && sed -n 1,8…)
+  ⎿  import { screen, within } from '@testing-library/react';
+     import userEvent from '@testing-library/user-event';
+     import { delay } from 'msw';
+     … +6 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/DetailsPage.test.tsx (+1 -0)
+      2  import userEvent from '@testing-library/user-event';
+      3  import { delay } from 'msw';
+      4  import { HttpResponse } from 'msw/http';
+      5 +import { useNavigate } from 'react-router';                     
+      6  import { describe, expect, it } from 'vitest';
+      7  import { AppRoutes } from '../app/routes';
+      8  import type { DeletePropertyMutationVariables, PropertyQueryVari
+         ables } from '../graphql/graphql';
+
+● That lint error came from the edit made before the import was added, so it's
+  resolved now. Next, R3: a test for the "Updating…" state.
+
+● Update(apps/web/src/pages/ListPage.test.tsx)
+  ⎿  Added 28 lines
+      149      ]);
+      150    });
+      151  
+      152 +  it('FR-11 AC2: while a new sort loads, the old rows stay and
+          + an "Updating…" status shows', async () => {                  
+      153 +    let release = () => {};                                   
+      154 +    const held = new Promise<void>((resolve) => {             
+      155 +      release = resolve;                                      
+      156 +    });                                                       
+      157 +    server.use(                                               
+      158 +      api.query<object, PropertiesQueryVariables>('Properties'
+          +, async ({ variables }) => {                                  
+      159 +        if (variables.sort === 'CREATED_AT_ASC') {            
+      160 +          await held;                                         
+      161 +          return HttpResponse.json(propertiesPayload([oldest, 
+          +middle, newest]));                                            
+      162 +        }                                                     
+      163 +        return HttpResponse.json(propertiesPayload([newest, mi
+          +ddle, oldest]));                                              
+      164 +      }),                                                     
+      165 +    );                                                        
+      166 +    const user = userEvent.setup();                           
+      167 +    renderWithProviders(<ListPage />);                        
+      168 +    await screen.findByRole('link', { name: '3 Newest St' }); 
+      169 +    expect(screen.queryByRole('status')).not.toBeInTheDocument
+          +();                                                           
+      170 +                                                              
+      171 +    await user.selectOptions(screen.getByRole('combobox', { na
+          +me: 'Sort' }), 'Oldest first');                               
+      172 +                                                              
+      173 +    expect(await screen.findByRole('status')).toHaveTextConten
+          +t('Updating…');                                               
+      174 +    expect(rowStreets()).toEqual(['3 Newest St', '2 Middle Ave
+          +', '1 Oldest Rd']);                                           
+      175 +    release();                                                
+      176 +    await expect.poll(rowStreets).toEqual(['1 Oldest Rd', '2 M
+          +iddle Ave', '3 Newest St']);                                  
+      177 +    expect(screen.queryByRole('status')).not.toBeInTheDocument
+          +();                                                           
+      178 +  });                                                         
+      179 +                                                              
+      180    it('FR-11 AC3: Apply sends the filled filters, leaves blank 
+           ones out and shows the matches', async () => {
+      181      const requests = serveProperties(({ filter }) =>
+      182        filter?.city ? [newest] : [newest, middle, oldest],
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● They pass. Now I'll check that each new test fails without its fix.
+  Ran 1 shell command (ctrl+o to expand)
+
+● R2 passed even without the fix since the refetch completes within the awaited
+  click, hiding the stale frame. I'll add a delay to the second Property
+  response so the cached frame stays visible long enough to verify.
+
+● Bash(python3 - <<'EOF'
+      p='apps/web/src/pages/DetailsPage.test.tsx'…)
+  ⎿  16:function serveProperty(respond: () => Response | Promise<Response>)
+      {
+     17-  const ids: string[] = [];
+     … +3 lines (ctrl+o to expand)
+  ⎿  Updated apps/web/src/pages/DetailsPage.test.tsx (+7 -3)
+      140  
+      141    it('FR-12 AC4: going Back after the delete does not show the
+            deleted property from cache', async () => {
+      142      let deleted = false;
+      143 -    const propertyIds = serveProperty(() =>                   
+      144 -      HttpResponse.json({ data: { property: deleted ? null : p
+          -roperty } }),                                                 
+      145 -    );                                                        
+      143 +    // The re-request after Back is held, so a cached frame wo
+          +uld still be on screen.                                       
+      144 +    const propertyIds = serveProperty(async () => {           
+      145 +      if (!deleted) return HttpResponse.json({ data: { propert
+          +y } });                                                       
+      146 +      await delay(50);                                        
+      147 +      return HttpResponse.json({ data: { property: null } }); 
+      148 +    });                                                       
+      149      serveDelete((id) => {
+      150        deleted = true;
+      151        return HttpResponse.json({ data: { deleteProperty: id } 
+           });
+     ...
+      164      await screen.findByRole('heading', { level: 1, name: 'Prop
+           erties' });
+      165      await user.click(screen.getByRole('button', { name: 'Go ba
+           ck' }));
+      166  
+      167 +    expect(screen.getByRole('status')).toHaveTextContent('Load
+          +ing property…');                                              
+      168      expect(screen.queryByRole('heading', { name: property.stre
+           et })).not.toBeInTheDocument();
+      169      expect(
+      170        await screen.findByRole('heading', { level: 1, name: 'Pr
+           operty not found' }),
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All three new tests now pass with their fix and fail without it. Next, R4: get
+  the baselines from mutation.md.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● The two documents list the three baselines in different module orders, so I'll
+  check the Stryker report to see which score belongs to which file.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The scores are useProperties 95.0%, useDeleteProperty 95.5% and graphql-errors
+  100%, which matches mutation.md. Next I'll add the targets to the test plan.
+
+● Update(context/test-plan.md)
+  ⎿  Added 3 lines
+      118  | `apps/api/src/db/migrate-cli.ts` (DB URL / password redactio
+           n in `pnpm db:migrate` output) | One wrong check prints the da
+           tabase password or garbles the failure reason (F-02). | 100% o
+           f non-equivalent, accepted survivors excepted | Not in CI. Bas
+           eline 76.3% (F-02); of the 9 survivors 3 are equivalent and 6 
+           accepted (entry-point block, `decodedOrSelf` catch), see `chan
+           ges/property-schema/mutation.md`. |
+      119  | `tooling/secret-scan.ts` (pre-commit key-leak scan) | One wr
+           ong hunk regex or line count lets the key into a commit or blo
+           cks clean commits (TR-01). | 100% (equivalents excepted) | Not
+            in CI. Baseline 93.6% (F-01) = 100% of non-equivalent. |
+      120  | `apps/web/src/lib/execute.ts` (GraphQL/HTTP response → `Grap
+           hQLRequestError`) | A weakened check shows an error or empty p
+           ayload as success in every page (FR-12, FR-13). | 90% | Not in
+            CI. Baseline 97.4% (F-01). |
+      121 +| `apps/web/src/lib/graphql-errors.ts` (`errorCode`: first err
+          +or's `extensions.code`, checked against `ERROR_CODES`) | The U
+          +I picks its message and its navigation from this code; a wrong
+          + pick shows "try again" for a gone property or hides a real fa
+          +ilure (FR-11 AC5, FR-12 AC4, NFR-09). | 90% | Not in CI. Basel
+          +ine 100% (S-04). |                                            
+      122 +| `apps/web/src/hooks/useProperties.ts` (list query variables:
+          + blank filters dropped, values trimmed, sort) | A blank or unt
+          +rimmed filter sends a wrong request, so the list shows no matc
+          +hes or ignores a filter (FR-11 AC2, AC3). | 90% | Not in CI. B
+          +aseline 95.0% (S-04); the 1 survivor is equivalent, see `chang
+          +es/list-and-details-pages/mutation.md`. |                     
+      123 +| `apps/web/src/hooks/useDeleteProperty.ts` (cache rule after 
+          +a delete) | A wrong key removes other properties' details or l
+          +eaves the deleted one cached, so it is shown again (FR-11 AC5,
+          + FR-12 AC4). | 90% | Not in CI. Baseline 95.5% (S-04); the 1 s
+          +urvivor is equivalent. |                                      
+      124  
+      125  Target scores are starting points. The first `/mutation` run o
+           n each module records the
+      126  baseline in its `mutation.md`. Until then `break` is `null`. R
+           aising `break` above the
+
+● Now the Decision: lines in the review, then the gates.
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/list-and-details-pages/review.md'…)
+  ⎿  67:- Decision: fix: Cancel is disabled and the dialog's `cancel` event
+      (Esc) is prevented
+     85:- Decision: fix: `DetailsPage` marks the property gone in `backToLi
+     … +15 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/list-and-details-pages/review.md (+4 -4)
+      64    `deleteProperty.isPending`, and `preventDefault()` the dialog
+          's `cancel` event (Esc) in that
+      65    state. Add a dialog test: while pending, Cancel is disabled a
+          nd `onClose` is not called.
+      66  - Effort: small
+      67 -- Decision: open                                               
+      67 +- Decision: fix: Cancel is disabled and the dialog's `cancel` e
+         +vent (Esc) is prevented while the delete is pending; new dialog
+         + tests check both, and that Esc is not held off otherwise.     
+      68  
+      69  ### R2: Going Back after a delete from the details page shows t
+          he deleted property from cache
+      70  - Severity: minor
+     ...
+      82    `queryClient.removeQueries({ queryKey: ['properties','detail'
+          ,id], exact: true })`. Add a test
+      83    with a two-entry history that goes Back and never sees the st
+          reet heading.
+      84  - Effort: small
+      85 -- Decision: open                                               
+      85 +- Decision: fix: `DetailsPage` marks the property gone in `back
+         +ToList` and removes its exact detail entry in an unmount cleanu
+         +p; new test goes Back with the re-request held and sees "Loadin
+         +g property…", never the street, then "Property not found".     
+      86  
+      87  ### R3: The "Updating…" re-fetch state is not tested
+      88  - Severity: minor
+     ...
+       97  - Fix: In the FR-11 AC2 test, delay the second `Properties` re
+           sponse and assert that the old
+       98    rows and a `status` "Updating…" are shown, then that the sta
+           tus is gone after the response.
+       99  - Effort: small
+      100 -- Decision: open                                              
+      100 +- Decision: fix: new FR-11 AC2 test holds the `CREATED_AT_ASC`
+          + response and checks the old rows and the "Updating…" status, 
+          +then the new order with no status. Fails without `keepPrevious
+          +Data`.                                                        
+      101  
+      102  ### R4: Stryker ran on modules that are not in the test plan's
+            Mutation targets
+      103  - Severity: minor
+     ...
+      112    `mutation.md` proposes. Or, if one-off checks of non-targets
+            are wanted, amend the CLAUDE.md
+      113    rule to allow them with a recorded reason.
+      114  - Effort: small
+      115 -- Decision: open                                              
+      115 +- Decision: fix: `graphql-errors.ts` (100%), `useProperties.ts
+          +` (95.0%) and `useDeleteProperty.ts` (95.5%) added to *Mutatio
+          +n targets* in `context/test-plan.md` with this run as the base
+          +line (per-file scores from the Stryker report). `ListPage.tsx`
+          + stays an occasional check.                                   
+
+● I've fixed all four findings and set each one's Decision: line to fix in
+  review.md. Nothing is committed yet.
+
+  R1 – Cancel or Esc during a delete (DeletePropertyDialog.tsx): while the
+  delete is running, Cancel is disabled and Esc can't close the dialog. Two new
+  dialog tests check this, plus a check that Esc still closes the dialog when no
+  delete is running.
+
+  R2 – Back showed the deleted property (DetailsPage.tsx): when the details page
+  closes after a delete or a "not found", it now removes that property's cached
+  entry. The new test goes Back after a delete and sees "Loading property…" and
+  then "Property not found", never the deleted address. My first version of
+  this test passed even without the fix, because the re-fetch finished before
+  the check ran. I now hold back the re-fetch so the test can catch the stale
+  screen.
+
+  R3 – "Updating…" untested (ListPage.test.tsx): a new test holds back the
+  "Oldest first" response. It checks that the old rows stay on screen with an
+  "Updating…" status, and that the new order then appears with the status gone.
+
+  R4 – mutation targets (context/test-plan.md): I added graphql-errors.ts
+  (100%), useProperties.ts (95.0%) and useDeleteProperty.ts (95.5%) to the
+  mutation target list, with this run as their baseline. I took the per-file
+  scores from the Stryker report. ListPage.tsx stays off the list, as
+  mutation.md suggested. The /test-plan skill normally owns this file; I edited
+  it directly because you asked me to fix everything.
+
+  Checks: each new test fails when its fix is undone and passes with it.
+  Typecheck, lint, format check and pnpm test:unit (403 tests) all pass. I
+  didn't run the Docker integration tests again; nothing in the API changed.
+
+  One limit of the R1 fix: Chrome lets a second Esc press close a dialog even
+  when the page blocks it. So someone pressing Esc repeatedly during a slow
+  delete could still close the dialog early. Real-browser checks of this dialog
+  are left for the S-06 browser tests.
+
+  Shall I commit this as one fix(list-and-details-pages): … commit with Refs 
+  #<n>?
+
+✻ Worked for 2m 59s · done 11:21 AM
