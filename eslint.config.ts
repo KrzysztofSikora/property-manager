@@ -90,5 +90,20 @@ export default defineConfig(
       'pg',
     ),
   },
+  // `pnpm seed` is a client of the running API (FR-16): it reaches the data only through HTTP.
+  {
+    files: ['apps/api/src/seed/**/*.ts'],
+    rules: restrictImports(
+      '**/graphql/**',
+      '**/services/**',
+      '**/repositories/**',
+      '**/adapters/**',
+      '**/domain/**',
+      '**/db/**',
+      'drizzle-orm*',
+      'pg',
+      'graphql-yoga',
+    ),
+  },
   prettier,
 );

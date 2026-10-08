@@ -73,6 +73,30 @@ The API runs on Node's built-in type stripping (no build step, no tsx). Local im
 `.ts`, and enums and parameter properties are not allowed; tsc and ESLint enforce this. All
 project commands are listed in [`CLAUDE.md`](CLAUDE.md#commands).
 
+## Demo data
+
+To fill an empty database with a few real properties, start the API (`docker compose up` or
+`pnpm dev`) and run:
+
+```sh
+pnpm seed
+```
+
+It sends the `createProperty` mutation to the running API once per address in
+[`apps/api/src/seed/addresses.ts`](apps/api/src/seed/addresses.ts), five US public landmarks
+(state capitols and the Space Needle), 1.5 s apart. The brief suggests Zillow, but its listings
+are mostly private homes and this repo is public, so the seed uses landmarks instead.
+
+- **Quota.** The first run creates 5 properties and uses 5 Weatherstack calls. A re-run skips
+  every address that already exists, which costs no call.
+- **Errors.** Any other error stops the run with exit code 1, naming the address and the error
+  code. After a 429 (`WEATHER_UNAVAILABLE`) wait a moment and run it again: it continues where it
+  stopped. After `WEATHER_LOCATION_MISMATCH` or `BAD_USER_INPUT` the same address fails on every
+  re-run, so change it in `addresses.ts`.
+- **Never automatic.** Nothing runs the seed for you: not Compose, the Dockerfiles, CI, the git
+  hooks, `pnpm dev` or the migrations. A guardrail test in `tooling/` keeps it that way.
+- **Another API.** Set `SEED_API_URL` (default `http://localhost:4000/graphql`).
+
 ## Tests
 
 | Command                                                                                     | What it runs                                                                                         | Needs                                                 |
@@ -107,6 +131,7 @@ Template: [`.env.example`](.env.example).
 | `DATABASE_URL`          | no       | `postgres://postgres:postgres@localhost:5432/property_manager` | PostgreSQL connection. Compose sets it to the `postgres` service.               |
 | `PORT`                  | no       | `4000`                                                         | API HTTP port.                                                                  |
 | `LOG_LEVEL`             | no       | `info`                                                         | pino log level: `fatal`, `error`, `warn`, `info`, `debug`, `trace` or `silent`. |
+| `SEED_API_URL`          | no       | `http://localhost:4000/graphql`                                | GraphQL endpoint `pnpm seed` sends to. Only the seed reads it.                  |
 
 An empty value counts as unset.
 
