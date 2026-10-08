@@ -4,7 +4,7 @@ Verdict: APPROVE
 Gates: typecheck ok, lint ok (format:check ok), tests 598 passed / 0 failed (`pnpm test`, incl.
 Testcontainers); `pnpm e2e` 2 passed
 
-Base: `a14f453` (parent of `f24607e`). Diff: `a14f453...HEAD`, working tree clean.
+Base: `a14f453` (parent of `7aa6e44`). Diff: `a14f453...HEAD`, working tree clean.
 
 ## Plan vs diff
 | File | Status | Note |
@@ -15,7 +15,7 @@ Base: `a14f453` (parent of `f24607e`). Diff: `a14f453...HEAD`, working tree clea
 | `apps/web/src/pages/ListPage.test.tsx` | done | Router probe; all six planned AC3a tests; AC6 whitespace test changed as planned; extra `/?city=+++` test from the mutation run. |
 | `e2e/property-journey.spec.ts` | done | Anchored `toHaveURL`, reload, input value and rows checked. |
 | `context/test-plan.md` | done | TR-26 `covered (S-07)` and the `list-search.ts` mutation-target row. |
-| `context/roadmap.md` | diverged | Plan: status `done` in the final commit with `Closes #9`. It went to `done` in `e17c049` ("close plan", `Closes #9`), before the mutation run and this review; two `Refs #9` commits follow. See R1. |
+| `context/roadmap.md` | diverged | Plan: status `done` in the final commit with `Closes #9`. It went to `done` in `4c9fe33` ("close plan", `Closes #9`), before the mutation run and this review; two `Refs #9` commits follow. See R1. |
 | `context/changes/list-filters-in-url/{plan,plan-review,mutation}.md` | unplanned | Workflow artifacts of `/plan`, `/plan-review`, `/mutation`. |
 | `context/lessons.md` | unplanned | New lesson from the mutation run (`/mutation`). |
 | `README.md`, `ai-sessions/69–73-*.txt` | unplanned | Session exports and their README row (deliverable process). Footnote ³ "review has not run yet" goes stale with this review (R1). |
@@ -34,7 +34,7 @@ Base: `a14f453` (parent of `f24607e`). Diff: `a14f453...HEAD`, working tree clea
 
 ### R1: Item closed (`Closes #9`, roadmap `done`) before mutation and review
 - Severity: minor
-- Where: commit `e17c049` (`context/roadmap.md:20`), followed by `fc114d9` and `29c7a6b`
+- Where: commit `4c9fe33` (`context/roadmap.md:20`), followed by `3642791` and `f24a332`
   (`Refs #9`); `README.md:205` row and `:209` footnote ³
 - Problem: CLAUDE.md says the last commit of a roadmap item uses `Closes #<n>`, and the plan
   (Phase 2) says the `done` flip happens "in the final commit (`Closes #9`), as in earlier
