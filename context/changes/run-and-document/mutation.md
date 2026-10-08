@@ -3,7 +3,7 @@
 Targets: none · Tests: none run
 Score: n/a (Stryker not run)
 
-S-06 (`886a724...ce03f58`) touches no module in `context/test-plan.md` *Mutation targets*, and
+S-06 (`886a724...529a110`) touches no module in `context/test-plan.md` *Mutation targets*, and
 `plan.md` *Scope* puts a `/mutation` step out of scope for that reason. The changed files and
 why none is a target:
 

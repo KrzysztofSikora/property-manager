@@ -5,7 +5,7 @@ Gates: typecheck ok, lint ok, format:check ok, tests 573 passed / 0 failed (39 f
 Testcontainers), `pnpm e2e` 2 passed / 0 failed (stack torn down, no `property-manager-e2e`
 containers left)
 
-Base: `886a724` (parent of `f86cc80`), head `ce03f58` plus the uncommitted plan tick,
+Base: `886a724` (parent of `c50456a`), head `529a110` plus the uncommitted plan tick,
 `mutation.md` and the S-06 session exports at the repo root.
 
 ## Plan vs diff
