@@ -16,5 +16,43 @@ services:
       # postgres 18 keeps PGDATA in a versioned subdirectory of /var/lib/postgresql.
       - postgres-data:/var/lib/postgresql
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/property_manager
+      # Empty counts as unset: the key fails fast naming the variable (FR-14 AC3), the others
+      # take their defaults from config/env.ts.
+      WEATHERSTACK_KEY: ${WEATHERSTACK_KEY:-}
+      WEATHERSTACK_BASE_URL: ${WEATHERSTACK_BASE_URL:-}
+      LOG_LEVEL: ${LOG_LEVEL:-}
+    ports:
+      # GraphiQL for reviewers.
+      - '4000:4000'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4000/health']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '5173:80'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   postgres-data:
