@@ -1,5 +1,4 @@
 import { Link, Outlet } from 'react-router';
-import { ApiStatus } from '../components/ApiStatus';
 
 export function Layout() {
   return (
@@ -11,7 +10,6 @@ export function Layout() {
           </Link>
           <Link to="/properties/new">New property</Link>
         </nav>
-        <ApiStatus />
       </header>
       <main>
         <Outlet />

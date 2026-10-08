@@ -15,16 +15,16 @@ import * as types from './graphql.ts';
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
-    "\n  query Health {\n    health\n  }\n": typeof types.HealthDocument,
+    "\n  query Properties($filter: PropertyFilter, $sort: PropertySort) {\n    properties(filter: $filter, sort: $sort) {\n      items {\n        id\n        street\n        city\n        state\n        zipCode\n        createdAt\n      }\n      totalCount\n    }\n  }\n": typeof types.PropertiesDocument,
 };
 const documents: Documents = {
-    "\n  query Health {\n    health\n  }\n": types.HealthDocument,
+    "\n  query Properties($filter: PropertyFilter, $sort: PropertySort) {\n    properties(filter: $filter, sort: $sort) {\n      items {\n        id\n        street\n        city\n        state\n        zipCode\n        createdAt\n      }\n      totalCount\n    }\n  }\n": types.PropertiesDocument,
 };
 
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query Health {\n    health\n  }\n"): typeof import('./graphql.ts').HealthDocument;
+export function graphql(source: "\n  query Properties($filter: PropertyFilter, $sort: PropertySort) {\n    properties(filter: $filter, sort: $sort) {\n      items {\n        id\n        street\n        city\n        state\n        zipCode\n        createdAt\n      }\n      totalCount\n    }\n  }\n"): typeof import('./graphql.ts').PropertiesDocument;
 
 
 export function graphql(source: string) {

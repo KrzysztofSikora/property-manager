@@ -9,5 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/test/setup.ts'],
+    // Dates render in the viewer's time zone. Pinned so assertions read the same everywhere.
+    env: { TZ: 'UTC' },
   },
 });

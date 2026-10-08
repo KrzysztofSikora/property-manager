@@ -14,10 +14,4 @@ describe('AppRoutes', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
   });
-
-  it('renders the API status line in the layout', async () => {
-    renderWithProviders(<AppRoutes />);
-
-    expect(await screen.findByText('API: ok')).toBeInTheDocument();
-  });
 });

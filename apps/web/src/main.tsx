@@ -10,7 +10,8 @@ if (!root) {
   throw new Error('index.html has no #root element');
 }
 
-const queryClient = new QueryClient();
+// No automatic retries: the error states show at once, and their Retry button is the retry.
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 createRoot(root).render(
   <StrictMode>

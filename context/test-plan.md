@@ -198,6 +198,14 @@ For pure logic: validation, normalization, mapping, error classification, UI com
    `api.query('Properties', ...)`, `api.mutation('CreateProperty', ...)`). Query by
    role or label, act with `userEvent`, assert what is on screen and which requests MSW
    recorded.
+   The default handlers return no properties (`Properties` → empty page, `Property` → `null`).
+   Every operation a page sends needs a handler (`onUnhandledFrame: 'error'`). Override with
+   `server.use(...)` and push the request `variables` to an array inside the handler to assert
+   them. Build data with `propertyFixture({...})` / `listItem({...})` from
+   `apps/web/src/test/fixtures.ts`. The web project runs with `TZ=UTC`
+   (`apps/web/vitest.config.ts`), so formatted dates are stable. `setup.ts` polyfills
+   `<dialog>` `showModal()` / `close()` (jsdom has neither; `close()` fires `close`); check
+   modality, focus and Esc in a real browser.
 8. Run `pnpm test:unit`. Make the test fail once (break the code or the expectation) to see that
    it can fail, then restore.
 
