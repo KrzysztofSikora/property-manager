@@ -1,0 +1,1110 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /implement demo-seed-data                                                     
+
+  Read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+● Bash(sed -i 's/| S-10 | #13 | demo-seed-data | slice | FR-16 AC1 (Could) |
+      S-06 | S | planned |/| S-10 | #13 | demo-seed-data | slice | FR-16 AC1
+      (Could) | S-06 | S…)
+  ⎿  23:| S-10 | #13 | demo-seed-data | slice | FR-16 AC1 (Could) | S-06 |
+     S | in-progress |
+     236:  real US addresses (public landmarks, see the S-10 plan) through
+     … +274 lines (ctrl+o to expand)
+  ⎿  Updated context/roadmap.md (+1 -1)
+      20  | S-07 | #9 | list-filters-in-url | slice | FR-11 AC3a (Should)
+           | S-04 | S | done |
+      21  | S-08 | #10 | list-pagination | slice | FR-11 AC4 (Should) | S
+          -07 | S | done |
+      22  | S-09 | #11, #12 | details-extra-weather | slice | FR-12 AC6 (
+          Should), typed non-key `CurrentWeather` fields | S-04 | S | don
+          e |
+      23 -| S-10 | #13 | demo-seed-data | slice | FR-16 AC1 (Could) | S-0
+         -6 | S | planned |                                              
+      23 +| S-10 | #13 | demo-seed-data | slice | FR-16 AC1 (Could) | S-0
+         +6 | S | in-progress |                                          
+      24  
+      25  Order follows risk: tooling and schema first, then the Weathers
+          tack integration (the only
+      26  third-party unknown, R-01 – R-05) and the concurrency-sensitive
+           duplicate rule, then the
+
+  Listed 1 directory (ctrl+o to expand)
+
+● I'll review the existing code before writing the seed script, which will use
+  createProperty to generate landmarks for phase 1, followed by typecheck, lint,
+  format, and test checks. I've marked the roadmap as in-progress, noting that
+  plan-S-10.txt and plan-review-S-10.txt are already dirty but I'll leave them
+  untouched.
+
+  Listed 1 directory, ran 2 shell commands (ctrl+o to expand)
+
+● Starting with config: tests first, then loadSeedConfig.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/config/env.test.ts'…)
+  ⎿      139|   it('FR-16: names SEED_API_URL without echoing an invalid va
+     lue', () …
+         140|     const error = errorOf({ SEED_API_URL: 'not-a-url', DATABA
+     … +15 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/config/env.test.ts (+29 -1)
+      1  import { describe, expect, it } from 'vitest';
+      2 -import { ConfigError, loadConfig, loadDatabaseConfig } from './e
+        -nv.ts';                                                         
+      2 +import { ConfigError, loadConfig, loadDatabaseConfig, loadSeedCo
+        +nfig } from './env.ts';                                         
+      3  
+      4  const KEY = 'TEST_WEATHERSTACK_KEY';
+      5  
+     ...
+      84      expect(message).not.toContain(KEY);
+      85    });
+      86  
+      87 +  it('ignores SEED_API_URL, even an invalid one', () => {      
+      88 +    expect(loadConfig({ WEATHERSTACK_KEY: KEY, SEED_API_URL: 'n
+         +ot a url' })).not.toHaveProperty(                              
+      89 +      'apiUrl',                                                
+      90 +    );                                                         
+      91 +  });                                                          
+      92 +                                                               
+      93    it('lists every bad variable, one per line', () => {
+      94      expect(errorOf({ PORT: 'abc' }).message.split('\n')).toEqua
+          l([
+      95        'Missing required environment variable: WEATHERSTACK_KEY'
+          ,
+     ...
+      119      expect(error.message).toBe('Invalid environment variable: 
+           DATABASE_URL (expected a URL)');
+      120    });
+      121  });
+      122 +                                                              
+      123 +describe('loadSeedConfig', () => {                            
+      124 +  it.each([                                                   
+      125 +    ['unset', undefined],                                     
+      126 +    ['empty', ''],                                            
+      127 +  ])('FR-16: uses the local API when SEED_API_URL is %s', (_la
+          +bel, value) => {                                              
+      128 +    expect(loadSeedConfig({ SEED_API_URL: value })).toEqual({ 
+      129 +      apiUrl: 'http://localhost:4000/graphql',                
+      130 +    });                                                       
+      131 +  });                                                         
+      132 +                                                              
+      133 +  it('FR-16: reads an explicit SEED_API_URL without needing WE
+          +ATHERSTACK_KEY', () => {                                      
+      134 +    expect(loadSeedConfig({ SEED_API_URL: 'http://api.example:
+          +8080/graphql' })).toEqual({                                   
+      135 +      apiUrl: 'http://api.example:8080/graphql',              
+      136 +    });                                                       
+      137 +  });                                                         
+      138 +                                                              
+      139 +  it('FR-16: names SEED_API_URL without echoing an invalid val
+          +ue', () => {                                                  
+      140 +    const error = errorOf({ SEED_API_URL: 'not-a-url', DATABAS
+          +E_URL: 'nope' }, loadSeedConfig);                             
+     … 3 more lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/config/env.ts'…)
+  ⎿   Test Files  1 passed (1)
+           Tests  24 passed (24)
+        Start at  17:17:40
+     … +2 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/config/env.ts (+12 -0)
+       9    DATABASE_URL: 'expected a URL',
+      10    PORT: 'expected an integer from 1 to 65535',
+      11    LOG_LEVEL: `expected one of ${LOG_LEVELS.join(', ')}`,
+      12 +  SEED_API_URL: 'expected a URL',                              
+      13  } as const;
+      14  
+      15  type EnvName = keyof typeof REASONS;
+     ...
+      42    .object({ DATABASE_URL: databaseUrl })
+      43    .transform((env) => ({ databaseUrl: env.DATABASE_URL }));
+      44  
+      45 +// For `pnpm seed`, a client of a running API: it needs neither
+         + the key nor the database.                                     
+      46 +const seedEnvSchema = z                                        
+      47 +  .object({ SEED_API_URL: z.url().default('http://localhost:400
+         +0/graphql') })                                                 
+      48 +  .transform((env) => ({ apiUrl: env.SEED_API_URL }));         
+      49 +                                                               
+      50  export type Config = Readonly<z.output<typeof envSchema>>;
+      51  
+      52  export type DatabaseConfig = Readonly<z.output<typeof databaseE
+          nvSchema>>;
+      53  
+      54 +export type SeedConfig = Readonly<z.output<typeof seedEnvSchema
+         +>>;                                                            
+      55 +                                                               
+      56  export type LogLevel = Config['logLevel'];
+      57  
+      58  export class ConfigError extends Error {
+     ...
+       94  export function loadDatabaseConfig(env: Record<string, string 
+           | undefined>): DatabaseConfig {
+       95    return parseEnv(databaseEnvSchema, env);
+       96  }
+       97 +                                                              
+       98 +export function loadSeedConfig(env: Record<string, string | un
+          +defined>): SeedConfig {                                       
+       99 +  return parseEnv(seedEnvSchema, env);                        
+      100 +}                                                             
+
+● Now the addresses and their test.
+
+● Bash(mkdir -p apps/api/src/seed && cat > apps/api/src/seed/addresses.ts
+      <<'EOF'
+      // Public landmarks, not private homes (B-N7): real, stable addresses in a
+      public rep…)
+  ⎿  | Field | Type / format | Rules | Source |
+     |-------|---------------|-------|--------|
+     | `id` | opaque string, generated | Unique, immutable | backend (C-04)
+     … +18 lines (ctrl+o to expand)
+  ⎿  Created apps/api/src/seed/addresses.ts (+17 -0)
+       1 +// Public landmarks, not private homes (B-N7): real, stable add
+         +resses in a public repo. Each city                             
+       2 +// is far from a state border, so Weatherstack's region matches
+         + the state (R-03). Every entry                                 
+       3 +// costs one Weatherstack call the first time `pnpm seed` creat
+         +es it.                                                         
+       4 +export type SeedAddress = Readonly<{ street: string; city: stri
+         +ng; state: string; zipCode: string }>;                         
+       5 +                                                               
+       6 +export const SEED_ADDRESSES: readonly SeedAddress[] = [        
+       7 +  // Colorado State Capitol                                    
+       8 +  { street: '200 E Colfax Ave', city: 'Denver', state: 'CO', zi
+         +pCode: '80203' },                                              
+       9 +  // Texas State Capitol                                       
+      10 +  { street: '1100 Congress Ave', city: 'Austin', state: 'TX', z
+         +ipCode: '78701' },                                             
+      11 +  // Space Needle                                              
+      12 +  { street: '400 Broad St', city: 'Seattle', state: 'WA', zipCo
+         +de: '98109' },                                                 
+      13 +  // Georgia State Capitol                                     
+      14 +  { street: '206 Washington St SW', city: 'Atlanta', state: 'GA
+         +', zipCode: '30334' },                                         
+      15 +  // Arizona Capitol Museum                                    
+      16 +  { street: '1700 W Washington St', city: 'Phoenix', state: 'AZ
+         +', zipCode: '85007' },                                         
+      17 +];                                                             
+  ⎿  Created apps/api/src/seed/addresses.test.ts (+26 -0)
+       1 +import { addressSchema } from '@property-manager/shared';      
+       2 +import { describe, expect, it } from 'vitest';                 
+       3 +import { SEED_ADDRESSES } from './addresses.ts';               
+       4 +                                                               
+       5 +describe('SEED_ADDRESSES', () => {                             
+       6 +  it('FR-16: holds a few addresses', () => {                   
+       7 +    expect(SEED_ADDRESSES.length).toBeGreaterThanOrEqual(3);   
+       8 +    expect(SEED_ADDRESSES.length).toBeLessThanOrEqual(6);      
+       9 +  });                                                          
+      10 +                                                               
+      11 +  it.each(SEED_ADDRESSES.map((address) => [address.street, addr
+         +ess]))(                                                        
+      12 +    'FR-16: %s passes the shared address schema unchanged',    
+      13 +    (_street, address) => {                                    
+      14 +      expect(addressSchema.parse(address)).toEqual(address);   
+      15 +    },                                                         
+      16 +  );                                                           
+      17 +                                                               
+      18 +  it('FR-16: no two entries share the duplicate key (D-07), so 
+         +none is skipped', () => {                                      
+      19 +    const keys = SEED_ADDRESSES.map((address) => {             
+      20 +      const { street, city, state, zipCode } = addressSchema.pa
+         +rse(address);                                                  
+      21 +      return [street.toLowerCase(), city.toLowerCase(), state, 
+         +zipCode].join('|');                                            
+      22 +    });                                                        
+      23 +                                                               
+      24 +    expect(new Set(keys).size).toBe(SEED_ADDRESSES.length);    
+      25 +  });                                                          
+      26 +});                                                            
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Now the seed unit tests.
+
+● Write(apps/api/src/seed/seed.test.ts)
+  ⎿  Wrote 248 lines to apps/api/src/seed/seed.test.ts
+       1 import { ERROR_CODES } from '@property-manager/shared';
+       2 import { http, HttpResponse } from 'msw/http';
+       3 import { describe, expect, it } from 'vitest';
+       4 import { server } from '../../test/setup/msw.ts';
+       5 import type { SeedAddress } from './addresses.ts';
+       6 import { runSeed } from './seed.ts';
+       7 
+       8 const API_URL = 'http://seed.test/graphql';
+       9 
+      10 const ADDRESSES: readonly SeedAddress[] = [
+     … +281 lines (ctrl+o to expand)
+  ⎿  PostToolUse:Write hook returned blocking error
+  ⎿  [sh "$CLAUDE_PROJECT_DIR/tooling/claude-format-hook.sh"]: ESLint 
+     (apps/api/src/seed/seed.test.ts):
+
+     /home/krzysztof/projects/taskTreeCover/property-manager/apps/api/src/seed/s
+     eed.test.ts
+        20:38  error  Unsafe assignment of an `any` value                       
+                                   @typescript-eslint/no-unsafe-assignment
+        58:9   error  Unsafe assignment of an error typed value                 
+                                   @typescript-eslint/no-unsafe-assignment
+        58:22  error  Unsafe call of a type that could not be resolved          
+                                   @typescript-eslint/no-unsafe-call
+        61:33  error  Unsafe argument of type `any` assigned to a parameter of 
+     type `string | Request | URL`   @typescript-eslint/no-unsafe-argument
+        61:38  error  Unsafe argument of type `any` assigned to a parameter of 
+     type `RequestInit | undefined`  @typescript-eslint/no-unsafe-argument
+        63:19  error  Unsafe argument of type `any` assigned to a parameter of 
+     type `number`                   @typescript-eslint/no-unsafe-argument
+        66:35  error  Unsafe argument of type `any` assigned to a parameter of 
+     type `string`                   @typescript-eslint/no-unsafe-argument
+        67:35  error  Unsafe argument of type `any` assigned to a parameter of 
+     type `string`                   @typescript-eslint/no-unsafe-argument
+        69:12  error  Unsafe assignment of an error typed value                 
+                                   @typescript-eslint/no-unsafe-assignment
+       273:11  error  Unsafe assignment of an error typed value                 
+                                   @typescript-eslint/no-unsafe-assignment
+       273:24  error  Unsafe call of a type that could not be resolved          
+                                   @typescript-eslint/no-unsafe-call
+       278:37  error  Unsafe argument of type `any` assigned to a parameter of 
+     type `string`                   @typescript-eslint/no-unsafe-argument
+
+     ✖ 12 problems (12 errors, 0 warnings)
+
+
+● Expected (no seed.ts yet), apart from the Object(...) spreads, which I'll
+  replace with a narrowing helper. Now the implementation.
+
+● Write(apps/api/src/seed/seed.ts)
+  ⎿  Wrote 127 lines to apps/api/src/seed/seed.ts
+       1 import { z } from 'zod';
+       2 import type { SeedAddress } from './addresses.ts';
+       4 // README: two Weatherstack calls within about a second can retu
+         rn HTTP 429.
+       5 const SPACING_MS = 1500;
+       7 const CREATE_PROPERTY = /* GraphQL */ `
+       8   mutation SeedProperty($street: String!, $city: String!, $state
+         : String!, $zipCode: String!) {
+         zipCode: $zipCode) {
+      10       id
+     … +139 lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/seed/seed.test.ts'…)
+  ⎿  ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+      FAIL   api-unit  src/seed/seed.test.ts > runSeed > sends JSON
+     … +26 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/seed/seed.test.ts (+9 -4)
+      16  
+      17  type Sent = { query: string; variables: unknown };
+      18  
+      19 +function isRecord(value: unknown): value is Record<string, unkn
+         +own> {                                                         
+      20 +  return typeof value === 'object' && value !== null && !Array.
+         +isArray(value);                                                
+      21 +}                                                              
+      22 +                                                               
+      23  function created(variables: unknown): Response {
+      20 -  return HttpResponse.json({ data: { createProperty: { id: 'id-
+         -1', ...Object(variables) } } });                               
+      24 +  const address = isRecord(variables) ? variables : {};        
+      25 +  return HttpResponse.json({ data: { createProperty: { id: 'id-
+         +1', ...address } } });                                         
+      26  }
+      27  
+      28  function graphQLError(message: string, extensions?: Record<stri
+          ng, unknown>): object {
+     ...
+      38    server.use(
+      39      http.post(API_URL, async ({ request }) => {
+      40        const body: unknown = await request.json();
+      36 -      const { query, variables } = Object(body) as { query: unk
+         -nown; variables: unknown };                                    
+      37 -      sent.push({ query: String(query), variables });          
+      38 -      return respond(sent.length - 1, variables);              
+      41 +      if (!isRecord(body)) throw new Error('the seed sent a bod
+         +y that is not a JSON object');                                 
+      42 +      sent.push({ query: String(body.query), variables: body.va
+         +riables });                                                    
+      43 +      return respond(sent.length - 1, body.variables);         
+      44      }),
+      45    );
+      46    return sent;
+  ⎿  Updated apps/api/src/seed/addresses.ts (+6 -1)
+       1  // Public landmarks, not private homes (B-N7): real, stable add
+          resses in a public repo. Each city
+       2  // is far from a state border, so Weatherstack's region matches
+           the state (R-03). Every entry
+       3  // costs one Weatherstack call the first time `pnpm seed` creat
+          es it.
+       4 -export type SeedAddress = Readonly<{ street: string; city: stri
+         -ng; state: string; zipCode: string }>;                         
+       4 +export type SeedAddress = Readonly<{                           
+       5 +  street: string;                                              
+       6 +  city: string;                                                
+       7 +  state: string;                                               
+       8 +  zipCode: string;                                             
+       9 +}>;                                                            
+      10  
+      11  export const SEED_ADDRESSES: readonly SeedAddress[] = [
+      12    // Colorado State Capitol
+
+● The content-type test answered with an incomplete property; I'll record the
+  header in the shared api() helper instead.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/src/seed/seed.test.ts'…)
+  ⎿   Test Files  2 passed (2)
+           Tests  29 passed (29)
+        Start at  17:19:10
+     … +2 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/src/seed/seed.test.ts (+7 -16)
+      14  ];
+      15  const SECOND = '2 Second St, Austin, TX 78701';
+      16  
+      17 -type Sent = { query: string; variables: unknown };             
+      17 +type Sent = { contentType: string | null; query: string; variab
+         +les: unknown };                                                
+      18  
+      19  function isRecord(value: unknown): value is Record<string, unkn
+          own> {
+      20    return typeof value === 'object' && value !== null && !Array.
+          isArray(value);
+     ...
+      39      http.post(API_URL, async ({ request }) => {
+      40        const body: unknown = await request.json();
+      41        if (!isRecord(body)) throw new Error('the seed sent a bod
+          y that is not a JSON object');
+      42 -      sent.push({ query: String(body.query), variables: body.va
+         -riables });                                                    
+      42 +      sent.push({                                              
+      43 +        contentType: request.headers.get('content-type'),      
+      44 +        query: String(body.query),                             
+      45 +        variables: body.variables,                             
+      46 +      });                                                      
+      47        return respond(sent.length - 1, body.variables);
+      48      }),
+      49    );
+     ...
+      87      expect(code).toBe(0);
+      88      expect(sent.map((request) => request.variables)).toEqual(AD
+          DRESSES);
+      89      for (const request of sent) {
+      90 +      expect(request.contentType).toBe('application/json');    
+      91        expect(request.query).toMatch(/^\s*mutation\b/);
+      92        expect(request.query).toMatch(
+      93          /createProperty\(street: \$street, city: \$city, state:
+           \$state, zipCode: \$zipCode\)/,
+     ...
+      103      expect(stderr).toEqual([]);
+      104    });
+      105  
+      101 -  it('sends JSON', async () => {                              
+      102 -    const types: (string | null)[] = [];                      
+      103 -    server.use(                                               
+      104 -      http.post(API_URL, ({ request }) => {                   
+      105 -        types.push(request.headers.get('content-type'));      
+      106 -        return created({});                                   
+      107 -      }),                                                     
+      108 -    );                                                        
+      109 -                                                              
+      110 -    await seed();                                             
+     … 7 more lines (ctrl+o to expand)
+
+● Now the CLI and its test.
+
+● Bash(cat > apps/api/src/seed/seed-cli.ts <<'EOF'
+      import { ConfigError, loadSeedConfig } from '../config/env.ts';…)
+  ⎿        Tests  30 passed (30)
+        Start at  17:19:23
+        Duration  263ms (tests 27%, setup 26%, import 23%, transform 22%, w
+     orker 2%)
+  ⎿  Created apps/api/src/seed/seed-cli.ts (+44 -0)
+       1 +import { ConfigError, loadSeedConfig } from '../config/env.ts';
+       2 +import { SEED_ADDRESSES } from './addresses.ts';               
+       3 +import { runSeed } from './seed.ts';                           
+       4 +                                                               
+       5 +export type SeedIo = { stdout: (line: string) => void; stderr: 
+         +(line: string) => void };                                      
+       6 +                                                               
+       7 +// `pnpm seed`: run by hand only, never by Compose, CI, hooks o
+         +r scripts (FR-16).                                             
+       8 +export async function runSeedCli(                              
+       9 +  env: Record<string, string | undefined>,                     
+      10 +  io: SeedIo,                                                  
+      11 +): Promise<0 | 1> {                                            
+      12 +  let apiUrl: string;                                          
+      13 +  try {                                                        
+      14 +    ({ apiUrl } = loadSeedConfig(env));                        
+      15 +  } catch (error) {                                            
+      16 +    if (error instanceof ConfigError) {                        
+      17 +      io.stderr(error.message);                                
+      18 +      return 1;                                                
+      19 +    }                                                          
+      20 +    throw error;                                               
+      21 +  }                                                            
+      22 +                                                               
+      23 +  return runSeed({                                             
+      24 +    apiUrl,                                                    
+      25 +    addresses: SEED_ADDRESSES,                                 
+      26 +    fetch: (url, init) => fetch(url, init),                    
+      27 +    sleep: (ms) =>                                             
+      28 +      new Promise((resolve) => {                               
+      29 +        setTimeout(resolve, ms);                               
+      30 +      }),                                                      
+      31 +    ...io,                                                     
+      32 +  });                                                          
+      33 +}                                                              
+      34 +                                                               
+      35 +if (import.meta.main) {                                        
+      36 +  process.exitCode = await runSeedCli(process.env, {           
+      37 +    stdout: (line) => {                                        
+      38 +      console.log(line);                                       
+      39 +    },                                                         
+      40 +    stderr: (line) => {                                        
+     … 4 more lines (ctrl+o to expand)
+  ⎿  Created apps/api/src/seed/seed-cli.test.ts (+28 -0)
+       1 +import { http, HttpResponse } from 'msw/http';                 
+       2 +import { describe, expect, it } from 'vitest';                 
+       3 +import { server } from '../../test/setup/msw.ts';              
+       4 +import { runSeedCli } from './seed-cli.ts';                    
+       5 +                                                               
+       6 +describe('runSeedCli', () => {                                 
+       7 +  it('returns 1 with the config message and sends nothing when 
+         +SEED_API_URL is invalid', async () => {                        
+       8 +    const requests: string[] = [];                             
+       9 +    server.use(                                                
+      10 +      http.all('*', ({ request }) => {                         
+      11 +        requests.push(request.url);                            
+      12 +        return HttpResponse.error();                           
+      13 +      }),                                                      
+      14 +    );                                                         
+      15 +    const stdout: string[] = [];                               
+      16 +    const stderr: string[] = [];                               
+      17 +                                                               
+      18 +    const code = await runSeedCli(                             
+      19 +      { SEED_API_URL: 'not-a-url' },                           
+      20 +      { stdout: (line) => stdout.push(line), stderr: (line) => 
+         +stderr.push(line) },                                           
+      21 +    );                                                         
+      22 +                                                               
+      23 +    expect(code).toBe(1);                                      
+      24 +    expect(stderr).toEqual(['Invalid environment variable: SEED
+         +_API_URL (expected a URL)']);                                  
+      25 +    expect(stdout).toEqual([]);                                
+      26 +    expect(requests).toEqual([]);                              
+      27 +  });                                                          
+      28 +});                                                            
+
+● Now the TestApp.fetch helper and the Testcontainers test.
+
+● Bash(python3 - <<'EOF'
+      p='apps/api/test/helpers/app.ts'…)
+  ⎿  2:  await resetDb(app.db);
+     5:afterEach(async () => {
+     7:  await Promise.all(apps.splice(0).map((app) => app.close()));
+     … +42 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/helpers/app.ts (+5 -1)
+      18    db: Database;
+      19    weather: W;
+      20    execute: (document: string, variables?: Record<string, unknow
+          n>) => Promise<ExecuteResult>;
+      21 +  // The app's own `fetch`, for code that sends raw HTTP reques
+         +ts (e.g. the seed).                                            
+      22 +  fetch: (url: string, init: RequestInit) => Promise<Response>;
+      23    logs: () => LogLine[];
+      24    close: () => Promise<void>;
+      25  };
+     ...
+      84      return body;
+      85    }
+      86  
+      85 -  return { db, weather: fake ?? weatherFor(logger), execute, lo
+         -gs: lines, close };                                            
+      87 +  const fetch = async (url: string, init: RequestInit): Promise
+         +<Response> => yoga.fetch(url, init);                           
+      88 +                                                               
+      89 +  return { db, weather: fake ?? weatherFor(logger), execute, fe
+         +tch, logs: lines, close };                                     
+      90  }
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(apps/api/test/integration/seed.int.test.ts)  ⎿  Wrote 69 lines to apps/api/test/integration/seed.int.test.ts
+      1 import { afterEach, beforeEach, describe, expect, it } from 'vite
+        st';
+      2 import type { SeedAddress } from '../../src/seed/addresses.ts';
+      3 import { runSeed } from '../../src/seed/seed.ts';
+      4 import type { FakeWeatherClient } from '../fakes/weather.ts';
+      5 import { validInput } from '../fixtures/property.ts';
+      6 import { createTestApp } from '../helpers/app.ts';
+      7 import type { TestApp } from '../helpers/app.ts';
+      8 import { resetDb } from '../helpers/db.ts';
+      9 import { PROPERTIES } from '../operations.ts';
+     … +68 lines (ctrl+o to expand)
+
+● Bash(grep -n "enum PropertySort" -A6 apps/api/schema.graphql; sed -i
+      "/expect(validInput()).toEqual(ADDRESSES\[0\]);/,+1d; /import { validInput
+      } from/d" apps/api/te…)
+  ⎿  90:enum PropertySort {
+     91-  "Newest first."
+     92-  CREATED_AT_DESC
+     … +8 lines (ctrl+o to expand)
+  ⎿  Updated apps/api/test/integration/seed.int.test.ts (+0 -3)
+      2  import type { SeedAddress } from '../../src/seed/addresses.ts';
+      3  import { runSeed } from '../../src/seed/seed.ts';
+      4  import type { FakeWeatherClient } from '../fakes/weather.ts';
+      5 -import { validInput } from '../fixtures/property.ts';           
+      5  import { createTestApp } from '../helpers/app.ts';
+      6  import type { TestApp } from '../helpers/app.ts';
+      7  import { resetDb } from '../helpers/db.ts';
+     ...
+      49  
+      50  describe('FR-16 AC1: pnpm seed through the real app', () => {
+      51    it('creates the properties through createProperty, and a re-r
+          un skips them for free', async () => {
+      53 -    expect(validInput()).toEqual(ADDRESSES[0]);                
+      54 -                                                               
+      52      const first = await seed();
+      53  
+      54      expect(first).toEqual({ code: 0, sleeps: [1500], stderr: []
+           });
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now the "never automatic" guardrail and the ESLint block.
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='tooling/guardrails.test.ts'…)
+  ⎿  diff --git a/apps/api/package.json b/apps/api/package.json
+     index 4a47bf3..2399715 100644
+     --- a/apps/api/package.json
+     … +30 lines (ctrl+o to expand)
+  ⎿  Updated tooling/guardrails.test.ts (+108 -0)
+      1  import { execFile } from 'node:child_process';
+      2 +import { readdir, readFile } from 'node:fs/promises';           
+      3  import { join } from 'node:path';
+      4  import { promisify } from 'node:util';
+      5  import { ESLint } from 'eslint';
+     ...
+      30      ['adapter → service', 'apps/api/src/adapters/x.ts', '../ser
+          vices/x.ts'],
+      31      ['relative .js import', 'apps/api/src/app.ts', './x.js'],
+      32      ['relative .js import in a layer', 'apps/api/src/services/x
+          .ts', './y.js'],
+      33 +    ['seed → service', 'apps/api/src/seed/seed.ts', '../service
+         +s/x.ts'],                                                      
+      34 +    ['seed → repository', 'apps/api/src/seed/seed.ts', '../repo
+         +sitories/x.ts'],                                               
+      35 +    ['seed → db', 'apps/api/src/seed/seed.ts', '../db/client.ts
+         +'],                                                            
+      36 +    ['seed → graphql-yoga', 'apps/api/src/seed/seed.ts', 'graph
+         +ql-yoga'],                                                     
+      37    ])('NFR-06 rejects %s', async (_name, filePath, specifier) =>
+           {
+      38      const code = `import { a } from '${specifier}';\nexport con
+          st b = a;\n`;
+      39  
+     ...
+      46      expect(await ruleIds(code, 'apps/api/src/graphql/resolvers.
+          ts')).toEqual([]);
+      47    });
+      48  
+      49 +  it('NFR-06 control: the seed may import the env config', asyn
+         +c () => {                                                      
+      50 +    const code = "import { a } from '../config/env.ts';\nexport
+         + const b = a;\n";                                              
+      51 +                                                               
+      52 +    expect(await ruleIds(code, 'apps/api/src/seed/seed-cli.ts')
+         +).toEqual([]);                                                 
+      53 +  });                                                          
+      54 +                                                               
+      55    it('NFR-06 control: a repository may import the db schema', a
+          sync () => {
+      56      const code = "import { a } from '../db/schema.ts';\nexport 
+          const b = a;\n";
+      57  
+     ...
+       87      expect(output).toMatch(/type-import\.ts\(\d+,\d+\): error 
+           TS1484/);
+       88    });
+       89  });
+       90 +                                                              
+       91 +// The whole word, so `seeded` or `seedProperty` do not trip i
+          +t, while `pnpm seed`,                                         
+       92 +// `pnpm --filter … seed` and `npm run seed` do. A false hit f
+          +ails loudly: reword the file.                                 
+       93 +const SEED_WORD = /\bseed\b/i;                                
+       94 +                                                              
+       95 +const AUTOMATIC_FILES = [                                     
+       96 +  'docker-compose.yml',                                       
+       97 +  'docker-compose.e2e.yml',                                   
+       98 +  'apps/api/Dockerfile',                                      
+       99 +  'apps/web/Dockerfile',                                      
+     … 87 more lines (ctrl+o to expand)
+  ⎿  Updated eslint.config.ts (+15 -0)
+       90        'pg',
+       91      ),
+       92    },
+       93 +  // `pnpm seed` is a client of the running API (FR-16): it re
+          +aches the data only through HTTP.                             
+       94 +  {                                                           
+       95 +    files: ['apps/api/src/seed/**/*.ts'],                     
+       96 +    rules: restrictImports(                                   
+       97 +      '**/graphql/**',                                        
+       98 +      '**/services/**',                                       
+       99 +      '**/repositories/**',                                   
+      100 +      '**/adapters/**',                                       
+      101 +      '**/domain/**',                                         
+      102 +      '**/db/**',                                             
+      103 +      'drizzle-orm*',                                         
+      104 +      'pg',                                                   
+      105 +      'graphql-yoga',                                         
+      106 +    ),                                                        
+      107 +  },                                                          
+      108    prettier,
+      109  );
+  ⎿  Updated package.json (+1 -0)
+      19      "codegen": "graphql-codegen",
+      20      "db:generate": "pnpm --filter @property-manager/api db:gene
+          rate",
+      21      "db:migrate": "pnpm --filter @property-manager/api db:migra
+          te",
+      22 +    "seed": "pnpm --filter @property-manager/api seed",        
+      23      "test:mutation:tooling": "stryker run tooling/stryker.confi
+          g.json"
+      24    },
+      25    "devDependencies": {
+  ⎿  Updated apps/api/package.json (+2 -1)
+      12      "test:mutation": "stryker run",
+      13      "test:mutation:properties-args": "stryker run stryker.prope
+          rties-args.config.mjs --concurrency 4",
+      14      "db:generate": "drizzle-kit generate",
+      15 -    "db:migrate": "node --env-file-if-exists=../../.env src/db/
+         -migrate-cli.ts"                                                
+      15 +    "db:migrate": "node --env-file-if-exists=../../.env src/db/
+         +migrate-cli.ts",                                               
+      16 +    "seed": "node --env-file-if-exists=../../.env src/seed/seed
+         +-cli.ts"                                                       
+      17    },
+      18    "dependencies": {
+      19      "@property-manager/shared": "workspace:*",
+
+● Guardrail passes; checking it actually catches a hit by temporarily adding
+  pnpm seed to the CI file.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Restored. Now docs: .env.example, README, test-plan.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='README.md'…)
+  ⎿  52:| TR-25 | A test calls the real Weatherstack (NFR-02), spending quo
+     ta and making the suite flaky. | M | L | config | API Vitest setup sta
+     rts MSW with `onUnhandledFrame: 'error'` (MSW 3's name), so any unmock
+     … +64 lines (ctrl+o to expand)
+  ⎿  Updated README.md (+25 -0)
+       73  `.ts`, and enums and parameter properties are not allowed; tsc
+            and ESLint enforce this. All
+       74  project commands are listed in [`CLAUDE.md`](CLAUDE.md#command
+           s).
+       75  
+       76 +## Demo data                                                  
+       77 +                                                              
+       78 +To fill an empty database with a few real properties, start th
+          +e API (`docker compose up` or                                 
+       79 +`pnpm dev`) and run:                                          
+       80 +                                                              
+       81 +```sh                                                         
+       82 +pnpm seed                                                     
+       83 +```                                                           
+       84 +                                                              
+       85 +It sends the `createProperty` mutation to the running API once
+          + per address in                                               
+       86 +[`apps/api/src/seed/addresses.ts`](apps/api/src/seed/addresses
+          +.ts), five US public landmarks                                
+       87 +(state capitols and the Space Needle), 1.5 s apart. The brief 
+          +suggests Zillow, but its listings                             
+       88 +are mostly private homes and this repo is public, so the seed 
+          +uses landmarks instead.                                       
+       89 +                                                              
+       90 +- **Quota.** The first run creates 5 properties and uses 5 Wea
+          +therstack calls. A re-run skips                               
+       91 +  every address that already exists, which costs no call.     
+       92 +- **Errors.** Any other error stops the run with exit code 1, 
+          +naming the address and the error                              
+       93 +  code. After a 429 (`WEATHER_UNAVAILABLE`) wait a moment and 
+          +run it again: it continues where it                           
+       94 +  stopped. After `WEATHER_LOCATION_MISMATCH` or `BAD_USER_INPU
+          +T` the same address fails on every                            
+       95 +  re-run, so change it in `addresses.ts`.                     
+       96 +- **Never automatic.** Nothing runs the seed for you: not Comp
+          +ose, the Dockerfiles, CI, the git                             
+       97 +  hooks, `pnpm dev` or the migrations. A guardrail test in `to
+          +oling/` keeps it that way.                                    
+       98 +- **Another API.** Set `SEED_API_URL` (default `http://localho
+          +st:4000/graphql`).                                            
+       99 +                                                              
+      100  ## Tests
+      101  
+      102  | Command                                                     
+                                           | What it runs                
+                                                                         
+                      | Needs                                            
+                |
+     ...
+      131  | `DATABASE_URL`          | no       | `postgres://postgres:po
+           stgres@localhost:5432/property_manager` | PostgreSQL connectio
+           n. Compose sets it to the `postgres` service.               |
+      132  | `PORT`                  | no       | `4000`                 
+                                                   | API HTTP port.      
+                                                                       |
+      133  | `LOG_LEVEL`             | no       | `info`                 
+                                                   | pino log level: `fat
+           al`, `error`, `warn`, `info`, `debug`, `trace` or `silent`. |
+      134 +| `SEED_API_URL`          | no       | `http://localhost:4000/
+          +graphql`                                | GraphQL endpoint `pn
+          +pm seed` sends to. Only the seed reads it.                  | 
+      135  
+      136  An empty value counts as unset.
+      137  
+  ⎿  Updated .env.example (+3 -0)
+      14  
+      15  # pino log level: fatal, error, warn, info, debug, trace or sil
+          ent.
+      16  # LOG_LEVEL=info
+      17 +                                                               
+      18 +# GraphQL endpoint `pnpm seed` sends createProperty to (optiona
+         +l; only the seed reads it).                                    
+      19 +# SEED_API_URL=http://localhost:4000/graphql                   
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='context/test-plan.md'…)
+  ⎿   .env.example                    |   3 ++
+      README.md                       |  25 ++++++++++
+      apps/api/package.json           |   3 +-
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated context/test-plan.md (+4 -1)
+      53  | TR-26 | The list filters and sort are not written to the URL,
+           are not read back on load or Back, or a bad URL value breaks t
+          he page or reaches the request (FR-11 AC3a). | M | L | U (web) 
+          + E | Unit table for `apps/web/src/lib/list-search.ts`: each fi
+          eld read, each invalid field dropped on its own with the others
+           valid (city 100/101, zip 5/6, `state=az`/`XX`, `sort=asc`/`foo
+          `), blanks left out and values trimmed on write, round trip. `L
+          istPage.test.tsx` with a router probe: Apply and sort write the
+           URL, a deep link fills the inputs and the first request, Back 
+          restores the previous filter, an unchanged Apply pushes no entr
+          y, `state=XX` is ignored. Playwright reload after the city filt
+          er. | covered (S-07): `apps/web/src/lib/list-search.test.ts`, `
+          apps/web/src/pages/ListPage.test.tsx`, `e2e/property-journey.sp
+          ec.ts` |
+      54  | TR-27 | The list pages wrongly: a wrong `limit` / `offset`, t
+          he page is not kept in the URL, it is not reset after a filter 
+          or sort change, a page past the end shows an empty list, or the
+           controls show the wrong page or total (FR-11 AC4). | M | M | U
+           (web) | Unit table for `list-search.ts`: `page` read (`2`, `99
+          9999`), each invalid `page` dropped with the other fields valid
+           (`1000000`, `0`, `-1`, `02`, `1.5`, `abc`, `+2`, blank), page 
+          1 left out on write, `page` written last, round trip. `ListPage
+          .test.tsx` with MSW serving 45 fixtures by `limit` / `offset` a
+          nd a router probe: first request `limit: 20, offset: 0`, Next /
+           Previous and the URL, deep link with `page`, page 1 after a fi
+          lter or sort change, unchanged Apply keeps the page, Back. `Lis
+          tPage.tsx` stays outside Stryker (no helper is extracted for it
+          ), so these component tests pin its bounds: 20 vs 21 matches (`
+          totalCount > PAGE_SIZE`), Previous disabled on page 1, Next dis
+          abled on the last page (`page >= pageCount`), and `/?page=9` → 
+          `?page=3` plus deleting the only row on page 3 (past-the-end ch
+          eck and `lastPage`). Bound tests: "20 matches show no paginatio
+          n bar, 21 matches show \"Page 1 of 2\"", "with 45 matches shows
+           the first 20 rows…" (Previous on page 1), "Next and Previous m
+          ove by 20 rows…" (Next on page 3), "a page past the end is repl
+          aced by the last page…", "deleting the only row on the last pag
+          e…", "while the next page loads…" and "Back to page 3 from a fi
+          lter with fewer matches…" (placeholder data skipped). | covered
+           (S-08): `apps/web/src/lib/list-search.test.ts`, `apps/web/src/
+          pages/ListPage.test.tsx` |
+      55  | TR-28 | The details page shows the extra weather data wrongly
+          : a wrong unit or label, a `0` value left out as falsy, a wrong
+           US EPA band, or one missing field hiding others (FR-12 AC6). |
+           L | M | U (web) | `format.test.ts`: `epaIndexLabel` for 1–6 ("
+          1 (Good)" … "6 (Hazardous)") and 0 / 7 as the bare number. `Det
+          ailsPage.test.tsx` with MSW: the "Weather details", "Astronomy"
+           and "Air quality" regions each map `<dt>` → `<dd>` to the expe
+          cted strings with units ("1010 mb", "0 in", "0 %", "6 mi", "15 
+          %", "112 µg/m³", "01:13 PM UTC", "1 (Good)"); `uvIndex` / `prec
+          ip` / `moonIllumination` `0` are shown. The AC1 `<dl>` is asser
+          ted on its own, so it stays unchanged. | covered (S-09): `apps/
+          web/src/lib/format.test.ts`, `apps/web/src/pages/DetailsPage.te
+          st.tsx` |
+      56 +| TR-29 | The demo seed bypasses the mutation (no weather, no d
+         +uplicate rule), re-creates or fails on an existing address, kee
+         +ps going after a key or quota error, hides the server's error, 
+         +or runs automatically and spends quota (FR-16 AC1). | L | L | U
+         + + I + config | `seed.test.ts` (MSW at the GraphQL URL, fake `s
+         +leep`): one `createProperty` per address with exactly the addre
+         +ss as variables, 1.5 s between creates; `PROPERTY_ALREADY_EXIST
+         +S` skipped with no sleep; every other `ERROR_CODES` entry, a co
+         +de outside the contract, an error without a code, a 4xx GraphQL
+         + body, a non-GraphQL 500, a non-GraphQL 200, a null `createProp
+         +erty` and a network error each stop at that address with exit 1
+         + and their own reason. `addresses.test.ts`: every seed address 
+         +passes the shared schema, D-07 keys unique. `seed.int.test.ts` 
+         +through the real app with `FakeWeatherClient`: 2 created and 2 
+         +weather calls, a re-run skips both. `tooling/guardrails.test.ts
+         +`: no Compose, Dockerfile, CI, git hook, e2e or Claude hook fil
+         +e mentions the word `seed`, and no package script other than `s
+         +eed` does. | covered (S-10): `apps/api/src/seed/seed.test.ts`, 
+         +`apps/api/src/seed/addresses.test.ts`, `apps/api/test/integrati
+         +on/seed.int.test.ts`, `tooling/guardrails.test.ts` |           
+      57  
+      58  ## Not tested (and why)
+      59  
+     ...
+      79    against a checklist in the S-06 review, not by automated test
+          s.
+      80  - **One-command start on the operator's machine (FR-14 AC1).** 
+          CI's e2e job starts the Compose
+      81    stack, which covers most of it. The clean-clone walk-through 
+          is a human check in S-06.
+      81 -- **Should and Could items (#9 – #13).** Tested when they are p
+         -lanned, not before.                                            
+      82 +- **Should and Could items (#9 – #13).** Tested when they are p
+         +lanned, not before. All five are                               
+      83 +  now planned (TR-26 – TR-29).                                 
+      84  - **Mutation testing of the UI error mapping.** S-05 has no `/m
+          utation` step (#7).
+      85    `apps/web/src/lib/graphql-errors.ts` is guarded by TR-19's un
+          it table instead: every code in
+      86    the shared error-code list must have its own message, so a mi
+          ssing branch fails the test.
+     ...
+      128  | `apps/web/src/lib/list-search.ts` (URL ↔ list filters, sort 
+           and page: per-field zod fallbacks, state upper-casing, trimmed
+            write, default sort left out, page parse and write) | A flipp
+           ed bound or a dropped fallback lets a bad link blank the page 
+           or send a wrong filter, and a wrong write breaks reload and Ba
+           ck (FR-11 AC3a, TR-26). | 90% | Not in CI. Baseline 100% (S-07
+           ); `break` after the user agrees on a value. |
+      129  | `apps/web/src/hooks/useDeleteProperty.ts` (cache rule after 
+           a delete) | A wrong key removes other properties' details or l
+           eaves the deleted one cached, so it is shown again (FR-11 AC5,
+            FR-12 AC4). | 90% | Not in CI. Baseline 95.5% (S-04); the 1 s
+           urvivor is equivalent. |
+      130  | `apps/web/src/lib/format.ts` `epaIndexLabel` (US EPA index →
+            "N (band)" label table, bare-number fallback outside 1–6) | A
+            shifted index or a wrong table entry shows the wrong health b
+           and on the details page (FR-12 AC6, TR-28). | 90% | Not in CI.
+            Baseline 100% (S-09, 13/13 on `format.ts:11-25`), see `change
+           s/details-extra-weather/mutation.md`. |
+      131 +| `apps/api/src/seed/seed.ts` (`pnpm seed`: GraphQL response c
+          +lassification, skip vs stop, spacing) | A wrong classification
+          + re-creates nothing but stops on a duplicate, or skips a quota
+          + error and fails the same way for every address; a wrong spaci
+          +ng check triggers HTTP 429 (FR-16 AC1, TR-29). | 90% | Not in 
+          +CI. First run records the baseline. |                         
+      132  
+      133  Target scores are starting points. The first `/mutation` run o
+           n each module records the
+      134  baseline in its `mutation.md`. Until then `break` is `null`. R
+           aising `break` above the
+
+● Bash(python3 - <<'EOF'
+      p='context/test-plan.md'…)
+  ⎿  $ prettier --check .
+     Checking formatting...
+     All matched files use Prettier code style!
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated context/test-plan.md (+1 -1)
+      128  | `apps/web/src/lib/list-search.ts` (URL ↔ list filters, sort 
+           and page: per-field zod fallbacks, state upper-casing, trimmed
+            write, default sort left out, page parse and write) | A flipp
+           ed bound or a dropped fallback lets a bad link blank the page 
+           or send a wrong filter, and a wrong write breaks reload and Ba
+           ck (FR-11 AC3a, TR-26). | 90% | Not in CI. Baseline 100% (S-07
+           ); `break` after the user agrees on a value. |
+      129  | `apps/web/src/hooks/useDeleteProperty.ts` (cache rule after 
+           a delete) | A wrong key removes other properties' details or l
+           eaves the deleted one cached, so it is shown again (FR-11 AC5,
+            FR-12 AC4). | 90% | Not in CI. Baseline 95.5% (S-04); the 1 s
+           urvivor is equivalent. |
+      130  | `apps/web/src/lib/format.ts` `epaIndexLabel` (US EPA index →
+            "N (band)" label table, bare-number fallback outside 1–6) | A
+            shifted index or a wrong table entry shows the wrong health b
+           and on the details page (FR-12 AC6, TR-28). | 90% | Not in CI.
+            Baseline 100% (S-09, 13/13 on `format.ts:11-25`), see `change
+           s/details-extra-weather/mutation.md`. |
+      131 -| `apps/api/src/seed/seed.ts` (`pnpm seed`: GraphQL response c
+          -lassification, skip vs stop, spacing) | A wrong classification
+          - re-creates nothing but stops on a duplicate, or skips a quota
+          - error and fails the same way for every address; a wrong spaci
+          -ng check triggers HTTP 429 (FR-16 AC1, TR-29). | 90% | Not in 
+          -CI. First run records the baseline. |                         
+      131 +| `apps/api/src/seed/seed.ts` (`pnpm seed`: GraphQL response c
+          +lassification, skip vs stop, spacing) | A wrong classification
+          + stops on a duplicate (so a re-run never finishes) or goes on 
+          +after a key or quota error (failing the same way for every add
+          +ress); a wrong spacing check triggers HTTP 429 (FR-16 AC1, TR-
+          +29). | 90% | Not in CI. First run records the baseline. |     
+      132  
+      133  Target scores are starting points. The first `/mutation` run o
+           n each module records the
+      134  baseline in its `mutation.md`. Until then `break` is `null`. R
+           aising `break` above the
+  ⎿  (timeout 6m 40s)
+
+● Format, lint and typecheck are green. Running the full test suite (unit +
+  Testcontainers) now.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All 734 tests pass. A quick smoke of the real CLI wiring against an
+  unreachable port (spends no quota):
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Everything automated is green. Recording deviations in the plan:
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/demo-seed-data/plan.md'…)
+  ⎿   M .env.example
+      M README.md
+      M apps/api/package.json
+     … +13 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/demo-seed-data/plan.md (+7 -1)
+      250  - [ ] Phase 1: Documented, manual demo seed through createProp
+           erty
+      251  
+      252  ## Deviations
+      253 -<filled during implementation>                                
+      253 +- Phase 1, guardrail scope: plan says "assert the ESLint block
+          + exists"; the NFR-06 table in                                 
+      254 +  `tooling/guardrails.test.ts` also gets four `seed → …` rejec
+          +ts and a control (`seed → config`)                            
+      255 +  so the new block is proved like the other layers. The hook s
+          +can follows `tooling/` script                                 
+      256 +  references transitively, so it covers `claude-format-hook.ts
+          +` as well as the `.sh` wrapper,                               
+      257 +  and a control asserts both `seed` scripts exist.            
+      258 +- Phase 1, follow-up (not done, outside the phase's files): th
+          +e `CLAUDE.md` *Commands* table                                
+      259 +  does not list `pnpm seed`; the README does.                 
+
+● Bash(python3 - <<'EOF'
+      p='context/changes/demo-seed-data/plan.md'…)
+  ⎿  ## Deviations
+     - Phase 1, guardrail scope: the plan adds the `src/seed/` ESLint block
+      without a test; the
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated context/changes/demo-seed-data/plan.md (+2 -2)
+      250  - [ ] Phase 1: Documented, manual demo seed through createProp
+           erty
+      251  
+      252  ## Deviations
+      253 -- Phase 1, guardrail scope: plan says "assert the ESLint block
+          - exists"; the NFR-06 table in                                 
+      254 -  `tooling/guardrails.test.ts` also gets four `seed → …` rejec
+          -ts and a control (`seed → config`)                            
+      253 +- Phase 1, guardrail scope: the plan adds the `src/seed/` ESLi
+          +nt block without a test; the                                  
+      254 +  NFR-06 table in `tooling/guardrails.test.ts` now also gets f
+          +our `seed → …` rejects and a control (`seed → config`)        
+      255    so the new block is proved like the other layers. The hook s
+           can follows `tooling/` script
+      256    references transitively, so it covers `claude-format-hook.ts
+           ` as well as the `.sh` wrapper,
+      257    and a control asserts both `seed` scripts exist.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Phase 1 of demo-seed-data is built and every automated check passes. It is not
+  committed yet: the two human checks below need you first.
+
+  What changed
+  - apps/api/src/config/env.ts: new optional SEED_API_URL setting (default
+    http://localhost:4000/graphql). Loading it does not need the Weatherstack
+    key.
+  - apps/api/src/config/env.test.ts: tests for the default, an explicit value,
+    an invalid value (the message names the variable but not its value), and the
+    normal API config ignoring SEED_API_URL.
+  - apps/api/src/seed/addresses.ts: the five landmark addresses from the plan.
+  - apps/api/src/seed/addresses.test.ts: every address passes the shared address
+    check, and no two are duplicates of each other.
+  - apps/api/src/seed/seed.ts: sends createProperty once per address, in order.
+    An existing address is skipped. Any other error stops the run with exit
+    code 1. It waits 1.5 s after each create except the last.
+  - apps/api/src/seed/seed.test.ts: every success, skip and failure case from
+    the plan. Each failure test checks the exact error message, not just the
+    exit code.
+  - apps/api/src/seed/seed-cli.ts and seed-cli.test.ts: the command-line entry,
+    and a test that a bad SEED_API_URL exits 1 without sending anything.
+  - apps/api/test/helpers/app.ts: the test app can now send raw HTTP requests,
+    which the seed needs.
+  - apps/api/test/integration/seed.int.test.ts: runs the seed through the real
+    app and a real database with a fake weather client. The first run creates 2
+    properties with 2 weather calls; a second run skips both and makes no new
+    calls.
+  - tooling/guardrails.test.ts: a test that no Compose, Docker, CI, git hook,
+    e2e or Claude hook file, and no package script except seed itself, mentions
+    the word "seed".
+  - eslint.config.ts: code in src/seed/ may not import the API's internal
+    layers, the database or the GraphQL server; it can only talk to the API over
+    HTTP.
+  - package.json and apps/api/package.json: the seed scripts.
+  - .env.example, README.md (new "Demo data" section and the variable added to
+    the env table), context/test-plan.md (TR-29, a mutation-target row for
+    seed.ts, updated note), context/roadmap.md (S-10 set to in-progress).
+
+  Checks
+  - pnpm format:check, pnpm lint, pnpm typecheck: pass.
+  - pnpm test (unit and database tests): 44 files, 734 tests, all pass. pnpm 
+    test:unit and the api-int project ran as part of it.
+  - I added pnpm seed to ci.yml as a temporary test: the guardrail failed and
+    named ci.yml. The file is restored.
+  - Ran the real command without spending quota. With an unreachable
+    SEED_API_URL it printed failed: 200 E Colfax Ave, Denver, CO 80203: could 
+    not reach … and exited 1. With an invalid one it printed the config message
+    and exited 1.
+
+  Deviations (recorded in plan.md)
+  - The guardrail test also checks the new ESLint rule for src/seed/ (four
+    rejected imports and one allowed one). The Claude-hook scan follows the
+    scripts the hook calls, so it covers both claude-format-hook.sh and .ts.
+  - Not done: the CLAUDE.md Commands table doesn't list pnpm seed; only the
+    README does.
+
+  Human checks (please confirm)
+  - [ ] With your real key: run docker compose up -d --build, then pnpm seed on
+    an empty database (docker compose down -v first if it isn't empty). All 5
+    addresses should print created, none should fail with
+    WEATHER_LOCATION_MISMATCH, and http://localhost:5173 should list them with
+    city-level coordinates. Then run pnpm seed again: you should see 0 created, 
+    5 skipped. This uses 5 Weatherstack calls once.
+  - [ ] Read the "Demo data" section of README.md.
+
+  Proposed commit (after you confirm):
+  feat(demo-seed-data): add a manual seed command that creates properties 
+  through the API
+
+  Closes #13
+  In that commit I'll set S-10 to done and tick the phase in plan.md. I'll stage
+  only the files above plus plan.md and plan-review.md. context/roadmap.md was
+  already modified before I started, with the S-10 row and the landmarks
+  wording; it goes in too unless you say otherwise. I won't touch plan-S-10.txt
+  or plan-review-S-10.txt.
+
+  After that: /mutation demo-seed-data on seed.ts and config/env.ts, then
+  /review demo-seed-data.
+
+✻ Worked for 5m 29s · done 5:22 PM

@@ -1,0 +1,172 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan FR-16: demo seed data                                                   
+
+  Listed 2 directories, ran 4 shell commands (ctrl+o to expand)
+
+● Still researching FR-16 (demo seed): mapped the API composition, config and
+  Compose setup; now checking the README, the e2e stub and the test helpers
+  before asking design questions.
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● User answered Claude's questions:
+  ⎿  · How should the seed command reach the create-property mutation? → HTTP to
+     running API (suggested)
+     · What should the seed do when an address fails? → Skip dupes, stop on 
+     other (suggested)
+     · Where do the real addresses come from? → I pick from Zillow (suggested)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● User answered Claude's questions:
+  ⎿  · Proposed phases:
+     1. Seed command: `pnpm seed` posts createProperty for each address to the 
+     running API (SEED_API_URL, default localhost:4000/graphql), skips 
+     DUPLICATE_ADDRESS, stops with exit 1 on any other error. Proven by MSW unit
+     tests + a Testcontainers test running the seed against the real app with 
+     the fake weather client (empty DB → N rows, N weather calls; re-run → 0 
+     calls).
+     2. Never-automatic + docs: tooling guardrail test that Compose, 
+     Dockerfiles, CI, git hooks and lifecycle scripts never call the seed; 
+     README 'Demo data' section (quota cost); test-plan rows. Closes #13.
+     Proceed? → Merge into 1 phase
+     · Paste the Zillow addresses (street, city, state, zip; about 5, ideally 
+     different states, away from state borders per R-03) via 'Other', or leave 
+     them BLOCKING in the plan for /implement. → Leave BLOCKING
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Writing the plan and updating the roadmap.
+
+● Write(context/changes/demo-seed-data/plan.md)
+  ⎿  Wrote 214 lines to context/changes/demo-seed-data/plan.md
+       1 # Plan: demo-seed-data (S-10)
+       3 ## Goal and end state
+       4 A reviewer can fill an empty database with a few real US propert
+         ies with one documented
+       6 
+       7 - `pnpm seed` sends the `createProperty` mutation to a running A
+       8   short, checked-in list of real Zillow addresses. Weather, `lat
+         ` and `long` are therefore
+       9   real and each new property uses one Weatherstack call.
+         skipped, so a re-run is safe
+     … +347 lines (ctrl+o to expand)
+
+● Update(context/changes/demo-seed-data/plan.md)
+  ⎿  Added 1 line, removed 1 line
+      72  | Behaviour on failure | `PROPERTY_ALREADY_EXISTS` → skip and c
+          ontinue. Any other GraphQL error, non-2xx HTTP, unreachable API
+           or malformed response → stop, exit 1 | Re-runs are safe and fr
+          ee. A key or quota error would repeat for every address, so sto
+          p at the first. | user |
+      73  | Where do the addresses come from? | The user picks about 5 re
+          al Zillow addresses, ideally in different states and away from 
+          state borders (R-03) | Brief tip (B-N7); the user checks them. 
+          | user — **BLOCKING** until supplied |
+      74  | Phases | One phase, one commit (`Closes #13`) | Small item. |
+           user |
+      75 -| Spacing between creates | Wait 1.5 s after each create that r
+         -eached Weatherstack (a success or a weather error is the last t
+         -hing that happens anyway; not after a skipped duplicate). `slee
+         -p` is injected so tests do not wait. | README: two calls within
+         - about a second can return 429. | research (README) |          
+      75 +| Spacing between creates | Wait 1.5 s after each successful cr
+         +eate, except the last. Not after a skipped duplicate (no Weathe
+         +rstack call); any other error ends the run anyway. `sleep` is i
+         +njected so tests do not wait. | README: two calls within about 
+         +a second can return 429. | research (README) |                 
+      76  | Order and concurrency | Sequential, in list order | Spacing a
+          nd stop-on-first-error need it; 5 addresses take seconds. | pla
+          nner default |
+      77  | Response validation | zod schema for the GraphQL response (`d
+          ata.createProperty { id, street, city, state, zipCode }` or `er
+          rors[].extensions.code` from `ERROR_CODES`) | CLAUDE.md: valida
+          te external responses at the boundary. | research (CLAUDE.md) |
+      78  | Output | One line per address to stdout ("created", "skipped 
+          (already exists)"), errors to stderr, a final summary "N create
+          d, M skipped". No variables or keys are logged beyond the addre
+          ss being seeded. | A reviewer sees what was spent. | planner de
+          fault |
+
+● Bash(python3 - <<'EOF'
+      p='context/roadmap.md'…)
+  ⎿   context/roadmap.md | 3 +++
+      1 file changed, 3 insertions(+)
+     Checking formatting...
+     All matched files use Prettier code style!
+  ⎿  Updated context/roadmap.md (+3 -0)
+      20  | S-07 | #9 | list-filters-in-url | slice | FR-11 AC3a (Should)
+           | S-04 | S | done |
+      21  | S-08 | #10 | list-pagination | slice | FR-11 AC4 (Should) | S
+          -07 | S | done |
+      22  | S-09 | #11, #12 | details-extra-weather | slice | FR-12 AC6 (
+          Should), typed non-key `CurrentWeather` fields | S-04 | S | don
+          e |
+      23 +| S-10 | #13 | demo-seed-data | slice | FR-16 AC1 (Could) | S-0
+         +6 | S | planned |                                              
+      24  
+      25  Order follows risk: tooling and schema first, then the Weathers
+          tack integration (the only
+      26  third-party unknown, R-01 – R-05) and the concurrency-sensitive
+           duplicate rule, then the
+     ...
+      234  
+      235  - #13 FR-16 Demo seed data (Q-04): a documented, never-automat
+           ic seed command that creates a few
+      236    real Zillow addresses through `createProperty`. Uses real qu
+           ota (R-01).
+      237 +  Picked up as S-10 (`demo-seed-data`): `pnpm seed` posts `cre
+          +ateProperty` to a running API;                                
+      238 +  duplicates are skipped, any other error stops the run.      
+      239  
+      240  ## Open roadmap questions
+      241  
+
+● I've written the plan for FR-16 at context/changes/demo-seed-data/plan.md. It
+  is one phase, and you still need to supply the seed addresses before
+  /implement can finish.
+
+  The design, using your answers:
+  - Command: pnpm seed sends the createProperty mutation to an API that is
+    already running. The URL comes from SEED_API_URL and defaults to
+    http://localhost:4000/graphql. The seed itself never touches the
+    Weatherstack key or the database.
+  - Order: it creates the properties one at a time, in list order, waiting 1.5 s
+    after each successful create. The README says two calls within about a
+    second can be rejected with HTTP 429.
+  - On failure:
+    - An address that already exists (PROPERTY_ALREADY_EXISTS) is skipped and
+      costs no quota, so running it again is safe.
+    - Any other error stops the run with exit code 1 and names the address and
+      the error. That covers other API errors, an HTTP failure, an unreachable
+      API or a malformed response.
+  - Tests:
+    - Unit tests mock the GraphQL endpoint and cover each stop and skip path.
+    - One integration test runs the seed against the real app with the fake
+      weather client. The first run should create 2 properties with 2 weather
+      calls. A second run should skip both and make no new calls.
+    - A tooling test proves nothing runs the seed automatically. It checks that
+      the Compose files, Dockerfiles, CI, the git hook and the package.json
+      scripts never mention it.
+  - Docs: a "Demo data" section in the README, SEED_API_URL in .env.example,
+    test-plan row TR-29, and apps/api/src/seed/seed.ts added as a mutation
+    target.
+
+  Roadmap: I added S-10 / #13 / demo-seed-data with status planned. Nothing is
+  committed.
+
+  Still blocking: the seed addresses. Before /implement writes
+  apps/api/src/seed/addresses.ts, I need about 5 real Zillow addresses (street,
+  city, state, zip). Ideally they are in different states and away from state
+  borders, so they aren't rejected as a state mismatch. They will be published
+  in the public repo.
+
+  Next step: /plan-review demo-seed-data
+
+✻ Cooked for 3m 2s · done 5:08 PM

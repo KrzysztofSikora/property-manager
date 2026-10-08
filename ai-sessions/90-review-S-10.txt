@@ -1,0 +1,50 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /review demo-seed-data                                                        
+  ⎿  Running in the background as @review
+
+● Agent "/review demo-seed-data" finished · 2m 32s
+
+● The /review demo-seed-data run approved S-10 and found three minor issues. It
+  didn't change any code. The full review is in
+  context/changes/demo-seed-data/review.md, and S-10 is now marked review in
+  context/roadmap.md.
+
+  Checks: typecheck, lint and format check all pass. pnpm test passes 734 of
+  734, including the Testcontainers database tests.
+
+  Plan vs code: every file in the plan is done and matches it. The only extra
+  files are mutation.md and the four *-S-10.txt session exports in the repo
+  root. Earlier changes moved those exports to ai-sessions/NN-*.txt in the
+  review commit. Nothing is committed yet: /implement is still waiting for your
+  two manual checks, the seed run with a real key and a read of the new README
+  section.
+
+  Findings:
+  - R1: The protection that keeps the seed from running automatically has a gap.
+    It checks Compose, Docker, CI, the git hook, e2e, the Claude hooks and
+    package scripts, but not the API's own code. The reviewer confirmed that
+    importing runSeed into apps/api/src/main.ts gets past ESLint and the
+    guardrail test. Suggested fix: an ESLint rule that stops anything outside
+    src/seed/ importing the seed, plus a guardrail test row for it.
+  - R2: README.md:74 says every command is listed in CLAUDE.md, but pnpm seed
+    isn't there. Suggested fix: add the pnpm seed row to the Commands table in
+    CLAUDE.md.
+  - R3: The planned feat commit uses Closes #13, but the mutation and review
+    commits come after it. CLAUDE.md says to use Refs until the last commit.
+    Suggested fix: use Refs #13 on the feat commit and Closes #13 on the final
+    review commit, as S-09 did.
+
+  The reviewer also found the mutation decisions sound: the three surviving
+  seed.ts mutants really are equivalent, and the env.ts decisions carry over
+  from earlier changes.
+
+  For each of R1–R3, tell me whether to fix it, defer it, reject it, or make it
+  a rule. My suggestion is to fix all three, since each one is small.
+
+✻ Crunched for 10s · done 5:32 PM

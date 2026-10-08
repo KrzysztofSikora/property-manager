@@ -1,0 +1,53 @@
+ ▐▛███▛█   Claude Code v2.1.294
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/projects/taskTreeCover/property-manager
+
+
+❯ /clear                                                                        
+
+❯ /plan-review demo-seed-data                                                   
+  ⎿  Running in the background as @plan-review
+
+● Agent "/plan-review demo-seed-data" finished · 1m 34s
+
+● The plan review for demo-seed-data came back NEEDS CHANGES. The only blocker
+  is that the plan doesn't list any seed addresses yet. The rest of the design
+  checked out, and the reviewer expects READY WITH NOTES once the addresses are
+  added. The full review is in context/changes/demo-seed-data/plan-review.md,
+  and plan.md hasn't been edited.
+
+  Blocker: The plan needs 3–6 real addresses. About 5 Zillow addresses would do.
+  Until they're in, /implement can't finish the single Closes #13 commit. The
+  risk that an address near a state border gets placed in the wrong state (R-03)
+  can't be checked either.
+
+  Minor findings:
+  1. Error codes: The seed only accepts error codes from ERROR_CODES. An error
+     from GraphQL Yoga itself, such as GRAPHQL_VALIDATION_FAILED, would show up
+     as "unexpected response" and the server's message would be lost. Accepting
+     any string code fixes this.
+  2. Non-2xx responses: These are reported only by status code, but Yoga can
+     send a 4xx with a GraphQL errors body. The seed should read that body
+     first, or send accept: application/json.
+  3. Uniqueness test: It has to lower-case street and city to match the
+     duplicate rule. The shared address schema keeps case, so two addresses that
+     differ only in case would get through.
+  4. "Never runs automatically" test: It doesn't scan e2e/global-setup.ts,
+     e2e/compose.ts or the hooks in .claude/settings.json. The first two already
+     run shell commands before the e2e tests.
+  5. Import rules: Nothing stops src/seed/ from importing API layers, because
+     the ESLint rules (eslint.config.ts:49-105) cover only the layer folders.
+     One extra rule block would close that gap.
+  6. Integration test: The plan doesn't say it injects a fake sleep, so the test
+     could really wait 1.5 s. The command-line entry point's normal run is also
+     untested. The reviewer says that's acceptable, since migrate-cli.ts was
+     accepted the same way.
+
+  The reviewer also checked every file, symbol and command the plan cites
+  against the code and found no mismatches.
+
+  Next step: send me about 5 addresses and I'll add them to the plan. I can fold
+  in findings 1–6 at the same time, then you can re-run /plan-review 
+  demo-seed-data.
+
+✻ Cooked for 10s · done 5:10 PM
