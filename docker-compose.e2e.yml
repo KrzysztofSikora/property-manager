@@ -1,0 +1,34 @@
+# E2E override, used only by e2e/global-setup.ts with its own project name
+# (`-p property-manager-e2e`), so its volume and containers are separate from dev.
+# Weatherstack is the stub in e2e/stub; the real key is never used.
+services:
+  weather-stub:
+    image: node:24-alpine
+    command: ['node', '/stub/server.ts']
+    environment:
+      PORT: '8080'
+      SAMPLE_PATH: /samples/weatherstack-current.json
+    volumes:
+      - ./e2e/stub:/stub:ro
+      - ./docs/samples:/samples:ro
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/healthz']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  postgres:
+    ports: !reset []
+
+  api:
+    depends_on:
+      weather-stub:
+        condition: service_healthy
+    environment:
+      WEATHERSTACK_BASE_URL: http://weather-stub:8080
+      WEATHERSTACK_KEY: e2e-stub-key
+    ports: !reset []
+
+  web:
+    # 5180, so a dev Vite on 5173 can keep running.
+    ports: !override ['5180:80']
