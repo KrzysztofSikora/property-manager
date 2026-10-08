@@ -88,4 +88,5 @@ The pre-commit hook fails with "Node 24 required" otherwise.
 | Apply migrations to the dev DB (needs only `DATABASE_URL`) | `pnpm db:migrate` |
 | Generate a migration after changing `apps/api/src/db/schema.ts` (commit the output) | `pnpm db:generate` |
 | Mutation (one module, targets in `context/test-plan.md`) | `pnpm --filter @property-manager/<api\|web\|shared> test:mutation --mutate src/<module>.ts`; tooling: `pnpm test:mutation:tooling --mutate tooling/<file>.ts` |
+| Demo data (API running; one Weatherstack call per new address; never automatic) | `pnpm seed` |
 | E2E (Playwright on its own Compose project, stub Weatherstack; Docker running) | `pnpm e2e` (once: `pnpm exec playwright install chromium`) |

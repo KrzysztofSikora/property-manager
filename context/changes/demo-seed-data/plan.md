@@ -231,7 +231,7 @@ match the state (R-03). The human check confirms it with the real key.
     the monthly quota, once.
   - Read the README "Demo data" section.
 - Commit: `feat(demo-seed-data): add a manual seed command that creates properties through the API`
-  with `Closes #13`.
+  with `Refs #13`; `Closes #13` goes on the last commit of the item (review R3).
 
 ## Risks and unknowns
 - R-03 (region vs. state mismatch): an address near a state border could be rejected with
@@ -247,7 +247,7 @@ match the state (R-03). The human check confirms it with the real key.
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [ ] Phase 1: Documented, manual demo seed through createProperty
+- [x] Phase 1: Documented, manual demo seed through createProperty (bc9585a)
 
 ## Deviations
 - Phase 1, guardrail scope: the plan adds the `src/seed/` ESLint block without a test; the
@@ -255,5 +255,8 @@ match the state (R-03). The human check confirms it with the real key.
   so the new block is proved like the other layers. The hook scan follows `tooling/` script
   references transitively, so it covers `claude-format-hook.ts` as well as the `.sh` wrapper,
   and a control asserts both `seed` scripts exist.
-- Phase 1, follow-up (not done, outside the phase's files): the `CLAUDE.md` *Commands* table
-  does not list `pnpm seed`; the README does.
+- Phase 1, follow-up (done after review R2): the `CLAUDE.md` *Commands* table now lists
+  `pnpm seed`, so the README claim that every command is there holds.
+- Review R1: an API-wide ESLint block (`apps/api/src/**` minus `src/seed/**`) and every layer
+  block reject imports of `**/seed/**`, so the app cannot run the seed at startup. NFR-06 rows
+  `main / app / service / domain → seed` and a control (`seed-cli → seed`) prove it.

@@ -12,9 +12,24 @@ const JS_RELATIVE_IMPORT = {
 };
 
 // Flat config replaces rule options per file instead of merging them, so every layer entry
-// repeats the `.js` pattern.
+// repeats the `.js` pattern (and every `apps/api/src` entry the seed pattern below).
 function restrictImports(...group: string[]): Linter.RulesRecord {
   const patterns: object[] = [JS_RELATIVE_IMPORT];
+  if (group.length > 0) {
+    patterns.push({ group, message: 'Layers: resolver → service → repository / adapter.' });
+  }
+  return { 'no-restricted-imports': ['error', { patterns }] };
+}
+
+// FR-16: the seed never runs automatically, so no API code outside `src/seed/` may import it
+// (for example to seed an empty database at startup).
+const SEED_IMPORT = {
+  group: ['**/seed/**'],
+  message: 'Only src/seed/ imports the seed: it never runs automatically (FR-16).',
+};
+
+function restrictApiImports(...group: string[]): Linter.RulesRecord {
+  const patterns: object[] = [JS_RELATIVE_IMPORT, SEED_IMPORT];
   if (group.length > 0) {
     patterns.push({ group, message: 'Layers: resolver → service → repository / adapter.' });
   }
@@ -46,10 +61,15 @@ export default defineConfig(
     files: ['apps/web/src/**/*.{ts,tsx}'],
     extends: [reactHooks.configs.flat['recommended-latest']],
   },
+  {
+    files: ['apps/api/src/**/*.ts'],
+    ignores: ['apps/api/src/seed/**'],
+    rules: restrictApiImports(),
+  },
   // `src/db/**` (schema, client, migrations) is persistence: only repositories import it.
   {
     files: ['apps/api/src/graphql/**/*.ts'],
-    rules: restrictImports(
+    rules: restrictApiImports(
       '**/repositories/**',
       '**/adapters/**',
       '**/db/**',
@@ -59,7 +79,7 @@ export default defineConfig(
   },
   {
     files: ['apps/api/src/services/**/*.ts'],
-    rules: restrictImports(
+    rules: restrictApiImports(
       '**/graphql/**',
       '**/db/**',
       'graphql-yoga',
@@ -70,16 +90,16 @@ export default defineConfig(
   },
   {
     files: ['apps/api/src/repositories/**/*.ts'],
-    rules: restrictImports('**/services/**', '**/graphql/**'),
+    rules: restrictApiImports('**/services/**', '**/graphql/**'),
   },
   {
     files: ['apps/api/src/adapters/**/*.ts'],
-    rules: restrictImports('**/services/**', '**/graphql/**', '**/db/**'),
+    rules: restrictApiImports('**/services/**', '**/graphql/**', '**/db/**'),
   },
   // Types, ports and domain errors: every layer imports them, so they import no layer.
   {
     files: ['apps/api/src/domain/**/*.ts'],
-    rules: restrictImports(
+    rules: restrictApiImports(
       '**/graphql/**',
       '**/services/**',
       '**/repositories/**',

@@ -34,6 +34,10 @@ describe('NFR-06: layer and import rules', () => {
     ['seed → repository', 'apps/api/src/seed/seed.ts', '../repositories/x.ts'],
     ['seed → db', 'apps/api/src/seed/seed.ts', '../db/client.ts'],
     ['seed → graphql-yoga', 'apps/api/src/seed/seed.ts', 'graphql-yoga'],
+    ['main → seed', 'apps/api/src/main.ts', './seed/seed.ts'],
+    ['app → seed', 'apps/api/src/app.ts', './seed/seed.ts'],
+    ['service → seed', 'apps/api/src/services/x.ts', '../seed/seed.ts'],
+    ['domain → seed addresses', 'apps/api/src/domain/x.ts', '../seed/addresses.ts'],
   ])('NFR-06 rejects %s', async (_name, filePath, specifier) => {
     const code = `import { a } from '${specifier}';\nexport const b = a;\n`;
 
@@ -48,6 +52,12 @@ describe('NFR-06: layer and import rules', () => {
 
   it('NFR-06 control: the seed may import the env config', async () => {
     const code = "import { a } from '../config/env.ts';\nexport const b = a;\n";
+
+    expect(await ruleIds(code, 'apps/api/src/seed/seed-cli.ts')).toEqual([]);
+  });
+
+  it('NFR-06 control: the seed CLI may import the seed', async () => {
+    const code = "import { a } from './seed.ts';\nexport const b = a;\n";
 
     expect(await ruleIds(code, 'apps/api/src/seed/seed-cli.ts')).toEqual([]);
   });
