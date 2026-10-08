@@ -256,3 +256,6 @@ dropped by the parse, and request errors use the existing error state with Retry
   check survived every planned test.
 - Phase 2: `renderListWithProbe` and `renderWithProviders` take `initialEntries` (earlier
   history entries before `route`), as the plan allowed for the Back test.
+- Review R1: while the next page loads, Previous / Next use `aria-disabled` plus an early return
+  instead of `disabled` (Decisions, "Previous / Next at the ends"), so the pressed button keeps
+  keyboard focus. `disabled` stays for page 1 and the last page.

@@ -203,11 +203,12 @@ export function ListPage() {
             <nav aria-label="Pagination" className="mt-3 flex items-center gap-3 text-sm">
               <button
                 type="button"
-                disabled={page === 1 || properties.isPlaceholderData}
+                disabled={page === 1}
+                aria-disabled={properties.isPlaceholderData}
                 onClick={() => {
-                  goToPage(page - 1);
+                  if (!properties.isPlaceholderData) goToPage(page - 1);
                 }}
-                className="rounded border px-3 py-1 disabled:opacity-50"
+                className="rounded border px-3 py-1 disabled:opacity-50 aria-disabled:opacity-50"
               >
                 Previous
               </button>
@@ -216,11 +217,12 @@ export function ListPage() {
               </span>
               <button
                 type="button"
-                disabled={page >= pageCount || properties.isPlaceholderData}
+                disabled={page >= pageCount}
+                aria-disabled={properties.isPlaceholderData}
                 onClick={() => {
-                  goToPage(page + 1);
+                  if (!properties.isPlaceholderData) goToPage(page + 1);
                 }}
-                className="rounded border px-3 py-1 disabled:opacity-50"
+                className="rounded border px-3 py-1 disabled:opacity-50 aria-disabled:opacity-50"
               >
                 Next
               </button>
