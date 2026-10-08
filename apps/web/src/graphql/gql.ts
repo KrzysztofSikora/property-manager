@@ -15,16 +15,22 @@ import * as types from './graphql.ts';
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
+    "\n  mutation CreateProperty($street: String!, $city: String!, $state: String!, $zipCode: String!) {\n    createProperty(street: $street, city: $city, state: $state, zipCode: $zipCode) {\n      id\n    }\n  }\n": typeof types.CreatePropertyDocument,
     "\n  mutation DeleteProperty($id: ID!) {\n    deleteProperty(id: $id)\n  }\n": typeof types.DeletePropertyDocument,
     "\n  query Properties($filter: PropertyFilter, $sort: PropertySort) {\n    properties(filter: $filter, sort: $sort) {\n      items {\n        id\n        street\n        city\n        state\n        zipCode\n        createdAt\n      }\n      totalCount\n    }\n  }\n": typeof types.PropertiesDocument,
     "\n  query Property($id: ID!) {\n    property(id: $id) {\n      id\n      street\n      city\n      state\n      zipCode\n      lat\n      long\n      createdAt\n      weatherData {\n        units\n        current {\n          temperature\n          feelsLike\n          weatherDescriptions\n          weatherIcons\n          windSpeed\n          windDir\n          humidity\n        }\n      }\n    }\n  }\n": typeof types.PropertyDocument,
 };
 const documents: Documents = {
+    "\n  mutation CreateProperty($street: String!, $city: String!, $state: String!, $zipCode: String!) {\n    createProperty(street: $street, city: $city, state: $state, zipCode: $zipCode) {\n      id\n    }\n  }\n": types.CreatePropertyDocument,
     "\n  mutation DeleteProperty($id: ID!) {\n    deleteProperty(id: $id)\n  }\n": types.DeletePropertyDocument,
     "\n  query Properties($filter: PropertyFilter, $sort: PropertySort) {\n    properties(filter: $filter, sort: $sort) {\n      items {\n        id\n        street\n        city\n        state\n        zipCode\n        createdAt\n      }\n      totalCount\n    }\n  }\n": types.PropertiesDocument,
     "\n  query Property($id: ID!) {\n    property(id: $id) {\n      id\n      street\n      city\n      state\n      zipCode\n      lat\n      long\n      createdAt\n      weatherData {\n        units\n        current {\n          temperature\n          feelsLike\n          weatherDescriptions\n          weatherIcons\n          windSpeed\n          windDir\n          humidity\n        }\n      }\n    }\n  }\n": types.PropertyDocument,
 };
 
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateProperty($street: String!, $city: String!, $state: String!, $zipCode: String!) {\n    createProperty(street: $street, city: $city, state: $state, zipCode: $zipCode) {\n      id\n    }\n  }\n"): typeof import('./graphql.ts').CreatePropertyDocument;
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
