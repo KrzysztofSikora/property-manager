@@ -40,8 +40,10 @@ export function ListPage() {
       },
       sort,
     });
-    // An unchanged URL would push a duplicate history entry, so Back would seem to do nothing.
-    if (next.toString() !== searchParams.toString()) setSearchParams(next);
+    // Unchanged filters would push a duplicate history entry, so Back would seem to do nothing.
+    // Compare canonical forms: a hand-edited link may order its keys differently.
+    const current = toListSearch(parseListSearch(searchParams));
+    if (next.toString() !== current.toString()) setSearchParams(next);
   }
 
   const filtered = Object.values(filter).some((value) => value.trim() !== '');
