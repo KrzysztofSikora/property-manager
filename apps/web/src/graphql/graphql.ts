@@ -47,6 +47,8 @@ export type DeletePropertyMutation = { deleteProperty: string };
 export type PropertiesQueryVariables = Exact<{
   filter?: PropertyFilter | null | undefined;
   sort?: PropertySort | null | undefined;
+  limit?: number | null | undefined;
+  offset?: number | null | undefined;
 }>;
 
 
@@ -91,8 +93,8 @@ export const DeletePropertyDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<DeletePropertyMutation, DeletePropertyMutationVariables>;
 export const PropertiesDocument = new TypedDocumentString(`
-    query Properties($filter: PropertyFilter, $sort: PropertySort) {
-  properties(filter: $filter, sort: $sort) {
+    query Properties($filter: PropertyFilter, $sort: PropertySort, $limit: Int, $offset: Int) {
+  properties(filter: $filter, sort: $sort, limit: $limit, offset: $offset) {
     items {
       id
       street

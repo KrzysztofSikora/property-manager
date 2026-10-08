@@ -3,11 +3,15 @@ import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
 
-export function renderWithProviders(ui: ReactElement, { route = '/' }: { route?: string } = {}) {
+// `initialEntries` puts earlier history entries before `route`, which is the current one.
+export function renderWithProviders(
+  ui: ReactElement,
+  { route = '/', initialEntries = [] }: { route?: string; initialEntries?: string[] } = {},
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
+      <MemoryRouter initialEntries={[...initialEntries, route]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
 }

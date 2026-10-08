@@ -35,8 +35,26 @@ const oldest = listItem({
   createdAt: '2026-09-14T23:42:00.000Z',
 });
 
-function propertiesPayload(items: PropertyListItem[]) {
-  return { data: { properties: { items, totalCount: items.length } } };
+function propertiesPayload(items: PropertyListItem[], totalCount = items.length) {
+  return { data: { properties: { items, totalCount } } };
+}
+
+// `count` rows numbered from 1, in list order.
+function pagedItems(count: number) {
+  return Array.from({ length: count }, (_, index) =>
+    listItem({ id: `id-p${String(index + 1)}`, street: `${String(index + 1)} Paged St` }),
+  );
+}
+
+// The streets of rows `from` to `to` of `pagedItems`.
+function pagedStreets(from: number, to: number) {
+  return Array.from({ length: to - from + 1 }, (_, index) => `${String(from + index)} Paged St`);
+}
+
+// The page that `limit` / `offset` ask for, as the API serves it.
+function pageOf(items: PropertyListItem[], { limit, offset }: PropertiesQueryVariables) {
+  const start = offset ?? 0;
+  return items.slice(start, limit == null ? undefined : start + limit);
 }
 
 // Serves `respond(variables)` and records the variables of every `Properties` request.
@@ -51,8 +69,8 @@ function serveProperties(respond: (variables: PropertiesQueryVariables) => Prope
   return requests;
 }
 
-// A stored list that `DeleteProperty` changes: `Properties` serves what is left, and both
-// operations are recorded.
+// A stored list that `DeleteProperty` changes: `Properties` serves the requested page of what is
+// left with the full count, and both operations are recorded.
 function serveStore(
   initial: PropertyListItem[],
   respondDelete: (id: string, remove: () => void) => Response = (id, remove) => {
@@ -66,7 +84,7 @@ function serveStore(
   server.use(
     api.query<object, PropertiesQueryVariables>('Properties', ({ variables }) => {
       listRequests.push(variables);
-      return HttpResponse.json(propertiesPayload(items));
+      return HttpResponse.json(propertiesPayload(pageOf(items, variables), items.length));
     }),
     api.mutation<object, DeletePropertyMutationVariables>('DeleteProperty', ({ variables }) => {
       // Codegen types an `ID` input as `string | number`. The app sends strings.
@@ -111,14 +129,18 @@ function RouterProbe() {
   );
 }
 
-function renderListWithProbe(route = '/') {
+function renderListWithProbe(route = '/', initialEntries: string[] = []) {
   renderWithProviders(
     <>
       <ListPage />
       <RouterProbe />
     </>,
-    { route },
+    { route, initialEntries },
   );
+}
+
+function pagination() {
+  return screen.queryByRole('navigation', { name: 'Pagination' });
 }
 
 function urlSearch() {
@@ -152,8 +174,8 @@ describe('ListPage', () => {
     ]);
     expect(screen.getByRole('columnheader', { name: 'Zip code' })).toBeInTheDocument();
     expect(screen.getByText('3 properties')).toBeInTheDocument();
-    expect(requests).toEqual([{ filter: {}, sort: 'CREATED_AT_DESC' }]);
-    expect(requests[0]).not.toHaveProperty('limit');
+    expect(requests).toEqual([{ filter: {}, sort: 'CREATED_AT_DESC', limit: 20, offset: 0 }]);
+    expect(pagination()).not.toBeInTheDocument();
   });
 
   it('FR-11 AC2: "Oldest first" re-fetches with CREATED_AT_ASC and re-orders the rows', async () => {
@@ -219,8 +241,8 @@ describe('ListPage', () => {
 
     await expect.poll(rowStreets).toEqual(['3 Newest St']);
     expect(requests).toEqual([
-      { filter: {}, sort: 'CREATED_AT_DESC' },
-      { filter: { city: 'fountain', state: 'AZ' }, sort: 'CREATED_AT_DESC' },
+      { filter: {}, sort: 'CREATED_AT_DESC', limit: 20, offset: 0 },
+      { filter: { city: 'fountain', state: 'AZ' }, sort: 'CREATED_AT_DESC', limit: 20, offset: 0 },
     ]);
   });
 
@@ -235,7 +257,12 @@ describe('ListPage', () => {
     await user.keyboard('{Enter}');
 
     await expect.poll(() => requests).toHaveLength(2);
-    expect(requests[1]).toEqual({ filter: { zipCode: '02108' }, sort: 'CREATED_AT_DESC' });
+    expect(requests[1]).toEqual({
+      filter: { zipCode: '02108' },
+      sort: 'CREATED_AT_DESC',
+      limit: 20,
+      offset: 0,
+    });
   });
 
   it('FR-11 AC3a: Apply writes the filters to the URL, and a sort change adds sort=asc and keeps them', async () => {
@@ -269,6 +296,8 @@ describe('ListPage', () => {
       {
         filter: { city: 'fountain', state: 'AZ', zipCode: '85268' },
         sort: 'CREATED_AT_ASC',
+        limit: 20,
+        offset: 0,
       },
     ]);
   });
@@ -295,7 +324,12 @@ describe('ListPage', () => {
     expect(urlSearch()).toBe('?city=Austin');
     expect(city()).toHaveValue('Austin');
     await expect.poll(rowStreets).toEqual(['2 Middle Ave']);
-    expect(requests.at(-1)).toEqual({ filter: { city: 'Austin' }, sort: 'CREATED_AT_DESC' });
+    expect(requests.at(-1)).toEqual({
+      filter: { city: 'Austin' },
+      sort: 'CREATED_AT_DESC',
+      limit: 20,
+      offset: 0,
+    });
   });
 
   it('FR-11 AC3a: applying the same filters again adds no history entry', async () => {
@@ -346,8 +380,247 @@ describe('ListPage', () => {
     expect(await screen.findByRole('link', { name: '2 Middle Ave' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'State' })).toHaveValue('');
     expect(screen.getByRole('textbox', { name: 'City' })).toHaveValue('austin');
-    expect(requests).toEqual([{ filter: { city: 'austin' }, sort: 'CREATED_AT_DESC' }]);
+    expect(requests).toEqual([
+      { filter: { city: 'austin' }, sort: 'CREATED_AT_DESC', limit: 20, offset: 0 },
+    ]);
     expect(urlSearch()).toBe('?state=XX&city=austin');
+  });
+
+  it('FR-11 AC4: with 45 matches shows the first 20 rows, "Page 1 of 3", the total and a disabled Previous', async () => {
+    const { listRequests } = serveStore(pagedItems(45));
+
+    renderListWithProbe();
+
+    expect(await screen.findByRole('link', { name: '1 Paged St' })).toBeInTheDocument();
+    expect(rowStreets()).toEqual(pagedStreets(1, 20));
+    expect(screen.getByText('45 properties')).toBeInTheDocument();
+    const bar = within(pagination() as HTMLElement);
+    expect(bar.getByText('Page 1 of 3')).toBeInTheDocument();
+    expect(bar.getByRole('button', { name: 'Previous' })).toBeDisabled();
+    expect(bar.getByRole('button', { name: 'Next' })).toBeEnabled();
+    expect(listRequests).toEqual([{ filter: {}, sort: 'CREATED_AT_DESC', limit: 20, offset: 0 }]);
+  });
+
+  it('FR-11 AC4: Next and Previous move by 20 rows, write the page to the URL and disable Next on the last page', async () => {
+    const { listRequests } = serveStore(pagedItems(45));
+    const user = userEvent.setup();
+    renderListWithProbe();
+    await screen.findByRole('link', { name: '1 Paged St' });
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    await expect.poll(rowStreets).toEqual(pagedStreets(21, 40));
+    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
+    expect(urlSearch()).toBe('?page=2');
+    expect(listRequests.at(-1)).toEqual({
+      filter: {},
+      sort: 'CREATED_AT_DESC',
+      limit: 20,
+      offset: 20,
+    });
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    await expect.poll(rowStreets).toEqual(pagedStreets(41, 45));
+    expect(screen.getByText('Page 3 of 3')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Previous' }));
+
+    await expect.poll(rowStreets).toEqual(pagedStreets(21, 40));
+    expect(urlSearch()).toBe('?page=2');
+  });
+
+  it('FR-11 AC4: 20 matches show no pagination bar, 21 matches show "Page 1 of 2"', async () => {
+    serveStore(pagedItems(20));
+    const { unmount } = renderWithProviders(<ListPage />);
+    await screen.findByRole('link', { name: '20 Paged St' });
+    expect(pagination()).not.toBeInTheDocument();
+    unmount();
+
+    serveStore(pagedItems(21));
+    renderWithProviders(<ListPage />);
+
+    expect(await screen.findByText('Page 1 of 2')).toBeInTheDocument();
+    expect(rowStreets()).toEqual(pagedStreets(1, 20));
+  });
+
+  it('FR-11 AC4: opening a URL with a filter and page=2 sends offset 20 with the filter in the first request', async () => {
+    const { listRequests } = serveStore(pagedItems(45));
+
+    renderListWithProbe('/?city=Austin&page=2');
+
+    expect(await screen.findByText('Page 2 of 3')).toBeInTheDocument();
+    expect(rowStreets()).toEqual(pagedStreets(21, 40));
+    expect(listRequests).toEqual([
+      { filter: { city: 'Austin' }, sort: 'CREATED_AT_DESC', limit: 20, offset: 20 },
+    ]);
+  });
+
+  it('FR-11 AC4: applying a new filter on page 2 goes back to page 1', async () => {
+    const { listRequests } = serveStore(pagedItems(45));
+    const user = userEvent.setup();
+    renderListWithProbe('/?page=2');
+    await screen.findByText('Page 2 of 3');
+
+    await user.type(screen.getByRole('textbox', { name: 'City' }), 'Austin');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(urlSearch()).toBe('?city=Austin');
+    expect(await screen.findByText('Page 1 of 3')).toBeInTheDocument();
+    expect(listRequests.at(-1)).toEqual({
+      filter: { city: 'Austin' },
+      sort: 'CREATED_AT_DESC',
+      limit: 20,
+      offset: 0,
+    });
+  });
+
+  it('FR-11 AC4: a sort change on page 2 goes back to page 1', async () => {
+    const { listRequests } = serveStore(pagedItems(45));
+    const user = userEvent.setup();
+    renderListWithProbe('/?page=2');
+    await screen.findByText('Page 2 of 3');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort' }), 'Oldest first');
+
+    expect(urlSearch()).toBe('?sort=asc');
+    expect(await screen.findByText('Page 1 of 3')).toBeInTheDocument();
+    expect(listRequests.at(-1)).toEqual({
+      filter: {},
+      sort: 'CREATED_AT_ASC',
+      limit: 20,
+      offset: 0,
+    });
+  });
+
+  it('FR-11 AC4: Apply with the filter unchanged on page 2 keeps the page and sends nothing', async () => {
+    const { listRequests } = serveStore(pagedItems(45));
+    const user = userEvent.setup();
+    renderListWithProbe('/?city=Austin&page=2');
+    await screen.findByText('Page 2 of 3');
+
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(urlSearch()).toBe('?city=Austin&page=2');
+    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
+    expect(listRequests).toHaveLength(1);
+  });
+
+  it('FR-11 AC4: Back after Next returns to page 1', async () => {
+    serveStore(pagedItems(45));
+    const user = userEvent.setup();
+    renderListWithProbe();
+    await screen.findByRole('link', { name: '1 Paged St' });
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await expect.poll(rowStreets).toEqual(pagedStreets(21, 40));
+
+    await user.click(screen.getByRole('button', { name: 'Browser back' }));
+
+    expect(urlSearch()).toBe('');
+    await expect.poll(rowStreets).toEqual(pagedStreets(1, 20));
+    expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+  });
+
+  it('FR-11 AC4: a page past the end is replaced by the last page, with no history entry for it', async () => {
+    serveStore(pagedItems(45));
+    const user = userEvent.setup();
+    renderListWithProbe('/?page=9', ['/']);
+
+    await expect.poll(rowStreets).toEqual(pagedStreets(41, 45));
+    expect(urlSearch()).toBe('?page=3');
+    expect(screen.getByText('Page 3 of 3')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Browser back' }));
+
+    expect(urlSearch()).toBe('');
+    await expect.poll(rowStreets).toEqual(pagedStreets(1, 20));
+  });
+
+  it('FR-11 AC4: Back to page 3 from a filter with fewer matches keeps page 3 while the old rows show', async () => {
+    // The rows of `?city=Boston` (1 page) stay as placeholder data while `?page=3` loads, so
+    // its total must not count for the past-the-end check.
+    const items = pagedItems(45);
+    server.use(
+      api.query<object, PropertiesQueryVariables>('Properties', ({ variables }) => {
+        const matches = variables.filter?.city === 'Boston' ? items.slice(0, 5) : items;
+        return HttpResponse.json(propertiesPayload(pageOf(matches, variables), matches.length));
+      }),
+    );
+    const user = userEvent.setup();
+    renderListWithProbe('/?city=Boston', ['/?page=3']);
+    await expect.poll(rowStreets).toEqual(pagedStreets(1, 5));
+
+    await user.click(screen.getByRole('button', { name: 'Browser back' }));
+
+    await expect.poll(rowStreets).toEqual(pagedStreets(41, 45));
+    expect(urlSearch()).toBe('?page=3');
+    expect(screen.getByText('Page 3 of 3')).toBeInTheDocument();
+  });
+
+  it('FR-11 AC4: deleting the only row on the last page moves to the page before', async () => {
+    serveStore(pagedItems(41));
+    const user = userEvent.setup();
+    renderListWithProbe('/?page=3');
+    await user.click(await screen.findByRole('button', { name: 'Delete 41 Paged St' }));
+    const dialog = screen.getByRole('dialog', { name: 'Delete property?' });
+
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    await expect.poll(urlSearch).toBe('?page=2');
+    await expect.poll(rowStreets).toEqual(pagedStreets(21, 40));
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+  });
+
+  it('FR-11 AC4: a page link with no matches goes to page 1 and shows the empty state', async () => {
+    const { listRequests } = serveStore([]);
+
+    renderListWithProbe('/?page=2');
+
+    await expect.poll(urlSearch).toBe('');
+    expect(await screen.findByText('No properties yet')).toBeInTheDocument();
+    expect(pagination()).not.toBeInTheDocument();
+    await expect
+      .poll(() => listRequests.at(-1))
+      .toEqual({ filter: {}, sort: 'CREATED_AT_DESC', limit: 20, offset: 0 });
+  });
+
+  it('FR-11 AC4: while the next page loads, Previous and Next are disabled and "Updating…" shows', async () => {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const items = pagedItems(45);
+    server.use(
+      api.query<object, PropertiesQueryVariables>('Properties', async ({ variables }) => {
+        if (variables.offset === 20) await held;
+        return HttpResponse.json(propertiesPayload(pageOf(items, variables), items.length));
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<ListPage />);
+    await screen.findByRole('link', { name: '1 Paged St' });
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Updating…');
+    expect(rowStreets()).toEqual(pagedStreets(1, 20));
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    release();
+    await expect.poll(rowStreets).toEqual(pagedStreets(21, 40));
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
+  });
+
+  it('FR-11 AC4: an invalid page in the URL is ignored and the valid city is still applied', async () => {
+    const { listRequests } = serveStore(pagedItems(45));
+
+    renderListWithProbe('/?page=abc&city=austin');
+
+    expect(await screen.findByText('Page 1 of 3')).toBeInTheDocument();
+    expect(listRequests).toEqual([
+      { filter: { city: 'austin' }, sort: 'CREATED_AT_DESC', limit: 20, offset: 0 },
+    ]);
+    expect(urlSearch()).toBe('?page=abc&city=austin');
   });
 
   it('FR-11 AC3: City accepts at most 100 characters and Zip code at most 5', async () => {
@@ -425,7 +698,7 @@ describe('ListPage', () => {
 
       // The URL would not change, so Apply does not navigate and nothing is re-fetched.
       expect(urlSearch()).toBe('');
-      expect(requests).toEqual([{ filter: {}, sort: 'CREATED_AT_DESC' }]);
+      expect(requests).toEqual([{ filter: {}, sort: 'CREATED_AT_DESC', limit: 20, offset: 0 }]);
       expect(screen.getByText('No properties yet')).toBeInTheDocument();
       expect(screen.queryByText('No properties match the filters')).not.toBeInTheDocument();
     },
@@ -438,7 +711,7 @@ describe('ListPage', () => {
       renderListWithProbe(`/?${key}=+++`);
 
       expect(await screen.findByText('No properties yet')).toBeInTheDocument();
-      expect(requests).toEqual([{ filter: {}, sort: 'CREATED_AT_DESC' }]);
+      expect(requests).toEqual([{ filter: {}, sort: 'CREATED_AT_DESC', limit: 20, offset: 0 }]);
       expect(screen.queryByText('No properties match the filters')).not.toBeInTheDocument();
     },
   );

@@ -244,7 +244,15 @@ dropped by the parse, and request errors use the existing error state with Retry
 
 ## Progress
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
-- [ ] Phase 1: page in the URL module
+- [x] Phase 1: page in the URL module (6d6edc8)
 - [ ] Phase 2: paged list
 
 ## Deviations
+- Phase 2: the past-the-end check is `page > pageCount` on settled, non-placeholder data, not
+  `items.length === 0 && page > 1`. Same result with a consistent API, and it cannot loop on
+  replace if the API returns no rows for a page inside its own count.
+- Phase 2: added a test the plan did not list, "Back to page 3 from a filter with fewer
+  matches…". A hand mutation that dropped the `isPlaceholderData` guard from the past-the-end
+  check survived every planned test.
+- Phase 2: `renderListWithProbe` and `renderWithProviders` take `initialEntries` (earlier
+  history entries before `route`), as the plan allowed for the Back test.
