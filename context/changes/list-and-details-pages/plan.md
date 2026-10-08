@@ -331,7 +331,7 @@ Documents are declared with `graphql(...)` in the hook files, and codegen genera
 <!-- One line per phase. /implement ticks it and appends the commit hash. -->
 - [x] Phase 1: List page (4167fe4)
 - [x] Phase 2: Delete from the list (6160c38)
-- [ ] Phase 3: Details page
+- [x] Phase 3: Details page (581f1e9)
 
 ## Deviations
 
