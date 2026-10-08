@@ -60,7 +60,13 @@ describe('NFR-04: strict TypeScript', () => {
   it('NFR-04 tsc rejects enums, parameter properties and value imports of types', async () => {
     const tsc = join(root, 'node_modules/typescript/bin/tsc');
     const project = join(root, 'tooling/fixtures/tsconfig.json');
-    const output = await promisify(execFile)(process.execPath, [tsc, '-p', project]).then(
+    const output = await promisify(execFile)(process.execPath, [
+      tsc,
+      '-p',
+      project,
+      '--pretty',
+      'false',
+    ]).then(
       () => '',
       (error: unknown) => (error instanceof Error && 'stdout' in error ? String(error.stdout) : ''),
     );
